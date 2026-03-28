@@ -6,6 +6,7 @@ import type { ChatMessage } from '../../data/types';
 
 interface ChatPanelProps {
   projectId?: string;
+  injectedPrompt?: string;
 }
 
 const kaniResponses = [
@@ -16,7 +17,7 @@ const kaniResponses = [
   'Analyse abgeschlossen. Hier sind meine Empfehlungen...',
 ];
 
-export function ChatPanel({ projectId }: ChatPanelProps) {
+export function ChatPanel({ projectId, injectedPrompt }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(dummyChat);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -24,6 +25,13 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
   const projectName = projectId
     ? projects.find((p) => p.id === projectId)?.name
     : undefined;
+
+  // Inject external prompt into input field
+  useEffect(() => {
+    if (injectedPrompt) {
+      setInput(injectedPrompt);
+    }
+  }, [injectedPrompt]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -65,19 +73,19 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
   };
 
   return (
-    <GlassCard className="flex flex-col min-h-[500px] h-full">
-      {/* Header */}
+    <GlassCard scan className="flex flex-col min-h-[500px] h-full">
+      {/* Terminal-style Header */}
       <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-white/5">
         <Terminal className="w-5 h-5 text-neon-cyan" />
         <div>
-          <h2 className="text-base font-semibold text-text-primary">KANI Terminal</h2>
+          <h2 className="text-base font-semibold text-text-primary font-mono">KANI Terminal</h2>
           {projectName && (
             <span className="text-xs text-text-muted">{projectName}</span>
           )}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-          <span className="text-xs text-text-muted">Online</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-neon-green animate-pulse" />
+          <span className="text-xs text-text-muted font-mono">Online</span>
         </div>
       </div>
 
@@ -122,7 +130,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
           onKeyDown={handleKeyDown}
           placeholder="Nachricht an KANI..."
           rows={3}
-          className="flex-1 bg-white/[0.03] border border-white/8 rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-cyan/40 transition-colors resize-none"
+          className="flex-1 bg-white/[0.03] border border-white/8 rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-cyan/40 transition-colors resize-none font-mono"
         />
         <button
           onClick={handleSend}

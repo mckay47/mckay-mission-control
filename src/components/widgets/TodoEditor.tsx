@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ListTodo, Plus } from 'lucide-react';
+import { ListTodo, Plus, ArrowRight } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { ChecklistItem } from '../ui/ChecklistItem';
 import { initialTodos, projects } from '../../data/dummy';
@@ -7,6 +7,7 @@ import type { TodoItem } from '../../data/types';
 
 interface TodoEditorProps {
   projectId?: string;
+  onSendPrompt?: (text: string) => void;
 }
 
 function formatDeadline(dateStr: string): string {
@@ -21,7 +22,7 @@ function getProjectName(projectId: string): string {
   return project?.name ?? projectId;
 }
 
-export function TodoEditor({ projectId }: TodoEditorProps) {
+export function TodoEditor({ projectId, onSendPrompt }: TodoEditorProps) {
   const [todos, setTodos] = useState<TodoItem[]>(initialTodos);
   const [input, setInput] = useState('');
   const [deadlineInput, setDeadlineInput] = useState('');
@@ -85,7 +86,7 @@ export function TodoEditor({ projectId }: TodoEditorProps) {
   const doneCount = filteredTodos.filter((t) => t.done).length;
 
   const renderTodoItem = (todo: TodoItem) => (
-    <div key={todo.id} className="flex items-center gap-2">
+    <div key={todo.id} className="group/todo flex items-center gap-2">
       <div className="flex-1">
         <ChecklistItem
           todo={todo}
@@ -93,6 +94,15 @@ export function TodoEditor({ projectId }: TodoEditorProps) {
           onDelete={() => handleDelete(todo.id)}
         />
       </div>
+      {onSendPrompt && !todo.done && (
+        <button
+          onClick={() => onSendPrompt(`Todo umsetzen: ${todo.text}`)}
+          className="p-1 rounded text-neon-cyan opacity-0 group-hover/todo:opacity-100 hover:bg-neon-cyan/10 transition-all flex-shrink-0"
+          title="Als Prompt senden"
+        >
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      )}
       {todo.deadline && (
         <span className="text-[10px] text-text-muted tabular-nums whitespace-nowrap flex-shrink-0">
           {formatDeadline(todo.deadline)}

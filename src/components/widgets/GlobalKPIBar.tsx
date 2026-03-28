@@ -1,27 +1,39 @@
-import { Briefcase, CreditCard, Zap, Lightbulb } from 'lucide-react';
-import { KPICard } from '../ui/KPICard';
-import { globalKPIs } from '../../data/dummy';
-import type { ReactNode } from 'react';
+import { GlassCard } from '../ui/GlassCard';
+import { RadialGauge } from '../ui/RadialGauge';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
-const iconMap: Record<string, ReactNode> = {
-  'Aktive Projekte': <Briefcase className="w-5 h-5" />,
-  'Monatskosten': <CreditCard className="w-5 h-5" />,
-  'Tokens gesamt': <Zap className="w-5 h-5" />,
-  'Pipeline-Ideen': <Lightbulb className="w-5 h-5" />,
-};
+interface KPIItem {
+  label: string;
+  gaugeValue: number;
+  displayValue: number;
+  prefix?: string;
+  suffix?: string;
+  color: 'cyan' | 'green' | 'orange' | 'purple';
+}
+
+const kpiData: KPIItem[] = [
+  { label: 'Aktive Projekte', gaugeValue: 30, displayValue: 3, suffix: ' / 10', color: 'cyan' },
+  { label: 'Tokens gesamt', gaugeValue: 75, displayValue: 175, suffix: 'K', color: 'green' },
+  { label: 'Monatskosten', gaugeValue: 53, displayValue: 52, prefix: '\u20AC', suffix: ',70', color: 'orange' },
+  { label: 'Pipeline-Ideen', gaugeValue: 25, displayValue: 5, suffix: ' / 20', color: 'purple' },
+];
 
 export function GlobalKPIBar() {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {globalKPIs.map((kpi) => (
-        <KPICard
-          key={kpi.label}
-          label={kpi.label}
-          value={kpi.value}
-          change={kpi.change}
-          color={kpi.color}
-          icon={iconMap[kpi.label]}
-        />
+      {kpiData.map((kpi, i) => (
+        <GlassCard key={kpi.label} className={`flex flex-col items-center py-6 stagger-${Math.min(i + 1, 7)} animate-fade-in`}>
+          <RadialGauge value={kpi.gaugeValue} label={kpi.label} size={100} color={kpi.color} />
+          <div className="mt-3">
+            <AnimatedNumber
+              value={kpi.displayValue}
+              prefix={kpi.prefix}
+              suffix={kpi.suffix}
+              color={kpi.color}
+              size="sm"
+            />
+          </div>
+        </GlassCard>
       ))}
     </div>
   );

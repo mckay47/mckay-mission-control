@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Terminal, Clock, Zap, CreditCard, Check } from 'lucide-react';
+import { Terminal, Check } from 'lucide-react';
 import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { StatusDot } from '../ui/StatusDot';
 import { GlowBadge } from '../ui/GlowBadge';
-import { ProgressBar } from '../ui/ProgressBar';
+import { RadialGauge } from '../ui/RadialGauge';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 import type { Project } from '../../data/types';
 
 interface ProjectCardProps {
@@ -46,47 +47,47 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link to={`/project/${project.id}`} className="block group">
-      <GlassCard className="transition-all duration-300 hover:border-white/10 hover:scale-[1.01]">
-        {/* Header: Name + Health + Phase */}
-        <div className="flex items-start justify-between mb-1">
-          <div className="flex items-center gap-2.5">
-            <StatusDot status={project.health} />
-            <h3 className="text-lg font-semibold text-text-primary group-hover:text-neon-cyan transition-colors">
-              {project.name}
-            </h3>
+      <GlassCard scan className="transition-all duration-300 hover:border-white/10 hover:scale-[1.01] animate-fade-in">
+        {/* Top: RadialGauge + Name/Domain/Phase */}
+        <div className="flex items-center gap-4 mb-4">
+          <RadialGauge
+            value={project.progressPercent}
+            size={90}
+            color={phaseColorMap[project.phase]}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <StatusDot status={project.health} />
+              <h3 className="text-lg font-semibold text-text-primary group-hover:text-neon-cyan transition-colors truncate">
+                {project.name}
+              </h3>
+            </div>
+            <p className="text-sm text-text-secondary mb-1.5 truncate">
+              {project.domain}
+            </p>
+            <GlowBadge color={phaseColorMap[project.phase]}>{project.phase}</GlowBadge>
           </div>
-          <GlowBadge color={phaseColorMap[project.phase]}>{project.phase}</GlowBadge>
         </div>
 
-        {/* Domain subtitle */}
-        <p className="text-sm text-text-secondary mb-4 ml-[18px]">
-          {project.domain}
-        </p>
-
-        {/* Progress bar with percentage */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs text-text-muted">Fortschritt</span>
-            <span className="text-xs tabular-nums font-medium text-neon-cyan">
-              {project.progressPercent}%
-            </span>
-          </div>
-          <ProgressBar value={project.progressPercent} color="cyan" height="md" />
+        {/* Timer */}
+        <div className="flex items-center gap-1.5 mb-3 text-sm text-text-secondary">
+          <span className="hud-label">Laeuft seit</span>
+          <AnimatedNumber value={days} size="sm" color="cyan" suffix=" Tagen" className="text-sm font-semibold" />
         </div>
 
-        {/* Metrics row: Timer, Tokens, Cost */}
+        {/* Metrics row */}
         <div className="flex items-center gap-4 mb-4 text-sm">
           <div className="flex items-center gap-1.5 text-text-secondary">
-            <Clock className="w-3.5 h-3.5 text-text-muted" />
-            <span className="tabular-nums">{days} Tage</span>
+            <span className="hud-label">Tokens</span>
+            <span className="tabular-nums text-neon-green text-glow-green">
+              {formatTokens(project.tokenUsage)}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 text-text-secondary">
-            <Zap className="w-3.5 h-3.5 text-neon-orange" />
-            <span className="tabular-nums">{formatTokens(project.tokenUsage)} Tokens</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-text-secondary">
-            <CreditCard className="w-3.5 h-3.5 text-neon-green" />
-            <span className="tabular-nums">{project.monthlyCost.toFixed(2).replace('.', ',')} EUR/mo</span>
+            <span className="hud-label">Kosten</span>
+            <span className="tabular-nums text-neon-orange text-glow-orange">
+              {project.monthlyCost.toFixed(2).replace('.', ',')} EUR/mo
+            </span>
           </div>
         </div>
 

@@ -8,6 +8,9 @@ export { SkillInventory } from './SkillInventory';
 export { AgentMap } from './AgentMap';
 export { PipelineBoard } from './PipelineBoard';
 export { ProjectTimeline } from './ProjectTimeline';
+export { WelcomeBriefing } from './WelcomeBriefing';
+export { ThinkTank } from './ThinkTank';
+export { IdeaParking } from './IdeaParking';
 
 // Workspace Widgets
 export { ChatPanel } from './ChatPanel';

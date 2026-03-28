@@ -5,8 +5,8 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('light', !isDark);
-    document.body.style.backgroundColor = isDark ? '#0A0A0F' : '#F5F5FA';
-    document.body.style.color = isDark ? '#F0F0F5' : '#1A1A2E';
+    document.body.style.backgroundColor = isDark ? '#0B1120' : '#F5F5FA';
+    document.body.style.color = isDark ? '#E0E6F0' : '#1A1A2E';
   }, [isDark]);
 
   const toggle = useCallback(() => setIsDark(d => !d), []);

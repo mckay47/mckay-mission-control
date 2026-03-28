@@ -16,3 +16,8 @@ export { ChecklistItem } from './ChecklistItem';
 export { ThemeToggle } from './ThemeToggle';
 export { CommandInput } from './CommandInput';
 export { InlineEditor } from './InlineEditor';
+export { AnimatedNumber } from './AnimatedNumber';
+export { RadialGauge } from './RadialGauge';
+export { WaveChart } from './WaveChart';
+export { BarChart } from './BarChart';
+export { SectionLabel } from './SectionLabel';
