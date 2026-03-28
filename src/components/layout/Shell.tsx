@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { KaniPanel } from '../KaniPanel';
 
 const routeTitles: Record<string, string> = {
   '/': 'Command Center',
@@ -18,6 +19,7 @@ function getPageTitle(pathname: string): string {
       hebammenbuero: 'Hebammenbuero',
       stillprobleme: 'Stillprobleme.de',
       'tenniscoach-pro': 'TennisCoach Pro',
+      findemeinehebamme: 'findemeinehebamme.de',
     };
     return projectNames[id] ?? 'Project Dashboard';
   }
@@ -64,6 +66,9 @@ export function Shell() {
           <Outlet />
         </main>
       </div>
+
+      {/* KANI side chat — always available */}
+      <KaniPanel />
     </div>
   );
 }
