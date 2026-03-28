@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Terminal, Check } from 'lucide-react';
+import { Terminal, Check, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { StatusDot } from '../ui/StatusDot';
@@ -43,7 +43,16 @@ export function ProjectCard({ project }: ProjectCardProps) {
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const handleDeployClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (project.deployUrl) {
+      window.open(project.deployUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const days = daysSince(project.startDate);
+  const isLive = project.status === 'live';
 
   return (
     <Link to={`/project/${project.id}`} className="block group">
@@ -65,9 +74,31 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <p className="text-sm text-text-secondary mb-1.5 truncate">
               {project.domain}
             </p>
-            <GlowBadge color={phaseColorMap[project.phase]}>{project.phase}</GlowBadge>
+            <div className="flex items-center gap-2">
+              <GlowBadge color={phaseColorMap[project.phase]}>{project.phase}</GlowBadge>
+              {isLive && <GlowBadge color="green">LIVE</GlowBadge>}
+            </div>
           </div>
         </div>
+
+        {/* Milestone dots */}
+        {project.milestones.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-3">
+            {project.milestones.map((ms) => (
+              <div
+                key={ms.label}
+                title={ms.label}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  ms.completed
+                    ? 'bg-neon-green shadow-[0_0_6px_rgba(0,255,136,0.5)]'
+                    : ms.active
+                      ? 'bg-neon-cyan shadow-[0_0_6px_rgba(0,240,255,0.5)] animate-pulse'
+                      : 'bg-white/15'
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Timer */}
         <div className="flex items-center gap-1.5 mb-3 text-sm text-text-secondary">
@@ -76,7 +107,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </div>
 
         {/* Metrics row */}
-        <div className="flex items-center gap-4 mb-4 text-sm">
+        <div className="flex items-center gap-4 mb-2 text-sm">
           <div className="flex items-center gap-1.5 text-text-secondary">
             <span className="hud-label">Tokens</span>
             <span className="tabular-nums text-neon-green text-glow-green">
@@ -91,24 +122,41 @@ export function ProjectCard({ project }: ProjectCardProps) {
           </div>
         </div>
 
-        {/* Footer: Open Terminal */}
+        {/* Market revenue estimate */}
+        {project.market && (
+          <p className="text-[11px] text-text-muted mb-4 truncate">
+            {project.market.revenueEstimate}
+          </p>
+        )}
+
+        {/* Footer: Terminal or Deploy link based on status */}
         <div className="pt-3 border-t border-white/5">
-          <button
-            onClick={handleCopyTerminal}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/8 text-text-secondary hover:text-neon-cyan hover:border-neon-cyan/30 transition-all"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-neon-green" />
-                <span className="text-neon-green">Kopiert!</span>
-              </>
-            ) : (
-              <>
-                <Terminal className="w-3.5 h-3.5" />
-                Open Terminal
-              </>
-            )}
-          </button>
+          {isLive ? (
+            <button
+              onClick={handleDeployClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green hover:bg-neon-green/20 transition-all"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Live ansehen
+            </button>
+          ) : (
+            <button
+              onClick={handleCopyTerminal}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/8 text-text-secondary hover:text-neon-cyan hover:border-neon-cyan/30 transition-all"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-neon-green" />
+                  <span className="text-neon-green">Kopiert!</span>
+                </>
+              ) : (
+                <>
+                  <Terminal className="w-3.5 h-3.5" />
+                  Open Terminal
+                </>
+              )}
+            </button>
+          )}
         </div>
       </GlassCard>
     </Link>

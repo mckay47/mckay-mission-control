@@ -36,40 +36,58 @@ export function SystemDashboard() {
         </div>
       </div>
 
-      {/* Two-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Skills */}
+      {/* Two-column grid: Skills + Agents */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Left: Skills with search input */}
         <div className="animate-fade-in stagger-1">
+          <SectionLabel number="01" title="SKILLS" />
           <SkillInventory />
+          <GlassCard className="mt-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Neuen Skill recherchieren..."
+                className="flex-1 bg-white/[0.03] border border-white/8 rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-purple/40 transition-colors"
+              />
+              <button className="vision-btn px-4 py-2.5 text-sm text-neon-purple">
+                Suchen
+              </button>
+            </div>
+          </GlassCard>
         </div>
 
-        {/* Right: Agents + MCP */}
-        <div className="space-y-6">
-          <div className="animate-fade-in stagger-2">
-            <AgentMap />
-          </div>
-
-          {/* MCP Servers */}
-          <div className="animate-fade-in stagger-3">
-            <SectionLabel number="03" title="MCP" />
-            <GlassCard>
-              <div className="space-y-3">
-                {mcpServers.map((server) => (
-                  <div key={server.name} className="flex items-center gap-3">
-                    <StatusDot status={mcpStatusMap[server.status]} />
-                    <span className="text-sm text-text-primary font-medium">{server.name}</span>
-                    <div className="ml-auto">
-                      <GlowBadge color="cyan" className="text-[10px] px-1.5 py-0">
-                        {server.tools} tools
-                      </GlowBadge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
-          </div>
+        {/* Right: Agents */}
+        <div className="animate-fade-in stagger-2">
+          <SectionLabel number="02" title="AGENTS" />
+          <AgentMap />
         </div>
       </div>
+
+      {/* Bottom: MCP Servers */}
+      <section className="animate-fade-in stagger-3">
+        <SectionLabel number="03" title="MCP SERVERS" />
+        <GlassCard>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {mcpServers.map((server) => (
+              <div
+                key={server.name}
+                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5"
+              >
+                <StatusDot status={mcpStatusMap[server.status]} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-text-primary font-medium block truncate">
+                    {server.name}
+                  </span>
+                  <span className="text-[10px] text-text-muted">{server.description}</span>
+                </div>
+                <GlowBadge color="cyan" className="text-[10px] px-1.5 py-0">
+                  {server.tools} tools
+                </GlowBadge>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      </section>
     </PageContainer>
   );
 }

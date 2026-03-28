@@ -19,6 +19,21 @@ export const PRODUCT_STEPS = [
 ] as const;
 export type MCPStatus = 'connected' | 'disconnected' | 'error';
 
+export type ProjectStatus = 'building' | 'live';
+
+export interface MarketData {
+  marketSize: string;
+  potentialCustomers: string;
+  revenueEstimate: string;
+  profitEstimate?: string;
+}
+
+export interface Milestone {
+  label: string;
+  completed: boolean;
+  active?: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -26,6 +41,7 @@ export interface Project {
   domain: string;
   phase: ProjectPhase;
   health: ProjectHealth;
+  status: ProjectStatus;
   url?: string;
   deployUrl?: string;
   techStack: string[];
@@ -34,6 +50,8 @@ export interface Project {
   stats: { label: string; value: string | number }[];
   businessModel: string;
   marketSize?: string;
+  market?: MarketData;
+  milestones: Milestone[];
   timeline: TimelineEntry[];
   startDate: string;
   tokenUsage: number;
@@ -41,6 +59,15 @@ export interface Project {
   monthlyCost: number;
   progressPercent: number;
   currentStep: ProductStep;
+}
+
+export interface PipelineIdeaV2 {
+  id: string;
+  name: string;
+  rawTranscript: string;
+  structuredVersion: string;
+  type: string;
+  createdAt: string;
 }
 
 export interface Skill {

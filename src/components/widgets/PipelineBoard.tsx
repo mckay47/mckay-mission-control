@@ -2,7 +2,7 @@ import { GlassCard } from '../ui/GlassCard';
 import { GlowBadge } from '../ui/GlowBadge';
 import { RadialGauge } from '../ui/RadialGauge';
 import { SectionLabel } from '../ui/SectionLabel';
-import { pipelineIdeas, projects } from '../../data/dummy';
+import { pipelineIdeasV2, projects } from '../../data/dummy';
 import { PRODUCT_STEPS } from '../../data/types';
 import type { Project } from '../../data/types';
 
@@ -17,13 +17,10 @@ function getStepLabel(step: number): string {
 
 export function PipelineBoard() {
   const activeProjects = projects;
-  const parkedIdeas = pipelineIdeas.filter(
-    (idea) => idea.stage === 'idea'
-  );
 
   return (
     <GlassCard elevated className="animate-fade-in">
-      <SectionLabel number="06" title="PRODUKT-PIPELINE" />
+      <SectionLabel number="02" title="PRODUKT-PIPELINE" />
 
       {/* Active Projects */}
       <div className="mb-6">
@@ -57,22 +54,26 @@ export function PipelineBoard() {
         </div>
       </div>
 
-      {/* Parked Ideas */}
-      {parkedIdeas.length > 0 && (
+      {/* Pipeline Ideas V2 */}
+      {pipelineIdeasV2.length > 0 && (
         <div>
-          <span className="hud-label mb-3 block">Geparkte Ideen</span>
+          <span className="hud-label mb-3 block">Geparkte Ideen ({pipelineIdeasV2.length})</span>
           <div className="space-y-2">
-            {parkedIdeas.map((idea, i) => (
+            {pipelineIdeasV2.map((idea, i) => (
               <div
                 key={idea.id}
-                className={`flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 stagger-${Math.min(i + 4, 7)} animate-fade-in`}
+                className={`p-3 rounded-xl bg-white/[0.02] border border-white/5 stagger-${Math.min(i + 4, 7)} animate-fade-in`}
               >
-                <span className="text-sm text-text-primary flex-1 truncate">
-                  {idea.name}
-                </span>
-                <GlowBadge color={typeBadgeColor[idea.type] ?? 'purple'} className="text-[9px] px-1.5 py-0">
-                  {idea.type}
-                </GlowBadge>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-sm font-medium text-text-primary flex-1 truncate">
+                    {idea.name}
+                  </span>
+                  <GlowBadge color={typeBadgeColor[idea.type] ?? 'purple'} className="text-[9px] px-1.5 py-0">
+                    {idea.type}
+                  </GlowBadge>
+                </div>
+                <p className="text-xs text-text-muted line-clamp-2">{idea.structuredVersion.split('\n')[0]}</p>
+                <span className="text-[10px] text-text-muted tabular-nums mt-1 block">{idea.createdAt}</span>
               </div>
             ))}
           </div>

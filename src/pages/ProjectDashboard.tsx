@@ -5,16 +5,16 @@ import { PageContainer } from '../components/layout';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlowBadge } from '../components/ui/GlowBadge';
 import { StatusDot } from '../components/ui/StatusDot';
-import { ProgressBar } from '../components/ui/ProgressBar';
 import { RadialGauge } from '../components/ui/RadialGauge';
 import { SectionLabel } from '../components/ui/SectionLabel';
+import { MilestoneProgress } from '../components/widgets/MilestoneProgress';
+import { MarketOverview } from '../components/widgets/MarketOverview';
 import { ProjectActions } from '../components/widgets/ProjectActions';
 import { ChatPanel } from '../components/widgets/ChatPanel';
 import { ProjectTimeline } from '../components/widgets/ProjectTimeline';
 import { TodoEditor } from '../components/widgets/TodoEditor';
 import { IdeaParking } from '../components/widgets/IdeaParking';
 import { projects } from '../data/dummy';
-import { PRODUCT_STEPS } from '../data/types';
 import type { ProjectPhase } from '../data/types';
 
 const phaseColorMap: Record<string, 'cyan' | 'green' | 'orange' | 'pink' | 'purple' | 'yellow'> = {
@@ -92,24 +92,27 @@ export function ProjectDashboard() {
         </h1>
         <GlowBadge text={project.phase} color={phaseColorMap[project.phase as ProjectPhase] ?? 'cyan'} />
         <StatusDot status={project.health} />
+
+        {/* Deploy link — ALWAYS visible */}
         {project.deployUrl && (
           <a
             href={project.deployUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-neon-cyan transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-neon-cyan/5 border border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/10 transition-all"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             {project.deployUrl.replace('https://', '')}
           </a>
         )}
+
         <div className="ml-auto">
           <ProjectActions projectId={project.id} />
         </div>
       </div>
 
       {/* Metrics: 4 RadialGauges */}
-      <div className="animate-fade-in stagger-1 mb-4">
+      <div className="animate-fade-in stagger-1 mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <GlassCard className="!p-4 flex flex-col items-center gap-1">
             <RadialGauge value={laufzeitPercent} label="Laufzeit" size={100} color="cyan" />
@@ -130,59 +133,68 @@ export function ProjectDashboard() {
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="animate-fade-in stagger-1 mb-6">
-        <GlassCard>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-text-secondary">Fortschritt &rarr; Launch</span>
-            <span className="text-xs text-text-muted tabular-nums">{project.progressPercent}%</span>
-          </div>
-          <ProgressBar value={project.progressPercent} color="cyan" height="md" />
-          <p className="text-xs text-text-muted mt-2">
-            Step {project.currentStep}: {PRODUCT_STEPS[project.currentStep - 1]}
-          </p>
-        </GlassCard>
-      </div>
+      {/* 01 / FORTSCHRITT — MilestoneProgress */}
+      <section className="mb-6 animate-fade-in stagger-1">
+        <SectionLabel number="01" title="FORTSCHRITT" />
+        <MilestoneProgress milestones={project.milestones} expanded />
+      </section>
 
       {/* Main grid: 2/3 left + 1/3 right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in stagger-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column — 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="min-h-[500px]">
-            <ChatPanel projectId={project.id} injectedPrompt={injectedPrompt} />
-          </div>
-          <ProjectTimeline timeline={project.timeline} />
+          {/* 02 / TERMINAL */}
+          <section className="animate-fade-in stagger-2">
+            <SectionLabel number="02" title="TERMINAL" />
+            <div className="min-h-[500px]">
+              <ChatPanel projectId={project.id} injectedPrompt={injectedPrompt} />
+            </div>
+          </section>
+
+          {/* 03 / TIMELINE */}
+          <section className="animate-fade-in stagger-3">
+            <SectionLabel number="03" title="TIMELINE" />
+            <ProjectTimeline timeline={project.timeline} />
+          </section>
         </div>
 
         {/* Right column — 1/3 */}
         <div className="space-y-6">
-          {/* 01 / IDEEN-PARKING */}
-          <IdeaParking onSendPrompt={handleSendPrompt} />
+          {/* 04 / IDEEN */}
+          <section className="animate-fade-in stagger-2">
+            <SectionLabel number="04" title="IDEEN" />
+            <IdeaParking onSendPrompt={handleSendPrompt} />
+          </section>
 
-          {/* 02 / TODOS */}
-          <div>
-            <SectionLabel number="02" title="TODOS" />
+          {/* 05 / AUFGABEN */}
+          <section className="animate-fade-in stagger-3">
+            <SectionLabel number="05" title="AUFGABEN" />
             <TodoEditor projectId={project.id} onSendPrompt={handleSendPrompt} />
-          </div>
+          </section>
 
-          {/* 03 / SKILLS */}
-          <div>
-            <SectionLabel number="03" title="SKILLS" />
+          {/* 06 / MARKT */}
+          {project.market && (
+            <section className="animate-fade-in stagger-4">
+              <SectionLabel number="06" title="MARKT" />
+              <MarketOverview market={project.market} />
+            </section>
+          )}
+
+          {/* 07 / SKILLS */}
+          <section className="animate-fade-in stagger-5">
+            <SectionLabel number="07" title="SKILLS" />
             <GlassCard>
-              <h3 className="text-sm font-semibold text-text-secondary mb-3">
-                Aktive Skills <span className="text-text-muted">({skillNames.length})</span>
-              </h3>
               <div className="flex flex-wrap gap-2">
                 {skillNames.map((skill) => (
                   <GlowBadge key={skill} text={skill} color="purple" />
                 ))}
               </div>
             </GlassCard>
-          </div>
+          </section>
 
           {/* Business Model */}
-          <GlassCard>
-            <h3 className="text-sm font-semibold text-text-secondary mb-3">Business Model</h3>
+          <GlassCard className="animate-fade-in stagger-6">
+            <h3 className="text-sm font-semibold text-text-secondary mb-2">Business Model</h3>
             <p className="text-sm text-text-primary">{project.businessModel}</p>
           </GlassCard>
         </div>

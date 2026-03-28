@@ -11,11 +11,13 @@ export { ProjectTimeline } from './ProjectTimeline';
 export { WelcomeBriefing } from './WelcomeBriefing';
 export { ThinkTank } from './ThinkTank';
 export { IdeaParking } from './IdeaParking';
+export { MilestoneProgress } from './MilestoneProgress';
+export { MarketOverview } from './MarketOverview';
+export { IdeaParkingGlobal } from './IdeaParkingGlobal';
 
 // Workspace Widgets
 export { ChatPanel } from './ChatPanel';
 export { ComposePanel } from './ComposePanel';
-export { LaunchWizard } from './LaunchWizard';
 export { TodoEditor } from './TodoEditor';
 export { NoteEditor } from './NoteEditor';
 export { ProjectActions } from './ProjectActions';

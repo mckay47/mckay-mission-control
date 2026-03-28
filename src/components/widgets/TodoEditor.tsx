@@ -84,6 +84,8 @@ export function TodoEditor({ projectId, onSendPrompt }: TodoEditorProps) {
   };
 
   const doneCount = filteredTodos.filter((t) => t.done).length;
+  const openCount = filteredTodos.filter((t) => !t.done).length;
+  const totalCount = filteredTodos.length;
 
   const renderTodoItem = (todo: TodoItem) => (
     <div key={todo.id} className="group/todo flex items-center gap-2">
@@ -114,12 +116,21 @@ export function TodoEditor({ projectId, onSendPrompt }: TodoEditorProps) {
   return (
     <GlassCard>
       {/* Header */}
-      <div className="flex items-center gap-2.5 mb-4">
+      <div className="flex items-center gap-2.5 mb-2">
         <ListTodo className="w-5 h-5 text-neon-cyan" />
         <h2 className="text-base font-semibold text-text-primary">To-Do</h2>
         <span className="ml-auto text-xs text-text-muted tabular-nums">
-          {doneCount}/{filteredTodos.length}
+          {doneCount}/{totalCount}
         </span>
+      </div>
+
+      {/* KPI counters */}
+      <div className="flex items-center gap-2 mb-4 text-xs">
+        <span className="text-neon-cyan tabular-nums">{totalCount} geplant</span>
+        <span className="text-text-muted">·</span>
+        <span className="text-neon-orange tabular-nums">{openCount} offen</span>
+        <span className="text-text-muted">·</span>
+        <span className="text-neon-green tabular-nums">{doneCount} erledigt</span>
       </div>
 
       {/* Input row with deadline */}

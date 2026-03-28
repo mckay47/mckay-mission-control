@@ -241,3 +241,111 @@ body {
   color: var(--color-neon-cyan);
   font-weight: 600;
 }
+
+/* ═══════════════════════════════════════════
+   BOOT SEQUENCE — Sci-Fi startup
+   ═══════════════════════════════════════════ */
+
+/* Full-screen backdrop blur */
+.boot-backdrop {
+  backdrop-filter: blur(30px) saturate(1.2);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+  background: radial-gradient(ellipse at center, rgba(0,240,255,0.03) 0%, rgba(11,17,32,0.95) 70%);
+}
+
+/* Typing cursor */
+.typing-cursor::after {
+  content: '▎';
+  color: var(--color-neon-cyan);
+  animation: blink-cursor 1s step-end infinite;
+  margin-left: 2px;
+}
+
+/* Vision Pro floating glass button */
+.vision-btn {
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.4),
+    0 0 1px rgba(255,255,255,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(255,255,255,0.03);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.vision-btn:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+  border-color: rgba(0,240,255,0.3);
+  box-shadow:
+    0 12px 48px rgba(0,0,0,0.5),
+    0 0 30px rgba(0,240,255,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* Boot system line animation */
+@keyframes boot-line {
+  0% { width: 0; opacity: 0; }
+  10% { opacity: 1; }
+  100% { width: 100%; opacity: 1; }
+}
+.animate-boot-line { animation: boot-line 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* Shutdown fade */
+@keyframes shutdown {
+  0% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 0.5; filter: brightness(0.5); }
+  100% { opacity: 0; filter: brightness(0) blur(10px); }
+}
+.animate-shutdown { animation: shutdown 1.5s ease-in forwards; }
+
+/* Boot glow pulse behind text */
+@keyframes boot-glow {
+  0%, 100% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 0.3; transform: scale(1.2); }
+}
+.boot-glow-bg {
+  position: absolute;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,240,255,0.15), transparent 70%);
+  animation: boot-glow 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Milestone progress */
+.milestone-track {
+  position: relative;
+  height: 4px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 2px;
+}
+.milestone-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-neon-cyan), var(--color-neon-green));
+  box-shadow: 0 0 12px rgba(0,240,255,0.3);
+  transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.milestone-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: var(--color-bg-primary);
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  transition: all 0.3s;
+}
+.milestone-dot.completed {
+  background: var(--color-neon-green);
+  border-color: var(--color-neon-green);
+  box-shadow: 0 0 8px rgba(0,255,136,0.4);
+}
+.milestone-dot.active {
+  background: var(--color-neon-cyan);
+  border-color: var(--color-neon-cyan);
+  box-shadow: 0 0 12px rgba(0,240,255,0.5);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
