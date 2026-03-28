@@ -1,0 +1,73 @@
+import type { PipelineIdea } from '../types';
+
+export const pipelineIdeas: PipelineIdea[] = [
+  {
+    id: 'steuerberater',
+    name: 'Steuerberater App',
+    description: 'SaaS for tax advisors — automatic document reminders, deadline tracking, client communication',
+    stage: 'idea',
+    type: 'Industry SaaS',
+    features: ['Document reminders', 'Deadline tracking', 'Automated client communication'],
+  },
+  {
+    id: 'autowerkstatt',
+    name: 'Autowerkstatt SaaS',
+    description: 'Workshop management — online booking, vehicle history, WhatsApp reminders, digital invoices',
+    stage: 'idea',
+    type: 'Industry SaaS',
+    features: ['Online booking', 'Vehicle history', 'WhatsApp reminders', 'Digital invoices', 'Reviews'],
+  },
+  {
+    id: 'smarthome-x',
+    name: 'SmartHome X',
+    description: 'Amazon-style smart home marketplace with product configurator',
+    stage: 'idea',
+    type: 'Marketplace',
+    features: ['Product listings', 'Configurator', 'Smart bundles'],
+  },
+  {
+    id: 'gastro-suite',
+    name: 'Gastro Suite',
+    description: 'All-in-one restaurant management — reservations, menu, orders, reviews, staff scheduling',
+    stage: 'idea',
+    type: 'Industry SaaS',
+    features: ['Reservations', 'Digital menu', 'Order management', 'Staff scheduling'],
+  },
+  {
+    id: 'immobilien-pro',
+    name: 'Immobilien Pro',
+    description: 'Real estate agent platform — property listings, exposé builder, lead management, viewing scheduler',
+    stage: 'idea',
+    type: 'Industry SaaS',
+    features: ['Listings', 'Exposé builder', 'Lead CRM', 'Viewing scheduler'],
+  },
+  {
+    id: 'findemeinehebamme',
+    name: 'findemeinehebamme.de',
+    description: 'Matching platform for pregnant women to find available midwives in their area',
+    stage: 'live',
+    type: 'Marketplace',
+    features: ['Geo-matching', 'Availability filter', 'Direct booking'],
+  },
+  {
+    id: 'tenniscoach',
+    name: 'TennisCoach Pro',
+    description: 'All-in-one platform for tennis coaches, clubs, players and parents',
+    stage: 'building',
+    type: 'Industry SaaS',
+  },
+  {
+    id: 'hebammenbuero-p',
+    name: 'Hebammenbuero.de',
+    description: 'Complete SaaS back-office for freelance midwives',
+    stage: 'building',
+    type: 'Industry SaaS',
+  },
+  {
+    id: 'stillprobleme-p',
+    name: 'Stillprobleme.de',
+    description: 'Emergency telemedicine for breastfeeding problems',
+    stage: 'building',
+    type: 'Marketplace',
+  },
+];

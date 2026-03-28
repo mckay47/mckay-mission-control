@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0A0A0F;
+  --color-bg-elevated: #0F0F18;
+  --color-bg-surface: #14142B;
+  --color-glass-bg: rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+
+  --color-neon-cyan: #00F0FF;
+  --color-neon-orange: #FF6B2C;
+  --color-neon-pink: #FF2DAA;
+  --color-neon-green: #00FF88;
+  --color-neon-purple: #8B5CF6;
+  --color-neon-yellow: #FFD600;
+
+  --color-status-healthy: #00FF88;
+  --color-status-attention: #FFD600;
+  --color-status-risk: #FF6B2C;
+  --color-status-critical: #FF2D55;
+
+  --color-text-primary: #F0F0F5;
+  --color-text-secondary: #8888AA;
+  --color-text-muted: #555577;
+
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Light mode overrides */
+.light {
+  --color-bg-primary: #F5F5FA;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-surface: #EBEBF0;
+  --color-glass-bg: rgba(0, 0, 0, 0.02);
+  --color-glass-border: rgba(0, 0, 0, 0.08);
+  --color-neon-cyan: #0891B2;
+  --color-neon-orange: #EA580C;
+  --color-neon-pink: #DB2777;
+  --color-neon-green: #059669;
+  --color-neon-purple: #7C3AED;
+  --color-neon-yellow: #CA8A04;
+  --color-status-healthy: #059669;
+  --color-status-attention: #CA8A04;
+  --color-status-risk: #EA580C;
+  --color-status-critical: #DC2626;
+  --color-text-primary: #1A1A2E;
+  --color-text-secondary: #555577;
+  --color-text-muted: #8888AA;
+}
+
+html {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Glow effects */
+.glow-cyan { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.4)); }
+.glow-orange { filter: drop-shadow(0 0 8px rgba(255, 107, 44, 0.4)); }
+.glow-pink { filter: drop-shadow(0 0 8px rgba(255, 45, 170, 0.4)); }
+.glow-green { filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4)); }
+.glow-purple { filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4)); }
+
+.text-glow-cyan { text-shadow: 0 0 20px rgba(0, 240, 255, 0.5), 0 0 40px rgba(0, 240, 255, 0.2); }
+.text-glow-green { text-shadow: 0 0 20px rgba(0, 255, 136, 0.5), 0 0 40px rgba(0, 255, 136, 0.2); }
+.text-glow-orange { text-shadow: 0 0 20px rgba(255, 107, 44, 0.5), 0 0 40px rgba(255, 107, 44, 0.2); }
+.text-glow-pink { text-shadow: 0 0 20px rgba(255, 45, 170, 0.5), 0 0 40px rgba(255, 45, 170, 0.2); }
+
+.box-glow-cyan { box-shadow: 0 0 20px rgba(0, 240, 255, 0.15), 0 0 60px rgba(0, 240, 255, 0.05); }
+.box-glow-green { box-shadow: 0 0 20px rgba(0, 255, 136, 0.15), 0 0 60px rgba(0, 255, 136, 0.05); }
+.box-glow-orange { box-shadow: 0 0 20px rgba(255, 107, 44, 0.15), 0 0 60px rgba(255, 107, 44, 0.05); }
+.box-glow-pink { box-shadow: 0 0 20px rgba(255, 45, 170, 0.15), 0 0 60px rgba(255, 45, 170, 0.05); }
+.box-glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), 0 0 60px rgba(139, 92, 246, 0.05); }
+
+/* Glass card base */
+.glass {
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Pulse animation for status dots */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Gauge arc animation */
+@keyframes gauge-fill {
+  from { stroke-dashoffset: 283; }
+}
+.animate-gauge {
+  animation: gauge-fill 1.5s ease-out forwards;
+}
+
+/* Slide in */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+/* Number tabular */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}

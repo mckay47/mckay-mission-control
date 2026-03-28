@@ -1,0 +1,25 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Shell } from './components/layout';
+import {
+  CommandCenter,
+  ProjectDashboard,
+  SystemDashboard,
+  Pipeline,
+  Personal,
+} from './pages';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Shell />}>
+          <Route path="/" element={<CommandCenter />} />
+          <Route path="/project/:id" element={<ProjectDashboard />} />
+          <Route path="/system" element={<SystemDashboard />} />
+          <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/personal" element={<Personal />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
