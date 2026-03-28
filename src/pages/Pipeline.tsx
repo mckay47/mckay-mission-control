@@ -13,15 +13,14 @@ export function Pipeline() {
         </h1>
       </div>
 
-      {/* 01 / NEUE IDEE */}
+      {/* 01 / NEUE IDEE — prominent input */}
       <section className="mb-8 animate-fade-in stagger-1">
         <SectionLabel number="01" title="NEUE IDEE" />
         <IdeaParkingGlobal />
       </section>
 
-      {/* 02 / GEPARKTE IDEEN */}
+      {/* 02+03 / PIPELINE + GEPARKTE IDEEN */}
       <section className="animate-fade-in stagger-2">
-        <SectionLabel number="02" title="GEPARKTE IDEEN" />
         <PipelineBoard />
       </section>
     </PageContainer>

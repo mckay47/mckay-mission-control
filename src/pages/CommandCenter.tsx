@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Activity, RefreshCw, Rocket } from 'lucide-react';
+import { FileText, Activity, RefreshCw, Rocket, Terminal, Check } from 'lucide-react';
 import { PageContainer } from '../components/layout';
 import { GlassCard } from '../components/ui/GlassCard';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { StatusDot } from '../components/ui/StatusDot';
+import { GlowBadge } from '../components/ui/GlowBadge';
+import { RadialGauge } from '../components/ui/RadialGauge';
 import { WelcomeBriefing } from '../components/widgets/WelcomeBriefing';
-import { ProjectCard } from '../components/widgets/ProjectCard';
 import { TodoEditor } from '../components/widgets/TodoEditor';
 import { PriorityList } from '../components/widgets/PriorityList';
 import { NotificationCenter } from '../components/widgets/NotificationCenter';
 import { projects } from '../data/dummy';
 import { useClock } from '../hooks/useClock';
+import type { Project } from '../data/types';
 
 const quickActions = [
   { id: 'brief', label: '/brief', desc: 'Daily Briefing', icon: FileText },
@@ -20,8 +22,17 @@ const quickActions = [
   { id: 'sync', label: '/sync', desc: 'Memory Sync', icon: RefreshCw },
 ];
 
+const phaseColorMap: Record<Project['phase'], 'cyan' | 'green' | 'orange' | 'pink' | 'purple'> = {
+  'Phase 0': 'cyan',
+  'Phase 1': 'purple',
+  'Phase 2': 'orange',
+  'Phase 3': 'pink',
+  Live: 'green',
+};
+
 export function CommandCenter() {
   const [launchInput, setLaunchInput] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { time, date } = useClock();
 
@@ -40,6 +51,14 @@ export function CommandCenter() {
       e.preventDefault();
       handleLaunch();
     }
+  };
+
+  const handleCopyTerminal = (e: React.MouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(`cd ~/mckay-os/projects/${projectId} && claude`);
+    setCopiedId(projectId);
+    setTimeout(() => setCopiedId(null), 1500);
   };
 
   return (
@@ -82,46 +101,81 @@ export function CommandCenter() {
       <section className="mb-8 animate-fade-in stagger-2">
         <SectionLabel number="02" title="PROJEKTE" />
 
-        {/* In Arbeit */}
-        <div className="mb-6">
+        {/* In Arbeit — compact 4-column grid */}
+        <div className="mb-5">
           <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-3">
             In Arbeit ({buildingProjects.length})
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {buildingProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <GlassCard
+                key={project.id}
+                className="!p-3.5 cursor-pointer hover:border-neon-cyan/20 hover:scale-[1.01] transition-all group"
+                onClick={() => navigate(`/project/${project.id}`)}
+              >
+                {/* Top: gauge + name */}
+                <div className="flex items-center gap-3 mb-2">
+                  <RadialGauge
+                    value={project.progressPercent}
+                    size={48}
+                    color={phaseColorMap[project.phase]}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <StatusDot status={project.health} />
+                      <span className="text-sm font-semibold text-text-primary group-hover:text-neon-cyan transition-colors truncate">
+                        {project.name}
+                      </span>
+                    </div>
+                    <GlowBadge color={phaseColorMap[project.phase]} className="text-[9px] !px-1.5 !py-0">
+                      {project.phase}
+                    </GlowBadge>
+                  </div>
+                </div>
+
+                {/* Domain + terminal shortcut */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-text-muted truncate">{project.domain}</span>
+                  <button
+                    onClick={(e) => handleCopyTerminal(e, project.id)}
+                    className="p-1 rounded text-text-muted hover:text-neon-cyan transition-colors flex-shrink-0"
+                    title="Terminal-Befehl kopieren"
+                  >
+                    {copiedId === project.id ? (
+                      <Check className="w-3 h-3 text-neon-green" />
+                    ) : (
+                      <Terminal className="w-3 h-3" />
+                    )}
+                  </button>
+                </div>
+              </GlassCard>
             ))}
           </div>
         </div>
 
-        {/* Live */}
+        {/* Live — horizontal badge row */}
         {liveProjects.length > 0 && (
           <div>
             <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-3">
               Live ({liveProjects.length})
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {liveProjects.map((project) => (
-                <GlassCard
+                <button
                   key={project.id}
-                  className="!p-4 cursor-pointer hover:border-neon-green/20 transition-all"
                   onClick={() => navigate(`/project/${project.id}`)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-glass-bg border border-neon-green/20 hover:border-neon-green/40 hover:bg-neon-green/5 transition-all group"
                 >
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <StatusDot status={project.health} />
-                    <span className="text-sm font-semibold text-text-primary truncate">
-                      {project.name}
+                  <StatusDot status="healthy" />
+                  <span className="text-sm font-medium text-text-primary group-hover:text-neon-green transition-colors">
+                    {project.name}
+                  </span>
+                  {project.market?.revenueEstimate && (
+                    <span className="text-[10px] text-neon-green/70 tabular-nums hidden sm:inline">
+                      {project.market.revenueEstimate}
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-text-muted">
-                    <span>{project.domain}</span>
-                    {project.market?.revenueEstimate && (
-                      <span className="text-neon-green tabular-nums">
-                        {project.market.revenueEstimate}
-                      </span>
-                    )}
-                  </div>
-                </GlassCard>
+                  )}
+                </button>
               ))}
             </div>
           </div>

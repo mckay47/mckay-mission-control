@@ -53,47 +53,53 @@ export function IdeaParkingGlobal() {
         </span>
       </div>
 
-      {/* Input */}
-      <div className="flex items-start gap-2 mb-4">
+      {/* Prominent input area */}
+      <div className="mb-5">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Beschreibe deine Idee freestyle..."
-          rows={3}
-          className="flex-1 bg-white/[0.03] border border-white/8 rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-orange/40 transition-colors resize-none"
+          placeholder="Beschreibe deine Idee freestyle... Was ist das Problem? Wer braucht es? Was macht es besonders?"
+          rows={5}
+          className="w-full bg-white/[0.03] border border-white/8 rounded-xl px-5 py-4 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-orange/40 focus:bg-white/[0.05] transition-all resize-none leading-relaxed"
         />
         <button
           onClick={handleAdd}
           disabled={!input.trim()}
-          className="vision-btn px-4 py-3 text-neon-orange disabled:opacity-30 disabled:cursor-not-allowed"
+          className="mt-3 w-full vision-btn px-6 py-3 flex items-center justify-center gap-2.5 text-sm font-medium text-neon-orange disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
+          Idee aufnehmen
         </button>
       </div>
 
       {/* Saved ideas */}
       {ideas.length > 0 && (
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
-          {ideas.map((idea) => (
-            <div
-              key={idea.id}
-              className="group flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-neon-orange/20 transition-colors"
-            >
-              <Lightbulb className="w-3.5 h-3.5 text-neon-orange/50 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-text-secondary truncate">{idea.text}</p>
-                <span className="text-[10px] text-text-muted tabular-nums">{idea.createdAt}</span>
-              </div>
-              <button
-                onClick={() => handleRemove(idea.id)}
-                className="p-1 rounded text-text-muted hover:text-status-critical hover:bg-status-critical/10 transition-colors opacity-0 group-hover:opacity-100"
-                title="Entfernen"
+        <div>
+          <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-2">
+            Zuletzt geparkt
+          </span>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
+            {ideas.map((idea) => (
+              <div
+                key={idea.id}
+                className="group flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-neon-orange/20 transition-colors"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+                <Lightbulb className="w-3.5 h-3.5 text-neon-orange/50 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-secondary truncate">{idea.text}</p>
+                  <span className="text-[10px] text-text-muted tabular-nums">{idea.createdAt}</span>
+                </div>
+                <button
+                  onClick={() => handleRemove(idea.id)}
+                  className="p-1 rounded text-text-muted hover:text-status-critical hover:bg-status-critical/10 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Entfernen"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </GlassCard>

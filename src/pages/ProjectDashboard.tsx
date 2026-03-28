@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Briefcase } from 'lucide-react';
 import { PageContainer } from '../components/layout';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlowBadge } from '../components/ui/GlowBadge';
@@ -8,7 +8,6 @@ import { StatusDot } from '../components/ui/StatusDot';
 import { RadialGauge } from '../components/ui/RadialGauge';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { MilestoneProgress } from '../components/widgets/MilestoneProgress';
-import { MarketOverview } from '../components/widgets/MarketOverview';
 import { ProjectActions } from '../components/widgets/ProjectActions';
 import { ChatPanel } from '../components/widgets/ChatPanel';
 import { ProjectTimeline } from '../components/widgets/ProjectTimeline';
@@ -93,7 +92,7 @@ export function ProjectDashboard() {
         <GlowBadge text={project.phase} color={phaseColorMap[project.phase as ProjectPhase] ?? 'cyan'} />
         <StatusDot status={project.health} />
 
-        {/* Deploy link — ALWAYS visible */}
+        {/* Deploy link */}
         {project.deployUrl && (
           <a
             href={project.deployUrl}
@@ -134,69 +133,100 @@ export function ProjectDashboard() {
       </div>
 
       {/* 01 / FORTSCHRITT — MilestoneProgress */}
-      <section className="mb-6 animate-fade-in stagger-1">
+      <section className="mb-4 animate-fade-in stagger-1">
         <SectionLabel number="01" title="FORTSCHRITT" />
         <MilestoneProgress milestones={project.milestones} expanded />
+      </section>
+
+      {/* 02 / TIMELINE — horizontal, compact, right below milestones */}
+      <section className="mb-6 animate-fade-in stagger-1">
+        <SectionLabel number="02" title="TIMELINE" />
+        <ProjectTimeline timeline={project.timeline} horizontal />
       </section>
 
       {/* Main grid: 2/3 left + 1/3 right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column — 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* 02 / TERMINAL */}
+          {/* 03 / TERMINAL */}
           <section className="animate-fade-in stagger-2">
-            <SectionLabel number="02" title="TERMINAL" />
+            <SectionLabel number="03" title="TERMINAL" />
             <div className="min-h-[500px]">
               <ChatPanel projectId={project.id} injectedPrompt={injectedPrompt} />
             </div>
-          </section>
-
-          {/* 03 / TIMELINE */}
-          <section className="animate-fade-in stagger-3">
-            <SectionLabel number="03" title="TIMELINE" />
-            <ProjectTimeline timeline={project.timeline} />
           </section>
         </div>
 
         {/* Right column — 1/3 */}
         <div className="space-y-6">
-          {/* 04 / IDEEN */}
+          {/* 04 / IDEEN — larger workspace */}
           <section className="animate-fade-in stagger-2">
             <SectionLabel number="04" title="IDEEN" />
-            <IdeaParking onSendPrompt={handleSendPrompt} />
+            <div className="min-h-[320px]">
+              <IdeaParking onSendPrompt={handleSendPrompt} />
+            </div>
           </section>
 
-          {/* 05 / AUFGABEN */}
+          {/* 05 / AUFGABEN — larger workspace */}
           <section className="animate-fade-in stagger-3">
             <SectionLabel number="05" title="AUFGABEN" />
-            <TodoEditor projectId={project.id} onSendPrompt={handleSendPrompt} />
+            <div className="min-h-[400px]">
+              <TodoEditor projectId={project.id} onSendPrompt={handleSendPrompt} />
+            </div>
           </section>
 
-          {/* 06 / MARKT */}
-          {project.market && (
-            <section className="animate-fade-in stagger-4">
-              <SectionLabel number="06" title="MARKT" />
-              <MarketOverview market={project.market} />
-            </section>
-          )}
-
-          {/* 07 / SKILLS */}
-          <section className="animate-fade-in stagger-5">
-            <SectionLabel number="07" title="SKILLS" />
+          {/* 06 / PROJEKT-INFO — combined Skills + Business Model + Market */}
+          <section className="animate-fade-in stagger-4">
+            <SectionLabel number="06" title="PROJEKT-INFO" />
             <GlassCard>
-              <div className="flex flex-wrap gap-2">
-                {skillNames.map((skill) => (
-                  <GlowBadge key={skill} text={skill} color="purple" />
-                ))}
+              <div className="flex items-center gap-2.5 mb-3">
+                <Briefcase className="w-4 h-4 text-neon-purple" />
+                <h3 className="text-sm font-semibold text-text-secondary">Projekt-Info</h3>
               </div>
+
+              {/* Business Model — 1 line */}
+              <div className="mb-3">
+                <span className="text-[10px] text-text-muted uppercase tracking-wider">Business Model</span>
+                <p className="text-sm text-text-primary mt-0.5">{project.businessModel}</p>
+              </div>
+
+              {/* Skills — inline badges */}
+              <div className="mb-3">
+                <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1.5">Skills</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {skillNames.map((skill) => (
+                    <GlowBadge key={skill} text={skill} color="purple" className="text-[10px] !px-2 !py-0" />
+                  ))}
+                </div>
+              </div>
+
+              {/* Market data — inline key numbers */}
+              {project.market && (
+                <div>
+                  <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1.5">Markt</span>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                    {project.market.marketSize && (
+                      <span className="text-text-secondary">
+                        <span className="text-neon-cyan tabular-nums">{project.market.marketSize}</span>
+                        {' '}Markt
+                      </span>
+                    )}
+                    {project.market.potentialCustomers && (
+                      <span className="text-text-secondary">
+                        <span className="text-neon-green tabular-nums">{project.market.potentialCustomers}</span>
+                        {' '}Kunden
+                      </span>
+                    )}
+                    {project.market.revenueEstimate && (
+                      <span className="text-text-secondary">
+                        <span className="text-neon-orange tabular-nums">{project.market.revenueEstimate}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </GlassCard>
           </section>
-
-          {/* Business Model */}
-          <GlassCard className="animate-fade-in stagger-6">
-            <h3 className="text-sm font-semibold text-text-secondary mb-2">Business Model</h3>
-            <p className="text-sm text-text-primary">{project.businessModel}</p>
-          </GlassCard>
         </div>
       </div>
     </PageContainer>
