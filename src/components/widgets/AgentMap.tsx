@@ -1,6 +1,6 @@
 import { Bot } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { AgentCard } from '../ui/AgentCard';
+import { StatusDot } from '../ui/StatusDot';
 import { agents } from '../../data/dummy';
 
 export function AgentMap() {
@@ -9,33 +9,53 @@ export function AgentMap() {
 
   return (
     <GlassCard>
-      <div className="flex items-center gap-2.5 mb-5">
+      <div className="flex items-center gap-2.5 mb-4">
         <Bot className="w-5 h-5 text-neon-green" />
-        <h2 className="text-base font-semibold text-text-primary">Agent Map</h2>
-        <span className="ml-auto text-xs text-text-muted tabular-nums">{agents.length} agents</span>
+        <h2 className="text-base font-semibold text-text-primary">Agents</h2>
+        <span className="ml-auto text-xs text-text-muted tabular-nums">{agents.length} online</span>
       </div>
 
-      <div className="space-y-5">
-        {/* Core Agents */}
+      <div className="space-y-3">
+        {/* Core */}
         <div>
-          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2.5">
-            Core
+          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1.5">
+            Core ({coreAgents.length})
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="space-y-1">
             {coreAgents.map((agent) => (
-              <AgentCard key={agent.name} agent={agent} />
+              <div key={agent.name} className="flex items-center gap-2 py-0.5">
+                <StatusDot
+                  status={agent.status === 'active' ? 'healthy' : 'attention'}
+                  pulse={false}
+                  className="w-1.5 h-1.5"
+                />
+                <span className="text-sm text-text-primary">{agent.name}</span>
+                <span className="text-[10px] text-text-muted truncate ml-auto">
+                  {agent.purpose.split(' — ')[0]}
+                </span>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Specialist Agents */}
+        {/* Specialists */}
         <div>
-          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2.5">
-            Specialists
+          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1.5">
+            Specialists ({specialists.length})
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="space-y-1">
             {specialists.map((agent) => (
-              <AgentCard key={agent.name} agent={agent} />
+              <div key={agent.name} className="flex items-center gap-2 py-0.5">
+                <StatusDot
+                  status={agent.status === 'active' ? 'healthy' : 'attention'}
+                  pulse={false}
+                  className="w-1.5 h-1.5"
+                />
+                <span className="text-sm text-text-primary">{agent.name}</span>
+                <span className="text-[10px] text-text-muted truncate ml-auto">
+                  {agent.purpose.split(' — ')[0]}
+                </span>
+              </div>
             ))}
           </div>
         </div>

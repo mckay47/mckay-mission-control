@@ -1,97 +1,112 @@
 import { Link } from 'react-router-dom';
-import { Terminal, ExternalLink } from 'lucide-react';
+import { Terminal, Clock, Zap, CreditCard, Check } from 'lucide-react';
+import { useState } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { StatusDot } from '../ui/StatusDot';
 import { GlowBadge } from '../ui/GlowBadge';
+import { ProgressBar } from '../ui/ProgressBar';
 import type { Project } from '../../data/types';
 
 interface ProjectCardProps {
   project: Project;
 }
 
-const healthColorMap: Record<Project['health'], 'cyan' | 'green' | 'orange' | 'pink'> = {
-  healthy: 'green',
-  attention: 'orange',
-  risk: 'orange',
-  critical: 'pink',
+const phaseColorMap: Record<Project['phase'], 'cyan' | 'green' | 'orange' | 'pink' | 'purple'> = {
+  'Phase 0': 'cyan',
+  'Phase 1': 'purple',
+  'Phase 2': 'orange',
+  'Phase 3': 'pink',
+  Live: 'green',
 };
 
+function daysSince(dateStr: string): number {
+  const start = new Date(dateStr);
+  const now = new Date();
+  return Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+function formatTokens(tokens: number): string {
+  if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+  if (tokens >= 1000) return `${Math.round(tokens / 1000)}K`;
+  return String(tokens);
+}
+
 export function ProjectCard({ project }: ProjectCardProps) {
+  const [copied, setCopied] = useState(false);
+
   const handleCopyTerminal = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     navigator.clipboard.writeText(`cd ~/mckay-os/projects/${project.id} && claude`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
+
+  const days = daysSince(project.startDate);
 
   return (
     <Link to={`/project/${project.id}`} className="block group">
       <GlassCard className="transition-all duration-300 hover:border-white/10 hover:scale-[1.01]">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-3">
+        {/* Header: Name + Health + Phase */}
+        <div className="flex items-start justify-between mb-1">
           <div className="flex items-center gap-2.5">
             <StatusDot status={project.health} />
             <h3 className="text-lg font-semibold text-text-primary group-hover:text-neon-cyan transition-colors">
               {project.name}
             </h3>
           </div>
-          <GlowBadge color={healthColorMap[project.health]}>{project.phase}</GlowBadge>
+          <GlowBadge color={phaseColorMap[project.phase]}>{project.phase}</GlowBadge>
         </div>
 
-        {/* Description */}
-        <p className="text-sm text-text-secondary mb-4 line-clamp-2">
-          {project.description}
+        {/* Domain subtitle */}
+        <p className="text-sm text-text-secondary mb-4 ml-[18px]">
+          {project.domain}
         </p>
 
-        {/* Tech stack tags */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {project.techStack.slice(0, 5).map((tech) => (
-            <span
-              key={tech}
-              className="px-2 py-0.5 text-xs rounded-md bg-white/5 text-text-secondary border border-white/5"
-            >
-              {tech}
+        {/* Progress bar with percentage */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-text-muted">Fortschritt</span>
+            <span className="text-xs tabular-nums font-medium text-neon-cyan">
+              {project.progressPercent}%
             </span>
-          ))}
-          {project.techStack.length > 5 && (
-            <span className="px-2 py-0.5 text-xs rounded-md bg-white/5 text-text-muted">
-              +{project.techStack.length - 5}
-            </span>
-          )}
+          </div>
+          <ProgressBar value={project.progressPercent} color="cyan" height="md" />
         </div>
 
-        {/* Stats row */}
+        {/* Metrics row: Timer, Tokens, Cost */}
         <div className="flex items-center gap-4 mb-4 text-sm">
-          {project.stats.map((stat) => (
-            <div key={stat.label} className="flex items-center gap-1.5">
-              <span className="text-text-muted">{stat.label}</span>
-              <span className="tabular-nums font-medium text-text-primary">{stat.value}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-1.5 text-text-secondary">
+            <Clock className="w-3.5 h-3.5 text-text-muted" />
+            <span className="tabular-nums">{days} Tage</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-text-secondary">
+            <Zap className="w-3.5 h-3.5 text-neon-orange" />
+            <span className="tabular-nums">{formatTokens(project.tokenUsage)} Tokens</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-text-secondary">
+            <CreditCard className="w-3.5 h-3.5 text-neon-green" />
+            <span className="tabular-nums">{project.monthlyCost.toFixed(2).replace('.', ',')} EUR/mo</span>
+          </div>
         </div>
 
-        {/* Footer row */}
-        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-          {project.deployUrl ? (
-            <a
-              href={project.deployUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-neon-cyan transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              {project.deployUrl.replace('https://', '')}
-            </a>
-          ) : (
-            <span className="text-xs text-text-muted">No deployment</span>
-          )}
-
+        {/* Footer: Open Terminal */}
+        <div className="pt-3 border-t border-white/5">
           <button
             onClick={handleCopyTerminal}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/8 text-text-secondary hover:text-neon-cyan hover:border-neon-cyan/30 transition-all"
           >
-            <Terminal className="w-3.5 h-3.5" />
-            Open Terminal
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-neon-green" />
+                <span className="text-neon-green">Kopiert!</span>
+              </>
+            ) : (
+              <>
+                <Terminal className="w-3.5 h-3.5" />
+                Open Terminal
+              </>
+            )}
           </button>
         </div>
       </GlassCard>

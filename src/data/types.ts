@@ -3,6 +3,20 @@ export type ProjectHealth = 'healthy' | 'attention' | 'risk' | 'critical';
 export type SkillCategory = 'core' | 'project-types' | 'domains' | 'integrations';
 export type AgentType = 'core' | 'specialist';
 export type PipelineStage = 'idea' | 'research' | 'strategy' | 'confirmed' | 'building' | 'live';
+export type ProductStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+export const PRODUCT_STEPS = [
+  'Idee',
+  'Strukturiert',
+  'Freigabe',
+  'Angelegt',
+  'Ausarbeitung',
+  'Abstimmung',
+  'Mockup-Brief',
+  'Mockup',
+  'Verfeinerung',
+  'Umsetzung',
+] as const;
 export type MCPStatus = 'connected' | 'disconnected' | 'error';
 
 export interface Project {
@@ -21,6 +35,12 @@ export interface Project {
   businessModel: string;
   marketSize?: string;
   timeline: TimelineEntry[];
+  startDate: string;
+  tokenUsage: number;
+  promptCount: number;
+  monthlyCost: number;
+  progressPercent: number;
+  currentStep: ProductStep;
 }
 
 export interface Skill {
@@ -88,6 +108,8 @@ export interface TodoItem {
   text: string;
   done: boolean;
   priority?: 'high' | 'medium' | 'low';
+  deadline?: string;
+  projectId?: string;
 }
 
 export interface Priority {

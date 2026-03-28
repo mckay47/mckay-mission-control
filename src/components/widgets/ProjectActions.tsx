@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { Terminal, Hammer, Database, Rocket, ScrollText, Check } from 'lucide-react';
-import { GlassCard } from '../ui/GlassCard';
+import { useState, useRef, useEffect } from 'react';
+import { MoreVertical, Terminal, Hammer, Database, Rocket, Check } from 'lucide-react';
 
 interface ProjectActionsProps {
   projectId: string;
@@ -11,85 +10,89 @@ interface ActionDef {
   label: string;
   icon: React.ReactNode;
   command: (projectId: string) => string;
-  color: string;
-  hoverColor: string;
 }
 
 const actions: ActionDef[] = [
   {
     id: 'terminal',
     label: 'Open Terminal',
-    icon: <Terminal className="w-4 h-4" />,
+    icon: <Terminal className="w-3.5 h-3.5" />,
     command: (id) => `cd ~/mckay-os/projects/${id} && claude`,
-    color: 'text-neon-cyan border-neon-cyan/20 bg-neon-cyan/10',
-    hoverColor: 'hover:bg-neon-cyan/20',
   },
   {
     id: 'build',
     label: 'Build Feature',
-    icon: <Hammer className="w-4 h-4" />,
+    icon: <Hammer className="w-3.5 h-3.5" />,
     command: (id) => `/build ${id}`,
-    color: 'text-neon-green border-neon-green/20 bg-neon-green/10',
-    hoverColor: 'hover:bg-neon-green/20',
   },
   {
     id: 'memory',
     label: 'Update Memory',
-    icon: <Database className="w-4 h-4" />,
+    icon: <Database className="w-3.5 h-3.5" />,
     command: (id) => `cd ~/mckay-os/projects/${id} && cat MEMORY.md`,
-    color: 'text-neon-purple border-neon-purple/20 bg-neon-purple/10',
-    hoverColor: 'hover:bg-neon-purple/20',
   },
   {
     id: 'deploy',
     label: 'Deploy',
-    icon: <Rocket className="w-4 h-4" />,
+    icon: <Rocket className="w-3.5 h-3.5" />,
     command: (id) => `cd ~/mckay-os/projects/${id} && vercel --prod`,
-    color: 'text-neon-pink border-neon-pink/20 bg-neon-pink/10',
-    hoverColor: 'hover:bg-neon-pink/20',
-  },
-  {
-    id: 'logs',
-    label: 'View Logs',
-    icon: <ScrollText className="w-4 h-4" />,
-    command: (id) => `cd ~/mckay-os/projects/${id} && vercel logs`,
-    color: 'text-neon-orange border-neon-orange/20 bg-neon-orange/10',
-    hoverColor: 'hover:bg-neon-orange/20',
   },
 ];
 
 export function ProjectActions({ projectId }: ProjectActionsProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleCopy = (action: ActionDef) => {
     navigator.clipboard.writeText(action.command(projectId));
     setCopiedId(action.id);
-    setTimeout(() => setCopiedId(null), 1500);
+    setTimeout(() => {
+      setCopiedId(null);
+    }, 1500);
   };
 
   return (
-    <GlassCard>
-      <h2 className="text-base font-semibold text-text-primary mb-4">Project Actions</h2>
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/8 text-text-secondary hover:text-text-primary hover:border-white/15 transition-all"
+      >
+        <MoreVertical className="w-4 h-4" />
+        Aktionen
+      </button>
 
-      <div className="space-y-2">
-        {actions.map((action) => (
-          <button
-            key={action.id}
-            onClick={() => handleCopy(action)}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg border transition-all ${action.color} ${action.hoverColor}`}
-          >
-            {copiedId === action.id ? (
-              <Check className="w-4 h-4 text-neon-green" />
-            ) : (
-              action.icon
-            )}
-            <span>{action.label}</span>
-            {copiedId === action.id && (
-              <span className="ml-auto text-[10px] text-neon-green">Copied!</span>
-            )}
-          </button>
-        ))}
-      </div>
-    </GlassCard>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-48 rounded-lg bg-elevated border border-glass-border shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+          {actions.map((action) => (
+            <button
+              key={action.id}
+              onClick={() => handleCopy(action)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
+            >
+              {copiedId === action.id ? (
+                <Check className="w-3.5 h-3.5 text-neon-green" />
+              ) : (
+                action.icon
+              )}
+              <span>{action.label}</span>
+              {copiedId === action.id && (
+                <span className="ml-auto text-[10px] text-neon-green">Kopiert!</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,19 +1,18 @@
-import { Activity, Cpu, Bot, Lightbulb, Server } from 'lucide-react';
+import { Briefcase, CreditCard, Zap, Lightbulb } from 'lucide-react';
 import { KPICard } from '../ui/KPICard';
 import { globalKPIs } from '../../data/dummy';
 import type { ReactNode } from 'react';
 
 const iconMap: Record<string, ReactNode> = {
-  'Active Projects': <Activity className="w-5 h-5" />,
-  'Skills Loaded': <Cpu className="w-5 h-5" />,
-  'Agents Online': <Bot className="w-5 h-5" />,
-  'Pipeline Ideas': <Lightbulb className="w-5 h-5" />,
-  'MCP Servers': <Server className="w-5 h-5" />,
+  'Aktive Projekte': <Briefcase className="w-5 h-5" />,
+  'Monatskosten': <CreditCard className="w-5 h-5" />,
+  'Tokens gesamt': <Zap className="w-5 h-5" />,
+  'Pipeline-Ideen': <Lightbulb className="w-5 h-5" />,
 };
 
 export function GlobalKPIBar() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {globalKPIs.map((kpi) => (
         <KPICard
           key={kpi.label}
