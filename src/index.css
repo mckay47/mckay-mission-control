@@ -349,3 +349,137 @@ body {
   box-shadow: 0 0 12px rgba(0,240,255,0.5);
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════════
+   V8 — MONITOR TILES (Cockpit)
+   ═══════════════════════════════════════════ */
+
+.monitor-tile {
+  background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 0 30px rgba(0,0,0,0.2);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.monitor-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--monitor-color, rgba(0,240,255,0.3)), transparent);
+  animation: scan-line 5s ease-in-out infinite;
+  pointer-events: none;
+}
+.monitor-tile:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: var(--monitor-color, rgba(0,240,255,0.2));
+  box-shadow:
+    0 16px 60px rgba(0,0,0,0.5),
+    0 0 40px var(--monitor-glow, rgba(0,240,255,0.08)),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 0 30px rgba(0,0,0,0.15);
+}
+
+/* Monitor color variants */
+.monitor-cyan { --monitor-color: rgba(0,240,255,0.3); --monitor-glow: rgba(0,240,255,0.1); }
+.monitor-green { --monitor-color: rgba(0,255,136,0.3); --monitor-glow: rgba(0,255,136,0.1); }
+.monitor-orange { --monitor-color: rgba(255,107,44,0.3); --monitor-glow: rgba(255,107,44,0.1); }
+.monitor-pink { --monitor-color: rgba(255,45,170,0.3); --monitor-glow: rgba(255,45,170,0.1); }
+.monitor-purple { --monitor-color: rgba(139,92,246,0.3); --monitor-glow: rgba(139,92,246,0.1); }
+.monitor-yellow { --monitor-color: rgba(255,214,0,0.3); --monitor-glow: rgba(255,214,0,0.1); }
+
+/* Monitor inner glow effect */
+.monitor-glow-inner {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%; height: 80%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--monitor-glow, rgba(0,240,255,0.05)), transparent 70%);
+  pointer-events: none;
+  animation: glow-breathe 4s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════
+   V8 — ZOOM TRANSITIONS
+   ═══════════════════════════════════════════ */
+
+@keyframes zoom-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes zoom-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
+}
+.animate-zoom-in { animation: zoom-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-zoom-out { animation: zoom-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* ═══════════════════════════════════════════
+   V8 — AMBIENT PARTICLES
+   ═══════════════════════════════════════════ */
+
+@keyframes drift {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-100vh) translateX(30px); opacity: 0; }
+}
+
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═══════════════════════════════════════════
+   V8 — BREADCRUMB NAV
+   ═══════════════════════════════════════════ */
+
+.breadcrumb-bar {
+  background: linear-gradient(180deg, rgba(11,17,32,0.9) 0%, rgba(11,17,32,0.7) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ═══════════════════════════════════════════
+   V8 — TERMINAL LOOK
+   ═══════════════════════════════════════════ */
+
+.terminal-panel {
+  background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 16px;
+  position: relative;
+}
+.terminal-panel::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,136,0.3), transparent);
+  border-radius: 16px 16px 0 0;
+}
+
+/* ═══════════════════════════════════════════
+   V8 — NOTIFICATION BANNER
+   ═══════════════════════════════════════════ */
+
+@keyframes attention-pulse {
+  0%, 100% { border-color: rgba(255,107,44,0.3); box-shadow: 0 0 20px rgba(255,107,44,0.1); }
+  50% { border-color: rgba(255,107,44,0.6); box-shadow: 0 0 40px rgba(255,107,44,0.2); }
+}
+.attention-border {
+  animation: attention-pulse 2s ease-in-out infinite;
+}

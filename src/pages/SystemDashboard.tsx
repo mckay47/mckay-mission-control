@@ -1,9 +1,11 @@
+import { Search, Terminal } from 'lucide-react';
 import { PageContainer } from '../components/layout';
 import { GlassCard } from '../components/ui/GlassCard';
 import { StatusDot } from '../components/ui/StatusDot';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { GlowBadge } from '../components/ui/GlowBadge';
+import { useToast } from '../components/ui';
 import { SkillInventory } from '../components/widgets/SkillInventory';
 import { AgentMap } from '../components/widgets/AgentMap';
 import { mcpServers } from '../data/dummy';
@@ -16,6 +18,8 @@ const mcpStatusMap: Record<MCPStatus, 'healthy' | 'attention' | 'risk' | 'critic
 };
 
 export function SystemDashboard() {
+  const { showToast } = useToast();
+
   return (
     <PageContainer>
       {/* Header */}
@@ -36,35 +40,42 @@ export function SystemDashboard() {
         </div>
       </div>
 
+      {/* Quick Actions — prominent at top */}
+      <section className="mb-8 animate-fade-in stagger-1">
+        <SectionLabel number="00" title="SCHNELLZUGRIFF" />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => showToast('Modul noch nicht aktiviert')}
+            className="vision-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-purple"
+          >
+            <Search className="w-4 h-4" />
+            Neuen Skill recherchieren
+          </button>
+          <button
+            onClick={() => showToast('Modul noch nicht aktiviert')}
+            className="vision-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-cyan"
+          >
+            <Terminal className="w-4 h-4" />
+            Terminal oeffnen
+          </button>
+        </div>
+      </section>
+
       {/* Two-column grid: Skills + Agents */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Left: Skills with search input */}
-        <div className="animate-fade-in stagger-1">
-          <SectionLabel number="01" title="SKILLS" />
+        {/* Left: Skills */}
+        <div className="animate-fade-in stagger-2">
           <SkillInventory />
-          <GlassCard className="mt-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Neuen Skill recherchieren..."
-                className="flex-1 bg-white/[0.03] border border-white/8 rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-purple/40 transition-colors"
-              />
-              <button className="vision-btn px-4 py-2.5 text-sm text-neon-purple">
-                Suchen
-              </button>
-            </div>
-          </GlassCard>
         </div>
 
         {/* Right: Agents */}
-        <div className="animate-fade-in stagger-2">
-          <SectionLabel number="02" title="AGENTS" />
+        <div className="animate-fade-in stagger-3">
           <AgentMap />
         </div>
       </div>
 
-      {/* Bottom: MCP Servers */}
-      <section className="animate-fade-in stagger-3">
+      {/* Bottom: MCP Servers — compact */}
+      <section className="animate-fade-in stagger-4">
         <SectionLabel number="03" title="MCP SERVERS" />
         <GlassCard>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -29,7 +29,7 @@ function AppRoutes() {
   return (
     <>
       {!booted && <BootSequence onComplete={handleBootComplete} />}
-      <div className={booted ? 'animate-fade-in' : 'opacity-0 pointer-events-none'}>
+      <div className={booted ? 'animate-zoom-in' : 'opacity-0 pointer-events-none'}>
         <Routes>
           <Route element={<Shell />}>
             <Route path="/" element={<Cockpit />} />

@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Briefcase } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { PageContainer } from '../components/layout';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlowBadge } from '../components/ui/GlowBadge';
 import { StatusDot } from '../components/ui/StatusDot';
 import { RadialGauge } from '../components/ui/RadialGauge';
 import { SectionLabel } from '../components/ui/SectionLabel';
+import { useToast } from '../components/ui';
 import { MilestoneProgress } from '../components/widgets/MilestoneProgress';
 import { ProjectActions } from '../components/widgets/ProjectActions';
 import { ChatPanel } from '../components/widgets/ChatPanel';
 import { ProjectTimeline } from '../components/widgets/ProjectTimeline';
 import { TodoEditor } from '../components/widgets/TodoEditor';
 import { IdeaParking } from '../components/widgets/IdeaParking';
+import { MarketOverview } from '../components/widgets/MarketOverview';
 import { projects } from '../data/dummy';
 import type { ProjectPhase } from '../data/types';
 
@@ -39,6 +41,7 @@ export function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const project = projects.find((p) => p.id === id);
   const [injectedPrompt, setInjectedPrompt] = useState('');
+  const { showToast } = useToast();
 
   const handleSendPrompt = (text: string) => {
     setInjectedPrompt(`${text} [${Date.now()}]`);
@@ -77,41 +80,62 @@ export function ProjectDashboard() {
     <PageContainer>
       {/* Back link */}
       <Link
-        to="/"
+        to="/operator"
         className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors mb-4"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
-        Command Center
+        Arbeitsplatz
       </Link>
 
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-4 mb-2 animate-fade-in stagger-1">
         <h1 className="text-3xl font-bold text-neon-cyan text-glow-cyan">
           {project.name}
         </h1>
         <GlowBadge text={project.phase} color={phaseColorMap[project.phase as ProjectPhase] ?? 'cyan'} />
         <StatusDot status={project.health} />
 
-        {/* Deploy link */}
-        {project.deployUrl && (
-          <a
-            href={project.deployUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-neon-cyan/5 border border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/10 transition-all"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            {project.deployUrl.replace('https://', '')}
-          </a>
-        )}
+        {/* Deploy link — always visible */}
+        <a
+          href={project.deployUrl || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border transition-all ${
+            project.deployUrl
+              ? 'bg-neon-cyan/5 border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/10'
+              : 'bg-white/5 border-white/8 text-text-muted cursor-not-allowed'
+          }`}
+          onClick={(e) => {
+            if (!project.deployUrl) {
+              e.preventDefault();
+              showToast('Noch nicht deployed');
+            }
+          }}
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          {project.deployUrl ? project.deployUrl.replace('https://', '') : 'Nicht deployed'}
+        </a>
 
         <div className="ml-auto">
           <ProjectActions projectId={project.id} />
         </div>
       </div>
 
+      {/* Business Model + Skills — near header */}
+      <div className="flex flex-wrap items-center gap-3 mb-6 animate-fade-in stagger-1">
+        <span className="text-xs text-text-muted">Modell:</span>
+        <span className="text-xs text-text-secondary">{project.businessModel}</span>
+        <span className="text-text-muted">|</span>
+        {skillNames.slice(0, 6).map((skill) => (
+          <GlowBadge key={skill} text={skill} color="purple" className="text-[9px] !px-1.5 !py-0" />
+        ))}
+        {skillNames.length > 6 && (
+          <span className="text-[10px] text-text-muted">+{skillNames.length - 6} mehr</span>
+        )}
+      </div>
+
       {/* Metrics: 4 RadialGauges */}
-      <div className="animate-fade-in stagger-1 mb-6">
+      <div className="animate-fade-in stagger-2 mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <GlassCard className="!p-4 flex flex-col items-center gap-1">
             <RadialGauge value={laufzeitPercent} label="Laufzeit" size={100} color="cyan" />
@@ -133,13 +157,13 @@ export function ProjectDashboard() {
       </div>
 
       {/* 01 / FORTSCHRITT — MilestoneProgress */}
-      <section className="mb-4 animate-fade-in stagger-1">
+      <section className="mb-4 animate-fade-in stagger-3">
         <SectionLabel number="01" title="FORTSCHRITT" />
         <MilestoneProgress milestones={project.milestones} expanded />
       </section>
 
-      {/* 02 / TIMELINE — horizontal, compact, right below milestones */}
-      <section className="mb-6 animate-fade-in stagger-1">
+      {/* 02 / TIMELINE — horizontal, compact */}
+      <section className="mb-6 animate-fade-in stagger-3">
         <SectionLabel number="02" title="TIMELINE" />
         <ProjectTimeline timeline={project.timeline} horizontal />
       </section>
@@ -149,7 +173,7 @@ export function ProjectDashboard() {
         {/* Left column — 2/3 */}
         <div className="lg:col-span-2 space-y-6">
           {/* 03 / TERMINAL */}
-          <section className="animate-fade-in stagger-2">
+          <section className="animate-fade-in stagger-4">
             <SectionLabel number="03" title="TERMINAL" />
             <div className="min-h-[500px]">
               <ChatPanel projectId={project.id} injectedPrompt={injectedPrompt} />
@@ -159,74 +183,29 @@ export function ProjectDashboard() {
 
         {/* Right column — 1/3 */}
         <div className="space-y-6">
-          {/* 04 / IDEEN — larger workspace */}
-          <section className="animate-fade-in stagger-2">
-            <SectionLabel number="04" title="IDEEN" />
-            <div className="min-h-[320px]">
-              <IdeaParking onSendPrompt={handleSendPrompt} />
-            </div>
-          </section>
-
-          {/* 05 / AUFGABEN — larger workspace */}
-          <section className="animate-fade-in stagger-3">
-            <SectionLabel number="05" title="AUFGABEN" />
-            <div className="min-h-[400px]">
+          {/* 04 / AUFGABEN — larger workspace */}
+          <section className="animate-fade-in stagger-4">
+            <SectionLabel number="04" title="AUFGABEN" />
+            <div className="min-h-[350px]">
               <TodoEditor projectId={project.id} onSendPrompt={handleSendPrompt} />
             </div>
           </section>
 
-          {/* 06 / PROJEKT-INFO — combined Skills + Business Model + Market */}
-          <section className="animate-fade-in stagger-4">
-            <SectionLabel number="06" title="PROJEKT-INFO" />
-            <GlassCard>
-              <div className="flex items-center gap-2.5 mb-3">
-                <Briefcase className="w-4 h-4 text-neon-purple" />
-                <h3 className="text-sm font-semibold text-text-secondary">Projekt-Info</h3>
-              </div>
-
-              {/* Business Model — 1 line */}
-              <div className="mb-3">
-                <span className="text-[10px] text-text-muted uppercase tracking-wider">Business Model</span>
-                <p className="text-sm text-text-primary mt-0.5">{project.businessModel}</p>
-              </div>
-
-              {/* Skills — inline badges */}
-              <div className="mb-3">
-                <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1.5">Skills</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {skillNames.map((skill) => (
-                    <GlowBadge key={skill} text={skill} color="purple" className="text-[10px] !px-2 !py-0" />
-                  ))}
-                </div>
-              </div>
-
-              {/* Market data — inline key numbers */}
-              {project.market && (
-                <div>
-                  <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1.5">Markt</span>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                    {project.market.marketSize && (
-                      <span className="text-text-secondary">
-                        <span className="text-neon-cyan tabular-nums">{project.market.marketSize}</span>
-                        {' '}Markt
-                      </span>
-                    )}
-                    {project.market.potentialCustomers && (
-                      <span className="text-text-secondary">
-                        <span className="text-neon-green tabular-nums">{project.market.potentialCustomers}</span>
-                        {' '}Kunden
-                      </span>
-                    )}
-                    {project.market.revenueEstimate && (
-                      <span className="text-text-secondary">
-                        <span className="text-neon-orange tabular-nums">{project.market.revenueEstimate}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </GlassCard>
+          {/* 05 / IDEEN — larger workspace */}
+          <section className="animate-fade-in stagger-5">
+            <SectionLabel number="05" title="IDEEN" />
+            <div className="min-h-[300px]">
+              <IdeaParking onSendPrompt={handleSendPrompt} />
+            </div>
           </section>
+
+          {/* 06 / MARKT — only if market exists */}
+          {project.market && (
+            <section className="animate-fade-in stagger-6">
+              <SectionLabel number="06" title="MARKT" />
+              <MarketOverview market={project.market} />
+            </section>
+          )}
         </div>
       </div>
     </PageContainer>
