@@ -1,5 +1,7 @@
-export { CommandCenter } from './CommandCenter';
+export { Briefing } from './Briefing';
+export { Cockpit } from './Cockpit';
+export { Operator } from './Operator';
 export { ProjectDashboard } from './ProjectDashboard';
+export { Lab } from './Lab';
 export { SystemDashboard } from './SystemDashboard';
-export { Pipeline } from './Pipeline';
-export { Personal } from './Personal';
+export { Office } from './Office';

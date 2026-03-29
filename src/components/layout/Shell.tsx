@@ -6,10 +6,12 @@ import { TopBar } from './TopBar';
 import { KaniPanel } from '../KaniPanel';
 
 const routeTitles: Record<string, string> = {
-  '/': 'Command Center',
-  '/system': 'System Dashboard',
-  '/pipeline': 'Ideas Pipeline',
-  '/personal': 'Personal',
+  '/': 'Cockpit',
+  '/briefing': 'Briefing',
+  '/operator': 'Operator',
+  '/lab': 'Lab',
+  '/system': 'System',
+  '/office': 'Office',
 };
 
 function getPageTitle(pathname: string): string {

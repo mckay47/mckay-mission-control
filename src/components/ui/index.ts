@@ -21,3 +21,4 @@ export { RadialGauge } from './RadialGauge';
 export { WaveChart } from './WaveChart';
 export { BarChart } from './BarChart';
 export { SectionLabel } from './SectionLabel';
+export { ToastProvider, useToast } from './Toast';

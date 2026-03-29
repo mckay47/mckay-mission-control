@@ -1,70 +1,52 @@
 import { useState, useEffect } from 'react';
+import { BarChart3, Gauge, Wrench } from 'lucide-react';
+import { useClock } from '../hooks/useClock';
 
 interface BootSequenceProps {
-  onComplete: () => void;
+  onComplete: (choice: 'briefing' | 'cockpit' | 'operator') => void;
 }
 
 const BOOT_LINES = [
-  { text: 'MCKAY MISSION CONTROL', type: 'title' as const, delay: 0 },
   { text: 'Systeme initialisiert', type: 'system' as const, delay: 400 },
   { text: '16 Skills · 8 Agents · 5 MCP Server', type: 'system' as const, delay: 800 },
-  { text: '', type: 'spacer' as const, delay: 1200 },
-  { text: 'Willkommen zurück, Mehti.', type: 'greeting' as const, delay: 1400 },
-  { text: 'Gestern haben wir gut gearbeitet — 3 Projekte aktiv, 6 Todos offen.', type: 'message' as const, delay: 2200 },
-  { text: 'Lass uns loslegen.', type: 'message' as const, delay: 3200 },
 ];
 
 export function BootSequence({ onComplete }: BootSequenceProps) {
-  const [visibleLines, setVisibleLines] = useState(0);
+  const { time, date } = useClock();
+  const [phase, setPhase] = useState<'boot' | 'greet' | 'choose'>('boot');
   const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<'boot' | 'greet' | 'fade'>('boot');
+  const [bootLines, setBootLines] = useState(0);
+  const [greetVisible, setGreetVisible] = useState(false);
+  const [choicesVisible, setChoicesVisible] = useState(false);
 
-  // Progress bar
+  // Boot progress
   useEffect(() => {
     if (phase !== 'boot') return;
-    const interval = setInterval(() => {
+    const i = setInterval(() => {
       setProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setPhase('greet');
-          return 100;
-        }
+        if (p >= 100) { clearInterval(i); setTimeout(() => setPhase('greet'), 200); return 100; }
         return p + 3;
       });
     }, 25);
-    return () => clearInterval(interval);
+    return () => clearInterval(i);
   }, [phase]);
 
-  // Greeting lines
+  // Greet phase
   useEffect(() => {
     if (phase !== 'greet') return;
-    if (visibleLines >= BOOT_LINES.length) {
-      // All lines shown, wait a beat then fade out
-      const timeout = setTimeout(() => setPhase('fade'), 1200);
-      return () => clearTimeout(timeout);
-    }
-    const line = BOOT_LINES[visibleLines];
-    const timeout = setTimeout(() => setVisibleLines(v => v + 1), line.delay || 200);
-    return () => clearTimeout(timeout);
-  }, [phase, visibleLines]);
-
-  // Fade out and complete
-  useEffect(() => {
-    if (phase !== 'fade') return;
-    const timeout = setTimeout(onComplete, 800);
-    return () => clearTimeout(timeout);
-  }, [phase, onComplete]);
+    const t1 = setTimeout(() => setBootLines(1), 200);
+    const t2 = setTimeout(() => setBootLines(2), 600);
+    const t3 = setTimeout(() => setGreetVisible(true), 1200);
+    const t4 = setTimeout(() => { setPhase('choose'); setChoicesVisible(true); }, 2800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  }, [phase]);
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center boot-backdrop transition-opacity duration-700 ${
-        phase === 'fade' ? 'opacity-0' : 'opacity-100'
-      }`}
-    >
-      <div className="boot-glow-bg" style={{ top: '30%', left: '50%', marginLeft: '-200px' }} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center boot-backdrop">
+      <div className="boot-glow-bg" style={{ top: '25%', left: '50%', marginLeft: '-200px', marginTop: '-200px' }} />
 
-      <div className="relative z-10 w-full max-w-xl px-6 text-center">
-        {/* Boot phase — progress */}
+      <div className="relative z-10 w-full max-w-2xl px-6 text-center">
+        {/* Boot progress */}
         {phase === 'boot' && (
           <div className="animate-fade-in">
             <div className="text-sm font-mono text-neon-cyan text-glow-cyan tracking-[0.3em] mb-8">
@@ -80,39 +62,63 @@ export function BootSequence({ onComplete }: BootSequenceProps) {
           </div>
         )}
 
-        {/* Greeting phase — typing lines */}
-        {(phase === 'greet' || phase === 'fade') && (
-          <div className="space-y-2">
-            {BOOT_LINES.slice(0, visibleLines).map((line, i) => {
-              if (line.type === 'spacer') return <div key={i} className="h-4" />;
-              return (
-                <div
-                  key={i}
-                  className={`animate-fade-in ${
-                    line.type === 'title'
-                      ? 'text-sm font-mono text-neon-cyan/60 tracking-[0.3em] mb-4'
-                      : line.type === 'system'
-                        ? 'text-xs font-mono text-text-muted'
-                        : line.type === 'greeting'
-                          ? 'text-2xl font-light text-text-primary text-glow-cyan mt-4'
-                          : 'text-sm text-text-secondary'
-                  }`}
-                >
-                  {line.text}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Greet + Choose */}
+        {(phase === 'greet' || phase === 'choose') && (
+          <div className="space-y-3">
+            {/* System lines */}
+            {BOOT_LINES.slice(0, bootLines).map((line, i) => (
+              <div key={i} className="text-xs font-mono text-text-muted animate-fade-in">{line.text}</div>
+            ))}
 
-        {/* Skip */}
-        {phase !== 'fade' && (
-          <button
-            onClick={onComplete}
-            className="mt-8 text-[10px] text-text-muted hover:text-text-secondary transition-colors font-mono"
-          >
-            [Überspringen]
-          </button>
+            {/* Personal greeting */}
+            {greetVisible && (
+              <div className="mt-6 animate-fade-in">
+                <h1 className="text-3xl font-light text-text-primary text-glow-cyan mb-2">
+                  Hallo Mehti, welcome back.
+                </h1>
+                <p className="text-sm text-text-secondary mb-1">Legen wir los.</p>
+                <p className="text-xs text-text-muted font-mono">{date} · {time}</p>
+              </div>
+            )}
+
+            {/* Three choices */}
+            {choicesVisible && (
+              <div className="flex justify-center gap-4 mt-10">
+                <button
+                  onClick={() => onComplete('briefing')}
+                  className="vision-btn px-8 py-5 text-center min-w-[180px] animate-fade-in stagger-1"
+                >
+                  <BarChart3 className="w-6 h-6 text-neon-cyan mx-auto mb-3" />
+                  <div className="text-sm font-semibold text-text-primary">Briefing</div>
+                  <div className="text-[10px] text-text-muted mt-1">Was war, was kommt</div>
+                </button>
+                <button
+                  onClick={() => onComplete('cockpit')}
+                  className="vision-btn px-8 py-5 text-center min-w-[180px] animate-fade-in stagger-2"
+                >
+                  <Gauge className="w-6 h-6 text-neon-green mx-auto mb-3" />
+                  <div className="text-sm font-semibold text-text-primary">Cockpit</div>
+                  <div className="text-[10px] text-text-muted mt-1">KPIs und Übersicht</div>
+                </button>
+                <button
+                  onClick={() => onComplete('operator')}
+                  className="vision-btn px-8 py-5 text-center min-w-[180px] animate-fade-in stagger-3"
+                >
+                  <Wrench className="w-6 h-6 text-neon-orange mx-auto mb-3" />
+                  <div className="text-sm font-semibold text-text-primary">Arbeitsplatz</div>
+                  <div className="text-[10px] text-text-muted mt-1">Direkt loslegen</div>
+                </button>
+              </div>
+            )}
+
+            {/* Skip */}
+            <button
+              onClick={() => onComplete('cockpit')}
+              className="mt-6 text-[10px] text-text-muted hover:text-text-secondary transition-colors font-mono"
+            >
+              [Überspringen]
+            </button>
+          </div>
         )}
       </div>
     </div>

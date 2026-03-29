@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Cpu, Rocket, User, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Gauge, Cpu, FlaskConical, User, FolderOpen, ChevronLeft, ChevronRight, BarChart3, Wrench } from 'lucide-react';
 import { projects } from '../../data/dummy';
 
 interface SidebarProps {
@@ -8,10 +8,12 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { label: 'Command Center', icon: Home, path: '/' },
+  { label: 'Cockpit', icon: Gauge, path: '/' },
+  { label: 'Briefing', icon: BarChart3, path: '/briefing' },
+  { label: 'Operator', icon: Wrench, path: '/operator' },
+  { label: 'Lab', icon: FlaskConical, path: '/lab' },
   { label: 'System', icon: Cpu, path: '/system' },
-  { label: 'Pipeline', icon: Rocket, path: '/pipeline' },
-  { label: 'Personal', icon: User, path: '/personal' },
+  { label: 'Office', icon: User, path: '/office' },
 ];
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {

@@ -1,26 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Activity, RefreshCw, Rocket, Terminal, Check } from 'lucide-react';
+import { Rocket, Terminal, Check } from 'lucide-react';
 import { PageContainer } from '../components/layout';
 import { GlassCard } from '../components/ui/GlassCard';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { StatusDot } from '../components/ui/StatusDot';
 import { GlowBadge } from '../components/ui/GlowBadge';
 import { RadialGauge } from '../components/ui/RadialGauge';
-import { WelcomeBriefing } from '../components/widgets/WelcomeBriefing';
-import { TodoEditor } from '../components/widgets/TodoEditor';
-import { PriorityList } from '../components/widgets/PriorityList';
-import { NotificationCenter } from '../components/widgets/NotificationCenter';
-import { projects } from '../data/dummy';
+import { GlobalKPIBar } from '../components/widgets/GlobalKPIBar';
 import { useClock } from '../hooks/useClock';
+import { projects } from '../data/dummy';
 import type { Project } from '../data/types';
-
-const quickActions = [
-  { id: 'brief', label: '/brief', desc: 'Daily Briefing', icon: FileText },
-  { id: 'status', label: '/status', desc: 'Status Check', icon: Activity },
-  { id: 'launch', label: '/launch', desc: 'Neues Projekt', icon: Rocket },
-  { id: 'sync', label: '/sync', desc: 'Memory Sync', icon: RefreshCw },
-];
 
 const phaseColorMap: Record<Project['phase'], 'cyan' | 'green' | 'orange' | 'pink' | 'purple'> = {
   'Phase 0': 'cyan',
@@ -30,7 +20,7 @@ const phaseColorMap: Record<Project['phase'], 'cyan' | 'green' | 'orange' | 'pin
   Live: 'green',
 };
 
-export function CommandCenter() {
+export function Cockpit() {
   const [launchInput, setLaunchInput] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -42,7 +32,7 @@ export function CommandCenter() {
   const handleLaunch = () => {
     if (launchInput.trim()) {
       setLaunchInput('');
-      navigate('/pipeline');
+      navigate('/lab');
     }
   };
 
@@ -73,28 +63,10 @@ export function CommandCenter() {
         </p>
       </div>
 
-      {/* Quick Actions row */}
-      <div className="flex flex-wrap items-center gap-3 mb-8">
-        {quickActions.map((action) => (
-          <button
-            key={action.id}
-            onClick={() => {
-              if (action.id === 'launch') navigate('/pipeline');
-              else if (action.id === 'status') navigate('/system');
-            }}
-            className="vision-btn px-4 py-2.5 flex items-center gap-2.5 text-sm"
-          >
-            <action.icon className="w-4 h-4 text-neon-cyan" />
-            <span className="font-mono text-neon-cyan">{action.label}</span>
-            <span className="text-text-muted hidden sm:inline">{action.desc}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* 01 / BRIEFING */}
+      {/* 01 / KPIs */}
       <section className="mb-8 animate-fade-in stagger-1">
-        <SectionLabel number="01" title="BRIEFING" />
-        <WelcomeBriefing />
+        <SectionLabel number="01" title="KPIs" />
+        <GlobalKPIBar />
       </section>
 
       {/* 02 / PROJEKTE */}
@@ -182,24 +154,9 @@ export function CommandCenter() {
         )}
       </section>
 
-      {/* 03 / AUFGABEN */}
+      {/* 03 / NEUE IDEE */}
       <section className="mb-8 animate-fade-in stagger-3">
-        <SectionLabel number="03" title="AUFGABEN" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: TodoEditor (global) */}
-          <TodoEditor />
-
-          {/* Right: PriorityList + NotificationCenter stacked */}
-          <div className="space-y-6">
-            <PriorityList />
-            <NotificationCenter />
-          </div>
-        </div>
-      </section>
-
-      {/* 04 / NEUE IDEE */}
-      <section className="mb-8 animate-fade-in stagger-4">
-        <SectionLabel number="04" title="NEUE IDEE" />
+        <SectionLabel number="03" title="NEUE IDEE" />
         <GlassCard>
           <div className="flex items-start gap-4">
             <Rocket className="w-5 h-5 text-neon-orange shrink-0 mt-2" />
