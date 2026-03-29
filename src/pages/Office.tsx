@@ -84,7 +84,7 @@ export function Office() {
       </div>
 
       {/* KPI bar */}
-      <div className="flex items-center gap-6 mb-8 animate-fade-in stagger-1">
+      <div className="inset-display flex items-center gap-6 mb-8 animate-fade-in stagger-1">
         <div className="flex items-center gap-2">
           <AnimatedNumber value={dummyCalendar.length} color="cyan" size="sm" />
           <span className="text-xs text-text-muted">Termine heute</span>
@@ -108,20 +108,20 @@ export function Office() {
           <div className="flex items-center gap-2 mb-3">
             <button
               onClick={() => setTodoMode('privat')}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+              className={`physical-btn px-3 py-1.5 text-xs transition-all ${
                 todoMode === 'privat'
-                  ? 'glass-elevated border-neon-pink/30 text-neon-pink'
-                  : 'glass border-white/8 text-text-muted hover:text-text-secondary'
+                  ? '!border-neon-pink/30 text-neon-pink box-glow-pink'
+                  : 'text-text-muted hover:text-text-secondary'
               }`}
             >
               Privat
             </button>
             <button
               onClick={() => setTodoMode('projekte')}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+              className={`physical-btn px-3 py-1.5 text-xs transition-all ${
                 todoMode === 'projekte'
-                  ? 'glass-elevated border-neon-cyan/30 text-neon-cyan'
-                  : 'glass border-white/8 text-text-muted hover:text-text-secondary'
+                  ? '!border-neon-cyan/30 text-neon-cyan box-glow-cyan'
+                  : 'text-text-muted hover:text-text-secondary'
               }`}
             >
               Projekte
@@ -152,10 +152,10 @@ export function Office() {
                 <button
                   key={view}
                   onClick={() => handleCalendarViewChange(view)}
-                  className={`px-3 py-1 text-xs rounded-lg border transition-all ${
+                  className={`physical-btn px-3 py-1 text-xs transition-all ${
                     calendarView === view
-                      ? 'glass-elevated border-neon-cyan/30 text-neon-cyan'
-                      : 'glass border-white/8 text-text-muted hover:text-text-secondary'
+                      ? '!border-neon-cyan/30 text-neon-cyan box-glow-cyan'
+                      : 'text-text-muted hover:text-text-secondary'
                   }`}
                 >
                   {view.charAt(0).toUpperCase() + view.slice(1)}
@@ -168,7 +168,7 @@ export function Office() {
               {dummyCalendar.map((entry, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/5"
+                  className="inset-display flex items-center gap-3 !py-2.5"
                 >
                   <StatusDot status={typeColors[entry.type]} pulse={false} />
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -208,10 +208,8 @@ export function Office() {
               {dummyEmails.map((email) => (
                 <div
                   key={email.id}
-                  className={`p-3 rounded-lg border transition-all ${
-                    email.auto
-                      ? 'bg-white/[0.01] border-white/3 opacity-50'
-                      : 'bg-white/[0.02] border-white/5'
+                  className={`inset-display transition-all ${
+                    email.auto ? 'opacity-50' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -230,14 +228,14 @@ export function Office() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => showToast('Modul noch nicht aktiviert')}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/20 transition-all"
+                        className="physical-btn flex items-center gap-1 px-2 py-1 text-[10px] text-neon-cyan hover:box-glow-cyan"
                       >
                         <Reply className="w-3 h-3" />
                         Antworten
                       </button>
                       <button
                         onClick={() => showToast('Modul noch nicht aktiviert')}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md bg-white/5 border border-white/8 text-text-muted hover:text-text-secondary transition-all"
+                        className="physical-btn flex items-center gap-1 px-2 py-1 text-[10px] text-text-muted hover:text-text-secondary"
                       >
                         <ParkingCircle className="w-3 h-3" />
                         Parken
@@ -264,11 +262,11 @@ export function Office() {
         <SectionLabel number="05" title="KOMMENDE MODULE" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {futureModules.map((mod) => (
-            <GlassCard key={mod.name} className="!p-4 text-center opacity-40">
+            <div key={mod.name} className="inset-display text-center opacity-40">
               <Lock className="w-5 h-5 text-text-muted mx-auto mb-2" />
               <span className="text-xs text-text-muted block">{mod.name}</span>
               <span className="text-[10px] text-text-muted mt-1 block">Kommt bald</span>
-            </GlassCard>
+            </div>
           ))}
         </div>
       </section>

@@ -29,6 +29,7 @@ export function Operator() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-neon-orange text-glow-orange">Arbeitsplatz</h1>
         <p className="text-sm text-text-muted mt-1">Projekt waehlen und direkt loslegen</p>
+        <div className="mt-3 h-px bg-gradient-to-r from-neon-orange/30 via-neon-orange/10 to-transparent" />
       </div>
 
       {/* Project grid */}
@@ -68,11 +69,13 @@ export function Operator() {
 
                 {/* Top: Gauge + Name */}
                 <div className="flex items-center gap-4 mb-4">
-                  <RadialGauge
-                    value={project.progressPercent}
-                    size={64}
-                    color={phaseColorMap[project.phase as ProjectPhase] ?? 'cyan'}
-                  />
+                  <div className="gauge-ring p-0.5 shrink-0">
+                    <RadialGauge
+                      value={project.progressPercent}
+                      size={64}
+                      color={phaseColorMap[project.phase as ProjectPhase] ?? 'cyan'}
+                    />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold text-text-primary truncate">
                       {project.name}
@@ -90,7 +93,7 @@ export function Operator() {
                 </div>
 
                 {/* Info lines */}
-                <div className="space-y-2 mb-5">
+                <div className="inset-display space-y-2 mb-5">
                   {lastTimeline && (
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider w-16 shrink-0 mt-0.5">
@@ -122,7 +125,7 @@ export function Operator() {
                 {/* Open button */}
                 <button
                   onClick={() => navigate(`/project/${project.id}`)}
-                  className="w-full vision-btn px-4 py-3 flex items-center justify-center gap-2.5 text-sm font-medium text-neon-cyan"
+                  className="w-full physical-btn px-4 py-3 flex items-center justify-center gap-2.5 text-sm font-medium text-neon-cyan hover:box-glow-cyan"
                 >
                   <FolderOpen className="w-4 h-4" />
                   Projekt oeffnen

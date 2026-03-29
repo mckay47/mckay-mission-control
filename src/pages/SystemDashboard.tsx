@@ -24,8 +24,8 @@ export function SystemDashboard() {
     <PageContainer>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-neon-purple text-glow-purple mb-2">System</h1>
-        <div className="flex items-center gap-3 text-sm text-text-muted">
+        <h1 className="text-3xl font-bold text-neon-purple text-glow-purple mb-3">System</h1>
+        <div className="inset-display inline-flex items-center gap-3 text-sm text-text-muted">
           <span className="flex items-center gap-1.5">
             <AnimatedNumber value={16} color="purple" size="sm" /> Skills
           </span>
@@ -46,14 +46,14 @@ export function SystemDashboard() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => showToast('Modul noch nicht aktiviert')}
-            className="vision-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-purple"
+            className="physical-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-purple hover:box-glow-purple"
           >
             <Search className="w-4 h-4" />
             Neuen Skill recherchieren
           </button>
           <button
             onClick={() => showToast('Modul noch nicht aktiviert')}
-            className="vision-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-cyan"
+            className="physical-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-cyan hover:box-glow-cyan"
           >
             <Terminal className="w-4 h-4" />
             Terminal oeffnen
@@ -77,12 +77,12 @@ export function SystemDashboard() {
       {/* Bottom: MCP Servers — compact */}
       <section className="animate-fade-in stagger-4">
         <SectionLabel number="03" title="MCP SERVERS" />
-        <GlassCard>
+        <GlassCard scan>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {mcpServers.map((server) => (
               <div
                 key={server.name}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5"
+                className="inset-display flex items-center gap-3 scan-line-container"
               >
                 <StatusDot status={mcpStatusMap[server.status]} />
                 <div className="flex-1 min-w-0">

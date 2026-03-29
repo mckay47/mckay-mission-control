@@ -161,13 +161,15 @@ export function Cockpit() {
       {/* Overview metrics row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {globalKPIs.map((kpi) => (
-          <GlassCard key={kpi.label} className="text-center py-4">
-            <p className="text-[11px] text-text-muted uppercase tracking-wider mb-1">{kpi.label}</p>
-            <p className={`text-2xl font-bold tabular-nums text-neon-${kpi.color} text-glow-${kpi.color}`}>
-              {kpi.value}
-            </p>
+          <GlassCard key={kpi.label} scan className="text-center py-4">
+            <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{kpi.label}</p>
+            <div className="inset-display inline-block">
+              <p className={`text-2xl font-bold tabular-nums text-neon-${kpi.color} text-glow-${kpi.color}`}>
+                {kpi.value}
+              </p>
+            </div>
             {kpi.change && (
-              <span className="text-[10px] text-neon-green mt-0.5 inline-block">{kpi.change}</span>
+              <span className="text-[10px] text-neon-green mt-1.5 inline-block">{kpi.change}</span>
             )}
           </GlassCard>
         ))}
@@ -183,11 +185,13 @@ export function Cockpit() {
             onClick={() => navigate(`/project/${project.id}`)}
           >
             <div className="flex items-start gap-4">
-              <RadialGauge
-                value={project.progressPercent}
-                size={90}
-                color={phaseColorMap[project.phase]}
-              />
+              <div className="gauge-ring p-1 shrink-0">
+                <RadialGauge
+                  value={project.progressPercent}
+                  size={90}
+                  color={phaseColorMap[project.phase]}
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <StatusDot status={project.health} />
@@ -226,13 +230,17 @@ export function Cockpit() {
 
       {/* Wave visualization + cost chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <GlassCard>
-          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-3">System-Aktivitaet</h3>
-          <WaveChart color="#00F0FF" height={100} />
+        <GlassCard scan>
+          <h3 className="hud-label mb-3"><span>SYS</span> / AKTIVITAET</h3>
+          <div className="inset-display">
+            <WaveChart color="#00F0FF" height={100} />
+          </div>
         </GlassCard>
-        <GlassCard>
-          <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-3">Kosten pro Projekt (EUR/mo)</h3>
-          <BarChart data={costData} height={100} />
+        <GlassCard scan>
+          <h3 className="hud-label mb-3"><span>FIN</span> / KOSTEN PRO PROJEKT (EUR/MO)</h3>
+          <div className="inset-display">
+            <BarChart data={costData} height={100} />
+          </div>
         </GlassCard>
       </div>
     </div>
@@ -310,7 +318,7 @@ export function Cockpit() {
         {/* Back button */}
         <button
           onClick={handleBack}
-          className="group flex items-center gap-2 mb-6 px-4 py-2 rounded-xl bg-glass-bg border border-glass-border hover:border-white/15 transition-all"
+          className="group physical-btn flex items-center gap-2 mb-6 px-4 py-2"
         >
           <ArrowLeft className="w-4 h-4 text-text-muted group-hover:text-neon-cyan transition-colors" />
           <span className="text-sm text-text-muted group-hover:text-text-primary transition-colors">
@@ -339,7 +347,7 @@ export function Cockpit() {
       </div>
 
       {/* Mini-KPI bar — always visible */}
-      <div className="flex items-center gap-5 mb-8 animate-fade-in stagger-2">
+      <div className="inset-display flex items-center gap-5 mb-8 animate-fade-in stagger-2">
         {miniKPIs.map((kpi) => (
           <div key={kpi.label} className="flex items-center gap-1.5">
             <span className={`${kpi.color} opacity-60`}>{kpi.icon}</span>
@@ -374,8 +382,8 @@ export function Cockpit() {
               </div>
             </div>
 
-            {/* Bottom: preview KPI */}
-            <div className="relative z-10 mt-4">
+            {/* Bottom: preview KPI — inset display look */}
+            <div className="relative z-10 mt-4 inset-display">
               <span className="text-3xl font-bold tabular-nums text-text-primary">
                 {tile.previewKPI.value}
               </span>

@@ -116,18 +116,20 @@ export function Lab() {
       <section className="mb-8 animate-fade-in stagger-1">
         <SectionLabel number="01" title="GEDANKEN TEILEN" />
         <GlassCard elevated>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Teile deine Gedanken — Idee, Strategie, Frage, alles..."
-            rows={6}
-            className="w-full bg-white/[0.03] border border-white/8 rounded-xl px-5 py-4 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-purple/40 focus:bg-white/[0.05] transition-all resize-none leading-relaxed mb-4"
-          />
+          <div className="terminal-panel !border-0 !rounded-xl mb-4">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Teile deine Gedanken — Idee, Strategie, Frage, alles..."
+              rows={6}
+              className="w-full bg-transparent px-5 py-4 text-sm text-text-primary placeholder:text-text-muted focus:outline-none transition-all resize-none leading-relaxed"
+            />
+          </div>
           <button
             onClick={handleSubmit}
             disabled={!input.trim()}
-            className="vision-btn px-6 py-3 flex items-center justify-center gap-2.5 text-sm font-medium text-neon-purple w-full disabled:opacity-30 disabled:cursor-not-allowed"
+            className="physical-btn px-6 py-3 flex items-center justify-center gap-2.5 text-sm font-medium text-neon-purple w-full disabled:opacity-30 disabled:cursor-not-allowed hover:box-glow-purple"
           >
             <Send className="w-4 h-4" />
             Absenden
@@ -149,10 +151,10 @@ export function Lab() {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+            className={`physical-btn px-3 py-1.5 text-xs transition-all ${
               activeCategory === cat
-                ? 'glass-elevated border-neon-purple/30 text-neon-purple'
-                : 'glass border-white/8 text-text-muted hover:text-text-secondary'
+                ? '!border-neon-purple/30 text-neon-purple box-glow-purple'
+                : 'text-text-muted hover:text-text-secondary'
             }`}
           >
             {cat === 'alle' ? 'Alle' : cat}: {categoryCounts[cat]}
@@ -169,7 +171,7 @@ export function Lab() {
             const badgeColor = categoryColors[entry.type] || 'cyan';
 
             return (
-              <GlassCard key={entry.id} className="!p-4">
+              <GlassCard key={entry.id} className="!p-4 scan-line-container">
                 {/* Top row: name, type, date */}
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-sm font-semibold text-text-primary flex-1 truncate">
@@ -197,8 +199,8 @@ export function Lab() {
                   Original-Text {isExpanded ? 'ausblenden' : 'anzeigen'}
                 </button>
                 {isExpanded && (
-                  <div className="mb-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 animate-fade-in">
-                    <p className="text-xs text-text-muted leading-relaxed italic">
+                  <div className="mb-3 inset-display animate-fade-in">
+                    <p className="text-xs text-text-muted leading-relaxed italic font-mono">
                       {entry.rawTranscript}
                     </p>
                   </div>
@@ -208,28 +210,28 @@ export function Lab() {
                 <div className="flex items-center gap-2 pt-2 border-t border-white/5">
                   <button
                     onClick={() => showToast('Modul noch nicht aktiviert')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/20 transition-all"
+                    className="physical-btn flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-neon-cyan hover:box-glow-cyan"
                   >
                     <Rocket className="w-3 h-3" />
                     Projekt starten
                   </button>
                   <button
                     onClick={() => showToast('Modul noch nicht aktiviert')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green hover:bg-neon-green/20 transition-all"
+                    className="physical-btn flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-neon-green hover:box-glow-green"
                   >
                     <Search className="w-3 h-3" />
                     Research starten
                   </button>
                   <button
                     onClick={() => handlePark(entry.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg bg-white/5 border border-white/8 text-text-muted hover:text-text-secondary transition-all"
+                    className="physical-btn flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-text-muted hover:text-text-secondary"
                   >
                     <ParkingCircle className="w-3 h-3" />
                     Parken
                   </button>
                   <button
                     onClick={() => handleDelete(entry.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg bg-white/5 border border-white/8 text-text-muted hover:text-status-critical transition-all ml-auto"
+                    className="physical-btn flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-text-muted hover:text-status-critical ml-auto"
                   >
                     <Trash2 className="w-3 h-3" />
                     Loeschen

@@ -96,10 +96,10 @@ export function Briefing() {
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className={`px-4 py-2 text-sm rounded-lg border transition-all ${
+            className={`physical-btn px-4 py-2 text-sm transition-all ${
               filter === key
-                ? 'glass-elevated border-neon-cyan/30 text-neon-cyan box-glow-cyan'
-                : 'glass border-white/8 text-text-muted hover:text-text-secondary hover:border-white/15'
+                ? '!border-neon-cyan/30 text-neon-cyan box-glow-cyan'
+                : 'text-text-muted hover:text-text-secondary'
             }`}
           >
             {filterLabels[key]}
@@ -145,10 +145,10 @@ export function Briefing() {
 
             {/* Right: Bar chart */}
             <div>
-              <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-3">
-                Todos pro Projekt
-              </span>
-              <BarChart data={projectTodoData} height={160} />
+              <span className="hud-label block mb-3"><span>TODO</span> / PRO PROJEKT</span>
+              <div className="inset-display">
+                <BarChart data={projectTodoData} height={160} />
+              </div>
             </div>
           </div>
         </GlassCard>
@@ -168,7 +168,7 @@ export function Briefing() {
                 {topProjects.map((p, i) => (
                   <div
                     key={p.name}
-                    className="glass rounded-xl p-3 flex items-start gap-3"
+                    className="glass rounded-xl p-3 flex items-start gap-3 scan-line-container"
                   >
                     <span className="text-xs text-neon-cyan tabular-nums font-bold mt-0.5">
                       #{i + 1}
@@ -199,7 +199,7 @@ export function Briefing() {
                 {nextDeadlines.map((d, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/5"
+                    className="inset-display flex items-center gap-3 !py-2.5"
                   >
                     <CalendarClock className="w-3.5 h-3.5 text-neon-orange shrink-0" />
                     <span className="text-xs text-neon-orange tabular-nums font-medium w-12 shrink-0">
@@ -233,7 +233,7 @@ export function Briefing() {
             {insights.map((insight, i) => (
               <div
                 key={i}
-                className="glass rounded-xl p-4 flex items-start gap-3"
+                className="glass rounded-xl p-4 flex items-start gap-3 scan-line-container"
               >
                 <div className="shrink-0 mt-0.5">{insight.icon}</div>
                 <p className="text-sm text-text-secondary leading-relaxed">{insight.text}</p>
@@ -247,19 +247,19 @@ export function Briefing() {
       <div className="flex items-center justify-center gap-4 animate-fade-in stagger-5">
         <button
           onClick={() => navigate('/')}
-          className="vision-btn px-6 py-3 text-sm text-neon-cyan"
+          className="physical-btn px-6 py-3 text-sm text-neon-cyan hover:box-glow-cyan"
         >
           Cockpit
         </button>
         <button
           onClick={() => navigate('/operator')}
-          className="vision-btn px-6 py-3 text-sm text-neon-orange"
+          className="physical-btn px-6 py-3 text-sm text-neon-orange hover:box-glow-orange"
         >
           Arbeitsplatz
         </button>
         <button
           onClick={() => navigate('/lab')}
-          className="vision-btn px-6 py-3 text-sm text-neon-purple"
+          className="physical-btn px-6 py-3 text-sm text-neon-purple hover:box-glow-purple"
         >
           Lab
         </button>

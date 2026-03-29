@@ -100,10 +100,10 @@ export function ProjectDashboard() {
           href={project.deployUrl || '#'}
           target="_blank"
           rel="noopener noreferrer"
-          className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border transition-all ${
+          className={`physical-btn inline-flex items-center gap-1.5 px-4 py-2 text-sm transition-all ${
             project.deployUrl
-              ? 'bg-neon-cyan/5 border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/10'
-              : 'bg-white/5 border-white/8 text-text-muted cursor-not-allowed'
+              ? 'text-neon-cyan hover:box-glow-cyan'
+              : 'text-text-muted cursor-not-allowed'
           }`}
           onClick={(e) => {
             if (!project.deployUrl) {
@@ -122,7 +122,7 @@ export function ProjectDashboard() {
       </div>
 
       {/* Business Model + Skills — near header */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 animate-fade-in stagger-1">
+      <div className="inset-display flex flex-wrap items-center gap-3 mb-6 animate-fade-in stagger-1">
         <span className="text-xs text-text-muted">Modell:</span>
         <span className="text-xs text-text-secondary">{project.businessModel}</span>
         <span className="text-text-muted">|</span>
@@ -137,21 +137,37 @@ export function ProjectDashboard() {
       {/* Metrics: 4 RadialGauges */}
       <div className="animate-fade-in stagger-2 mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <GlassCard className="!p-4 flex flex-col items-center gap-1">
-            <RadialGauge value={laufzeitPercent} label="Laufzeit" size={100} color="cyan" />
-            <span className="text-xs text-text-muted tabular-nums mt-1">{laufzeit} Tage</span>
+          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
+            <div className="gauge-ring p-1">
+              <RadialGauge value={laufzeitPercent} label="Laufzeit" size={100} color="cyan" />
+            </div>
+            <div className="inset-display mt-2 w-full text-center">
+              <span className="text-xs text-neon-cyan tabular-nums">{laufzeit} Tage</span>
+            </div>
           </GlassCard>
-          <GlassCard className="!p-4 flex flex-col items-center gap-1">
-            <RadialGauge value={tokenPercent} label="Tokens" size={100} color="green" />
-            <span className="text-xs text-text-muted tabular-nums mt-1">{(project.tokenUsage / 1000).toFixed(0)}K</span>
+          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
+            <div className="gauge-ring p-1">
+              <RadialGauge value={tokenPercent} label="Tokens" size={100} color="green" />
+            </div>
+            <div className="inset-display mt-2 w-full text-center">
+              <span className="text-xs text-neon-green tabular-nums">{(project.tokenUsage / 1000).toFixed(0)}K</span>
+            </div>
           </GlassCard>
-          <GlassCard className="!p-4 flex flex-col items-center gap-1">
-            <RadialGauge value={promptPercent} label="Prompts" size={100} color="orange" />
-            <span className="text-xs text-text-muted tabular-nums mt-1">{project.promptCount}</span>
+          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
+            <div className="gauge-ring p-1">
+              <RadialGauge value={promptPercent} label="Prompts" size={100} color="orange" />
+            </div>
+            <div className="inset-display mt-2 w-full text-center">
+              <span className="text-xs text-neon-orange tabular-nums">{project.promptCount}</span>
+            </div>
           </GlassCard>
-          <GlassCard className="!p-4 flex flex-col items-center gap-1">
-            <RadialGauge value={costPercent} label="Kosten" size={100} color="pink" />
-            <span className="text-xs text-text-muted tabular-nums mt-1">{project.monthlyCost.toFixed(2)} EUR</span>
+          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
+            <div className="gauge-ring p-1">
+              <RadialGauge value={costPercent} label="Kosten" size={100} color="pink" />
+            </div>
+            <div className="inset-display mt-2 w-full text-center">
+              <span className="text-xs text-neon-pink tabular-nums">{project.monthlyCost.toFixed(2)} EUR</span>
+            </div>
           </GlassCard>
         </div>
       </div>

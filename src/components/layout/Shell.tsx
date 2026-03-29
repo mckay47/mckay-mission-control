@@ -71,7 +71,7 @@ export function Shell() {
 
       {/* Breadcrumb navigation bar */}
       {!isHome && (
-        <nav className="breadcrumb-bar fixed top-0 left-0 right-0 z-30 h-12 flex items-center px-6">
+        <nav className="breadcrumb-bar scan-line-container fixed top-0 left-0 right-0 z-30 h-12 flex items-center px-6">
           <div className="flex items-center gap-1.5 text-sm">
             {breadcrumbs.map((crumb, i) => (
               <span key={crumb.path} className="flex items-center gap-1.5">
