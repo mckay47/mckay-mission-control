@@ -1,275 +1,192 @@
 import { useState } from 'react';
-import { Calendar, Clock, Mail, Reply, ParkingCircle, Lock } from 'lucide-react';
-import { PageContainer } from '../components/layout';
-import { GlassCard } from '../components/ui/GlassCard';
-import { SectionLabel } from '../components/ui/SectionLabel';
-import { AnimatedNumber } from '../components/ui/AnimatedNumber';
-import { StatusDot } from '../components/ui/StatusDot';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui';
-import { TodoEditor } from '../components/widgets/TodoEditor';
-import { NoteEditor } from '../components/widgets/NoteEditor';
 
-type CalendarView = 'tag' | 'woche' | 'monat';
 type TodoMode = 'privat' | 'projekte';
+type CalendarView = 'tag' | 'woche' | 'monat';
 
-const dummyCalendar = [
-  { time: '09:00', title: 'Standup mit KANI', type: 'work' as const },
-  { time: '11:00', title: 'Hebammenbuero Review', type: 'work' as const },
-  { time: '14:00', title: 'Call mit Designer', type: 'work' as const },
-  { time: '16:00', title: 'TennisCoach Pro Testing', type: 'work' as const },
+const privateTodos = [
+  { text: 'Zahnarzt', done: false },
+  { text: 'Steuer', done: false },
+  { text: 'Auto TUEV', done: false },
 ];
 
-const dummyEmails = [
-  {
-    id: '1',
-    from: 'Rechtsanwalt',
-    subject: 'Vertrag Unterschrift',
-    preview: 'Bitte pruefen und unterzeichnen Sie den beigefuegten Vertragsentwurf...',
-    auto: false,
-  },
-  {
-    id: '2',
-    from: 'Hetzner',
-    subject: 'Angebot Hosting',
-    preview: 'Vielen Dank fuer Ihre Anfrage. Im Anhang finden Sie unser Angebot...',
-    auto: false,
-  },
-  {
-    id: '3',
-    from: 'TechCrunch',
-    subject: 'Newsletter — AI Startup Trends',
-    preview: 'Die neuesten Trends im AI Startup Oekosystem...',
-    auto: true,
-  },
-  {
-    id: '4',
-    from: 'Stripe',
-    subject: 'Monatliche Abrechnung',
-    preview: 'Ihre Abrechnung fuer Maerz 2026 ist jetzt verfuegbar...',
-    auto: true,
-  },
+const calendarEntries = [
+  { time: '09:00', title: 'Standup' },
+  { time: '11:00', title: 'Hebammen Review' },
+  { time: '14:00', title: 'Designer' },
+  { time: '16:00', title: 'Testing' },
 ];
 
-const futureModules = [
-  { name: 'E-Mail Agent', icon: Mail },
-  { name: 'Kontakte', icon: Mail },
-  { name: 'Finanzen', icon: Mail },
-  { name: 'Dokumente', icon: Mail },
+const emails = [
+  { from: 'Rechtsanwalt', subject: 'Vertrag Unterschrift', auto: false },
+  { from: 'Hetzner', subject: 'Angebot Hosting', auto: false },
+  { from: 'Newsletter', subject: 'Newsletter (auto)', auto: true },
 ];
-
-const typeColors: Record<string, 'healthy' | 'attention'> = {
-  work: 'healthy',
-  personal: 'attention',
-};
 
 export function Office() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
-  const [calendarView, setCalendarView] = useState<CalendarView>('tag');
   const [todoMode, setTodoMode] = useState<TodoMode>('privat');
-
-  const handleCalendarViewChange = (view: CalendarView) => {
-    if (view !== 'tag') {
-      showToast('Modul noch nicht aktiviert');
-      return;
-    }
-    setCalendarView(view);
-  };
+  const [calendarView, setCalendarView] = useState<CalendarView>('tag');
+  const [noteText, setNoteText] = useState('');
 
   return (
-    <PageContainer>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-neon-pink text-glow-pink">Office</h1>
-        <p className="text-sm text-text-muted mt-1">Persoenlicher Arbeitsbereich</p>
-      </div>
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-black">OFFICE</h1>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+          >
+            &larr; Zurueck
+          </button>
+        </div>
 
-      {/* KPI bar */}
-      <div className="inset-display flex items-center gap-6 mb-8 animate-fade-in stagger-1">
-        <div className="flex items-center gap-2">
-          <AnimatedNumber value={dummyCalendar.length} color="cyan" size="sm" />
-          <span className="text-xs text-text-muted">Termine heute</span>
+        {/* KPI bar */}
+        <div className="border border-gray-300 rounded-lg p-4 mb-6">
+          <p className="text-sm text-black">
+            Termine: {calendarEntries.length} heute | Mails: {emails.filter((e) => !e.auto).length} offen | Todos privat: {privateTodos.length}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <AnimatedNumber value={dummyEmails.filter((e) => !e.auto).length} color="orange" size="sm" />
-          <span className="text-xs text-text-muted">Mails offen</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <AnimatedNumber value={5} color="pink" size="sm" />
-          <span className="text-xs text-text-muted">Todos privat</span>
-        </div>
-      </div>
 
-      {/* Three-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* 01 / AUFGABEN */}
-        <div className="animate-fade-in stagger-2">
-          <SectionLabel number="01" title="AUFGABEN" />
-          {/* Toggle */}
-          <div className="flex items-center gap-2 mb-3">
+        {/* Three-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {/* AUFGABEN */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">AUFGABEN</h2>
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setTodoMode('privat')}
+                className={`px-3 py-1 rounded border text-sm cursor-pointer ${
+                  todoMode === 'privat'
+                    ? 'bg-gray-300 border-gray-500 text-black font-bold'
+                    : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
+                }`}
+              >
+                Privat
+              </button>
+              <button
+                onClick={() => setTodoMode('projekte')}
+                className={`px-3 py-1 rounded border text-sm cursor-pointer ${
+                  todoMode === 'projekte'
+                    ? 'bg-gray-300 border-gray-500 text-black font-bold'
+                    : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
+                }`}
+              >
+                Projekte
+              </button>
+            </div>
+            <div className="space-y-2">
+              {privateTodos.map((todo, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm text-black">
+                  <span>{todo.done ? '[x]' : '[ ]'}</span>
+                  <span>{todo.text}</span>
+                </div>
+              ))}
+            </div>
             <button
-              onClick={() => setTodoMode('privat')}
-              className={`physical-btn px-3 py-1.5 text-xs transition-all ${
-                todoMode === 'privat'
-                  ? '!border-neon-pink/30 text-neon-pink box-glow-pink'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
+              onClick={() => showToast('Neues Todo')}
+              className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded border border-gray-300 cursor-pointer text-sm text-black mt-3"
             >
-              Privat
-            </button>
-            <button
-              onClick={() => setTodoMode('projekte')}
-              className={`physical-btn px-3 py-1.5 text-xs transition-all ${
-                todoMode === 'projekte'
-                  ? '!border-neon-cyan/30 text-neon-cyan box-glow-cyan'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-            >
-              Projekte
+              + Neues Todo
             </button>
           </div>
-          {/* Show different Todo views based on mode */}
-          {todoMode === 'projekte' ? (
-            <TodoEditor />
-          ) : (
-            <TodoEditor />
-          )}
-        </div>
 
-        {/* 02 / KALENDER */}
-        <div className="animate-fade-in stagger-3">
-          <SectionLabel number="02" title="KALENDER" />
-          <GlassCard className="h-full">
-            <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-white/5">
-              <Calendar className="w-5 h-5 text-neon-cyan" />
-              <h2 className="text-base font-semibold text-text-primary">
-                Heute &middot; 29. Maerz 2026
-              </h2>
+          {/* KALENDER */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">KALENDER</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              Heute {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+            </p>
+            <div className="space-y-2 mb-4">
+              {calendarEntries.map((entry, i) => (
+                <div key={i} className="text-sm text-black">
+                  {entry.time} {entry.title}
+                </div>
+              ))}
             </div>
-
-            {/* View toggle */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex gap-2">
               {(['tag', 'woche', 'monat'] as CalendarView[]).map((view) => (
                 <button
                   key={view}
-                  onClick={() => handleCalendarViewChange(view)}
-                  className={`physical-btn px-3 py-1 text-xs transition-all ${
+                  onClick={() => {
+                    if (view !== 'tag') {
+                      showToast('Modul noch nicht aktiviert');
+                    } else {
+                      setCalendarView(view);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded border text-xs cursor-pointer ${
                     calendarView === view
-                      ? '!border-neon-cyan/30 text-neon-cyan box-glow-cyan'
-                      : 'text-text-muted hover:text-text-secondary'
+                      ? 'bg-gray-300 border-gray-500 text-black font-bold'
+                      : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
                   }`}
                 >
                   {view.charAt(0).toUpperCase() + view.slice(1)}
                 </button>
               ))}
             </div>
+          </div>
 
-            {/* Calendar entries */}
-            <div className="space-y-2">
-              {dummyCalendar.map((entry, i) => (
-                <div
-                  key={i}
-                  className="inset-display flex items-center gap-3 !py-2.5"
-                >
-                  <StatusDot status={typeColors[entry.type]} pulse={false} />
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Clock className="w-3 h-3 text-text-muted shrink-0" />
-                    <span className="text-xs text-text-muted tabular-nums shrink-0">
-                      {entry.time}
-                    </span>
-                    <span className="text-sm text-text-secondary truncate">
-                      {entry.title}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-white/5 text-center">
-              <span className="text-xs text-text-muted">
-                Kalender-Integration kommt bald
-              </span>
-            </div>
-          </GlassCard>
-        </div>
-
-        {/* 03 / POSTEINGANG */}
-        <div className="animate-fade-in stagger-4">
-          <SectionLabel number="03" title="POSTEINGANG" />
-          <GlassCard className="h-full">
-            <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-white/5">
-              <Mail className="w-5 h-5 text-neon-orange" />
-              <h2 className="text-base font-semibold text-text-primary">E-Mails</h2>
-              <span className="ml-auto text-xs text-text-muted tabular-nums">
-                {dummyEmails.length} Nachrichten
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              {dummyEmails.map((email) => (
-                <div
-                  key={email.id}
-                  className={`inset-display transition-all ${
-                    email.auto ? 'opacity-50' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-text-primary">
-                      {email.subject}
-                    </span>
-                    {email.auto && (
-                      <span className="text-[9px] text-text-muted bg-white/5 px-1.5 py-0.5 rounded">
-                        auto
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-text-muted mb-0.5">von {email.from}</p>
-                  <p className="text-xs text-text-muted truncate mb-2">{email.preview}</p>
+          {/* POSTEINGANG */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">POSTEINGANG</h2>
+            <div className="space-y-3">
+              {emails.map((email, i) => (
+                <div key={i} className={`border border-gray-200 rounded p-2 ${email.auto ? 'opacity-50' : ''}`}>
+                  <p className="text-sm font-bold text-black">{email.subject}</p>
+                  <p className="text-xs text-gray-600">von: {email.from}</p>
                   {!email.auto && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2 mt-2">
                       <button
-                        onClick={() => showToast('Modul noch nicht aktiviert')}
-                        className="physical-btn flex items-center gap-1 px-2 py-1 text-[10px] text-neon-cyan hover:box-glow-cyan"
+                        onClick={() => showToast('Antworten: ' + email.subject)}
+                        className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
                       >
-                        <Reply className="w-3 h-3" />
                         Antworten
                       </button>
                       <button
-                        onClick={() => showToast('Modul noch nicht aktiviert')}
-                        className="physical-btn flex items-center gap-1 px-2 py-1 text-[10px] text-text-muted hover:text-text-secondary"
+                        onClick={() => showToast('Geparkt: ' + email.subject)}
+                        className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
                       >
-                        <ParkingCircle className="w-3 h-3" />
                         Parken
                       </button>
                     </div>
                   )}
                 </div>
               ))}
+              <p className="text-xs text-gray-500">3 ignoriert</p>
             </div>
-          </GlassCard>
+          </div>
+        </div>
+
+        {/* NOTIZEN */}
+        <div className="border border-gray-300 rounded-lg p-4 mb-6">
+          <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">NOTIZEN</h2>
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Freitext-Editor..."
+            rows={4}
+            className="w-full border border-gray-300 rounded p-3 text-sm text-black bg-white resize-none"
+          />
+        </div>
+
+        {/* ZUKUENFTIGE MODULE */}
+        <div className="border border-gray-300 rounded-lg p-4">
+          <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">ZUKUENFTIGE MODULE</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {['E-Mail Agent', 'Kontakte', 'Finanzen', 'Docs'].map((mod) => (
+              <div key={mod} className="border border-gray-300 rounded-lg p-3 text-center opacity-50">
+                <p className="text-sm text-gray-600">{mod}</p>
+                <p className="text-xs text-gray-400">Gesperrt</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-
-      {/* 04 / NOTIZEN — full width */}
-      <section className="mb-8 animate-fade-in stagger-5">
-        <SectionLabel number="04" title="NOTIZEN" />
-        <div className="min-h-[300px]">
-          <NoteEditor />
-        </div>
-      </section>
-
-      {/* Future modules */}
-      <section className="animate-fade-in stagger-6">
-        <SectionLabel number="05" title="KOMMENDE MODULE" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {futureModules.map((mod) => (
-            <div key={mod.name} className="inset-display text-center opacity-40">
-              <Lock className="w-5 h-5 text-text-muted mx-auto mb-2" />
-              <span className="text-xs text-text-muted block">{mod.name}</span>
-              <span className="text-[10px] text-text-muted mt-1 block">Kommt bald</span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </PageContainer>
+    </div>
   );
 }

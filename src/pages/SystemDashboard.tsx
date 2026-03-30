@@ -1,104 +1,164 @@
-import { Search, Terminal } from 'lucide-react';
-import { PageContainer } from '../components/layout';
-import { GlassCard } from '../components/ui/GlassCard';
-import { StatusDot } from '../components/ui/StatusDot';
-import { SectionLabel } from '../components/ui/SectionLabel';
-import { AnimatedNumber } from '../components/ui/AnimatedNumber';
-import { GlowBadge } from '../components/ui/GlowBadge';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui';
-import { SkillInventory } from '../components/widgets/SkillInventory';
-import { AgentMap } from '../components/widgets/AgentMap';
-import { mcpServers } from '../data/dummy';
-import type { MCPStatus } from '../data/types';
-
-const mcpStatusMap: Record<MCPStatus, 'healthy' | 'attention' | 'risk' | 'critical'> = {
-  connected: 'healthy',
-  disconnected: 'attention',
-  error: 'critical',
-};
+import { skills, agents, mcpServers } from '../data/dummy';
 
 export function SystemDashboard() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
 
+  const coreSkills = skills.filter((s) => s.category === 'core');
+  const projectTypeSkills = skills.filter((s) => s.category === 'project-types');
+  const domainSkills = skills.filter((s) => s.category === 'domains');
+  const integrationSkills = skills.filter((s) => s.category === 'integrations');
+
+  const coreAgents = agents.filter((a) => a.type === 'core');
+  const specialistAgents = agents.filter((a) => a.type === 'specialist');
+
   return (
-    <PageContainer>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-neon-purple text-glow-purple mb-3">System</h1>
-        <div className="inset-display inline-flex items-center gap-3 text-sm text-text-muted">
-          <span className="flex items-center gap-1.5">
-            <AnimatedNumber value={16} color="purple" size="sm" /> Skills
-          </span>
-          <span>&middot;</span>
-          <span className="flex items-center gap-1.5">
-            <AnimatedNumber value={8} color="green" size="sm" /> Agents
-          </span>
-          <span>&middot;</span>
-          <span className="flex items-center gap-1.5">
-            <AnimatedNumber value={5} color="cyan" size="sm" /> MCP Servers
-          </span>
-        </div>
-      </div>
-
-      {/* Quick Actions — prominent at top */}
-      <section className="mb-8 animate-fade-in stagger-1">
-        <SectionLabel number="00" title="SCHNELLZUGRIFF" />
-        <div className="flex flex-wrap items-center gap-3">
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-black">SYSTEM</h1>
           <button
-            onClick={() => showToast('Modul noch nicht aktiviert')}
-            className="physical-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-purple hover:box-glow-purple"
+            onClick={() => navigate('/')}
+            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
           >
-            <Search className="w-4 h-4" />
-            Neuen Skill recherchieren
-          </button>
-          <button
-            onClick={() => showToast('Modul noch nicht aktiviert')}
-            className="physical-btn px-6 py-3 flex items-center gap-2.5 text-sm font-medium text-neon-cyan hover:box-glow-cyan"
-          >
-            <Terminal className="w-4 h-4" />
-            Terminal oeffnen
+            &larr; Zurueck
           </button>
         </div>
-      </section>
 
-      {/* Two-column grid: Skills + Agents */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Left: Skills */}
-        <div className="animate-fade-in stagger-2">
-          <SkillInventory />
-        </div>
-
-        {/* Right: Agents */}
-        <div className="animate-fade-in stagger-3">
-          <AgentMap />
-        </div>
-      </div>
-
-      {/* Bottom: MCP Servers — compact */}
-      <section className="animate-fade-in stagger-4">
-        <SectionLabel number="03" title="MCP SERVERS" />
-        <GlassCard scan>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {mcpServers.map((server) => (
-              <div
-                key={server.name}
-                className="inset-display flex items-center gap-3 scan-line-container"
-              >
-                <StatusDot status={mcpStatusMap[server.status]} />
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-text-primary font-medium block truncate">
-                    {server.name}
-                  </span>
-                  <span className="text-[10px] text-text-muted">{server.description}</span>
-                </div>
-                <GlowBadge color="cyan" className="text-[10px] px-1.5 py-0">
-                  {server.tools} tools
-                </GlowBadge>
-              </div>
-            ))}
+        {/* QUICK ACTIONS */}
+        <div className="border border-gray-300 rounded-lg p-4 mb-6">
+          <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">QUICK ACTIONS</h2>
+          <div className="flex flex-wrap gap-3 items-center">
+            <span className="text-sm text-black">Neuen Skill recherchieren:</span>
+            <input
+              type="text"
+              placeholder="________"
+              className="border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black w-48"
+            />
+            <button
+              onClick={() => showToast('Recherche gestartet')}
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+            >
+              Recherchieren
+            </button>
           </div>
-        </GlassCard>
-      </section>
-    </PageContainer>
+          <div className="mt-3">
+            <button
+              onClick={() => showToast('Terminal wird geoeffnet')}
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+            >
+              System-Terminal oeffnen
+            </button>
+          </div>
+        </div>
+
+        {/* Two-column: Skills + Agents/MCP */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left: SKILLS */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">
+              SKILLS ({skills.length})
+            </h2>
+
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-black mb-2">Core ({coreSkills.length}):</h3>
+              <div className="space-y-1">
+                {coreSkills.map((s) => (
+                  <p key={s.name} className="text-sm text-gray-700">
+                    &bull; {s.name} ●
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-black mb-2">Project Types ({projectTypeSkills.length}):</h3>
+              <div className="space-y-1">
+                {projectTypeSkills.map((s) => (
+                  <p key={s.name} className="text-sm text-gray-700">
+                    &bull; {s.name} ●
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-black mb-2">Domains ({domainSkills.length}):</h3>
+              <div className="space-y-1">
+                {domainSkills.map((s) => (
+                  <p key={s.name} className="text-sm text-gray-700">
+                    &bull; {s.name} ●
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-black mb-2">Integrations ({integrationSkills.length}):</h3>
+              <div className="space-y-1">
+                {integrationSkills.map((s) => (
+                  <p key={s.name} className="text-sm text-gray-700">
+                    &bull; {s.name} ●
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Agents + MCP */}
+          <div className="space-y-4">
+            {/* AGENTS */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">
+                AGENTS ({agents.length})
+              </h2>
+
+              <div className="mb-4">
+                <h3 className="text-sm font-bold text-black mb-2">Core:</h3>
+                <div className="space-y-1">
+                  {coreAgents.map((a) => (
+                    <p key={a.name} className="text-sm text-gray-700">
+                      &bull; {a.name} ●
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-black mb-2">Specialists:</h3>
+                <div className="space-y-1">
+                  {specialistAgents.map((a) => (
+                    <p key={a.name} className="text-sm text-gray-700">
+                      &bull; {a.name} ●
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* MCP SERVERS */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-3 pb-2 border-b border-gray-200">
+                MCP SERVER ({mcpServers.length})
+              </h2>
+              <div className="space-y-2">
+                {mcpServers.map((server) => (
+                  <div key={server.name} className="flex items-center justify-between border border-gray-200 rounded p-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">&bull; {server.name}</span>
+                      <span className="text-xs text-gray-500">● {server.status}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">({server.tools})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,15 +1,13 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, Home } from 'lucide-react';
-import { KaniPanel } from '../KaniPanel';
 
 const routeLabels: Record<string, string> = {
-  '/': 'Cockpit',
+  '/': 'Welcome',
   '/briefing': 'Briefing',
-  '/operator': 'Arbeitsplatz',
-  '/lab': 'Lab',
+  '/cockpit': 'Cockpit',
+  '/projekte': 'Arbeitsplatz',
+  '/thinktank': 'Thinktank',
   '/system': 'System',
   '/office': 'Office',
-  '/maschinenraum': 'Maschinenraum',
 };
 
 function getProjectName(id: string): string {
@@ -23,19 +21,19 @@ function getProjectName(id: string): string {
 }
 
 function getBreadcrumbs(pathname: string): { label: string; path: string }[] {
-  const crumbs = [{ label: 'Cockpit', path: '/' }];
+  const crumbs = [{ label: 'Home', path: '/' }];
 
   if (pathname === '/') return crumbs;
 
   if (pathname.startsWith('/project/')) {
     const id = pathname.split('/project/')[1];
-    crumbs.push({ label: 'Arbeitsplatz', path: '/operator' });
+    crumbs.push({ label: 'Arbeitsplatz', path: '/projekte' });
     crumbs.push({ label: getProjectName(id), path: pathname });
     return crumbs;
   }
 
   const label = routeLabels[pathname];
-  if (label && label !== 'Cockpit') {
+  if (label && label !== 'Welcome') {
     crumbs.push({ label, path: pathname });
   }
 
@@ -49,43 +47,23 @@ export function Shell() {
   const isHome = location.pathname === '/';
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary relative">
-      {/* Ambient background */}
-      <div className="ambient-bg">
-        {[...Array(5)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: 2,
-              height: 2,
-              background: 'rgba(0,240,255,0.4)',
-              left: `${15 + i * 18}%`,
-              top: '100%',
-              animation: `drift ${12 + i * 4}s linear infinite`,
-              animationDelay: `${i * 3}s`,
-            }}
-          />
-        ))}
-      </div>
-
+    <div className="min-h-screen bg-white text-black">
       {/* Breadcrumb navigation bar */}
       {!isHome && (
-        <nav className="breadcrumb-bar scan-line-container fixed top-0 left-0 right-0 z-30 h-12 flex items-center px-6">
+        <nav className="fixed top-0 left-0 right-0 z-30 h-10 flex items-center px-6 bg-white border-b border-gray-200">
           <div className="flex items-center gap-1.5 text-sm">
             {breadcrumbs.map((crumb, i) => (
               <span key={crumb.path} className="flex items-center gap-1.5">
-                {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-text-muted" />}
+                {i > 0 && <span className="text-gray-400">/</span>}
                 {i < breadcrumbs.length - 1 ? (
                   <button
                     onClick={() => navigate(crumb.path)}
-                    className="text-text-muted hover:text-neon-cyan transition-colors flex items-center gap-1"
+                    className="text-gray-500 hover:text-black cursor-pointer"
                   >
-                    {i === 0 && <Home className="w-3.5 h-3.5" />}
                     {crumb.label}
                   </button>
                 ) : (
-                  <span className="text-text-primary font-medium">{crumb.label}</span>
+                  <span className="text-black font-medium">{crumb.label}</span>
                 )}
               </span>
             ))}
@@ -94,12 +72,9 @@ export function Shell() {
       )}
 
       {/* Main content */}
-      <main className={`relative z-10 ${isHome ? '' : 'pt-12'}`}>
+      <main className={isHome ? '' : 'pt-10'}>
         <Outlet />
       </main>
-
-      {/* KANI side panel — always available */}
-      <KaniPanel />
     </div>
   );
 }

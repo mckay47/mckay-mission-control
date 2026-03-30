@@ -1,229 +1,246 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { PageContainer } from '../components/layout';
-import { GlassCard } from '../components/ui/GlassCard';
-import { GlowBadge } from '../components/ui/GlowBadge';
-import { StatusDot } from '../components/ui/StatusDot';
-import { RadialGauge } from '../components/ui/RadialGauge';
-import { SectionLabel } from '../components/ui/SectionLabel';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui';
-import { MilestoneProgress } from '../components/widgets/MilestoneProgress';
-import { ProjectActions } from '../components/widgets/ProjectActions';
-import { ChatPanel } from '../components/widgets/ChatPanel';
-import { ProjectTimeline } from '../components/widgets/ProjectTimeline';
-import { TodoEditor } from '../components/widgets/TodoEditor';
-import { IdeaParking } from '../components/widgets/IdeaParking';
-import { MarketOverview } from '../components/widgets/MarketOverview';
 import { projects } from '../data/dummy';
-import type { ProjectPhase } from '../data/types';
-
-const phaseColorMap: Record<string, 'cyan' | 'green' | 'orange' | 'pink' | 'purple' | 'yellow'> = {
-  'Phase 0': 'cyan',
-  'Phase 1': 'green',
-  'Phase 2': 'orange',
-  'Phase 3': 'pink',
-  'Live': 'green',
-};
-
-function daysSince(dateStr: string): number {
-  const start = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function extractSkillName(fullPath: string): string {
-  const parts = fullPath.split('/');
-  return parts[parts.length - 1];
-}
 
 export function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
-  const project = projects.find((p) => p.id === id);
-  const [injectedPrompt, setInjectedPrompt] = useState('');
+  const navigate = useNavigate();
   const { showToast } = useToast();
+  const project = projects.find((p) => p.id === id);
 
-  const handleSendPrompt = (text: string) => {
-    setInjectedPrompt(`${text} [${Date.now()}]`);
-  };
+  const [terminalInput, setTerminalInput] = useState('');
+  const [ideaInput, setIdeaInput] = useState('');
 
   if (!project) {
     return (
-      <PageContainer>
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="glass rounded-xl p-8 text-center">
-            <p className="text-neon-orange text-lg font-semibold mb-2">Projekt nicht gefunden</p>
-            <p className="text-text-muted text-sm mb-4">
+      <div className="min-h-screen bg-white p-6">
+        <div className="max-w-4xl mx-auto text-center py-20">
+          <div className="border border-gray-300 rounded-lg p-8">
+            <p className="text-lg font-bold text-black mb-2">Projekt nicht gefunden</p>
+            <p className="text-sm text-gray-600 mb-4">
               Kein Projekt mit ID &quot;{id}&quot; im System.
             </p>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 text-neon-cyan text-sm hover:underline"
+            <button
+              onClick={() => navigate('/projekte')}
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Zurueck zum Command Center
-            </Link>
+              &larr; Zurueck zu Projekte
+            </button>
           </div>
         </div>
-      </PageContainer>
+      </div>
     );
   }
 
-  const laufzeit = daysSince(project.startDate);
-  const laufzeitPercent = Math.min(100, Math.round((laufzeit / 90) * 100));
-  const tokenPercent = Math.min(100, Math.round((project.tokenUsage / 200000) * 100));
-  const promptPercent = Math.min(100, Math.round((project.promptCount / 500) * 100));
-  const costPercent = Math.min(100, Math.round((project.monthlyCost / 100) * 100));
-  const skillNames = project.skills.map(extractSkillName);
+  const laufzeit = Math.floor(
+    (new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const dummyIdeas = [
+    'Onboarding Wizard',
+    'PDF Export',
+    'WhatsApp Integration',
+  ];
+
+  const dummyTodos = [
+    { text: 'Mockup erweitern', date: '30.03', done: false },
+    { text: 'Validation', date: '05.04', done: false },
+    { text: 'Phase 1 starten', date: '', done: false },
+  ];
 
   return (
-    <PageContainer>
-      {/* Back link */}
-      <Link
-        to="/operator"
-        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors mb-4"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Arbeitsplatz
-      </Link>
-
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-4 mb-2 animate-fade-in stagger-1">
-        <h1 className="text-3xl font-bold text-neon-cyan text-glow-cyan">
-          {project.name}
-        </h1>
-        <GlowBadge text={project.phase} color={phaseColorMap[project.phase as ProjectPhase] ?? 'cyan'} />
-        <StatusDot status={project.health} />
-
-        {/* Deploy link — always visible */}
-        <a
-          href={project.deployUrl || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`physical-btn inline-flex items-center gap-1.5 px-4 py-2 text-sm transition-all ${
-            project.deployUrl
-              ? 'text-neon-cyan hover:box-glow-cyan'
-              : 'text-text-muted cursor-not-allowed'
-          }`}
-          onClick={(e) => {
-            if (!project.deployUrl) {
-              e.preventDefault();
-              showToast('Noch nicht deployed');
-            }
-          }}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          {project.deployUrl ? project.deployUrl.replace('https://', '') : 'Nicht deployed'}
-        </a>
-
-        <div className="ml-auto">
-          <ProjectActions projectId={project.id} />
-        </div>
-      </div>
-
-      {/* Business Model + Skills — near header */}
-      <div className="inset-display flex flex-wrap items-center gap-3 mb-6 animate-fade-in stagger-1">
-        <span className="text-xs text-text-muted">Modell:</span>
-        <span className="text-xs text-text-secondary">{project.businessModel}</span>
-        <span className="text-text-muted">|</span>
-        {skillNames.slice(0, 6).map((skill) => (
-          <GlowBadge key={skill} text={skill} color="purple" className="text-[9px] !px-1.5 !py-0" />
-        ))}
-        {skillNames.length > 6 && (
-          <span className="text-[10px] text-text-muted">+{skillNames.length - 6} mehr</span>
-        )}
-      </div>
-
-      {/* Metrics: 4 RadialGauges */}
-      <div className="animate-fade-in stagger-2 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
-            <div className="gauge-ring p-1">
-              <RadialGauge value={laufzeitPercent} label="Laufzeit" size={100} color="cyan" />
-            </div>
-            <div className="inset-display mt-2 w-full text-center">
-              <span className="text-xs text-neon-cyan tabular-nums">{laufzeit} Tage</span>
-            </div>
-          </GlassCard>
-          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
-            <div className="gauge-ring p-1">
-              <RadialGauge value={tokenPercent} label="Tokens" size={100} color="green" />
-            </div>
-            <div className="inset-display mt-2 w-full text-center">
-              <span className="text-xs text-neon-green tabular-nums">{(project.tokenUsage / 1000).toFixed(0)}K</span>
-            </div>
-          </GlassCard>
-          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
-            <div className="gauge-ring p-1">
-              <RadialGauge value={promptPercent} label="Prompts" size={100} color="orange" />
-            </div>
-            <div className="inset-display mt-2 w-full text-center">
-              <span className="text-xs text-neon-orange tabular-nums">{project.promptCount}</span>
-            </div>
-          </GlassCard>
-          <GlassCard scan className="!p-4 flex flex-col items-center gap-1">
-            <div className="gauge-ring p-1">
-              <RadialGauge value={costPercent} label="Kosten" size={100} color="pink" />
-            </div>
-            <div className="inset-display mt-2 w-full text-center">
-              <span className="text-xs text-neon-pink tabular-nums">{project.monthlyCost.toFixed(2)} EUR</span>
-            </div>
-          </GlassCard>
-        </div>
-      </div>
-
-      {/* 01 / FORTSCHRITT — MilestoneProgress */}
-      <section className="mb-4 animate-fade-in stagger-3">
-        <SectionLabel number="01" title="FORTSCHRITT" />
-        <MilestoneProgress milestones={project.milestones} expanded />
-      </section>
-
-      {/* 02 / TIMELINE — horizontal, compact */}
-      <section className="mb-6 animate-fade-in stagger-3">
-        <SectionLabel number="02" title="TIMELINE" />
-        <ProjectTimeline timeline={project.timeline} horizontal />
-      </section>
-
-      {/* Main grid: 2/3 left + 1/3 right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column — 2/3 */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* 03 / TERMINAL */}
-          <section className="animate-fade-in stagger-4">
-            <SectionLabel number="03" title="TERMINAL" />
-            <div className="min-h-[500px]">
-              <ChatPanel projectId={project.id} injectedPrompt={injectedPrompt} />
-            </div>
-          </section>
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-4">
+          <button
+            onClick={() => navigate('/projekte')}
+            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black mb-4"
+          >
+            &larr; Zurueck zu Projekte
+          </button>
+          <div className="flex items-center gap-4 flex-wrap">
+            <h1 className="text-2xl font-bold text-black">PROJEKT: {project.name}</h1>
+            <span className="text-sm text-gray-600">
+              {project.phase} &middot; ● {project.health === 'healthy' ? 'Healthy' : project.health}
+            </span>
+            {project.deployUrl && (
+              <a
+                href={project.deployUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 underline"
+              >
+                {project.deployUrl.replace('https://', '')}
+              </a>
+            )}
+          </div>
         </div>
 
-        {/* Right column — 1/3 */}
-        <div className="space-y-6">
-          {/* 04 / AUFGABEN — larger workspace */}
-          <section className="animate-fade-in stagger-4">
-            <SectionLabel number="04" title="AUFGABEN" />
-            <div className="min-h-[350px]">
-              <TodoEditor projectId={project.id} onSendPrompt={handleSendPrompt} />
-            </div>
-          </section>
+        {/* METRIKEN */}
+        <div className="border border-gray-300 rounded-lg p-4 mb-4">
+          <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">METRIKEN</h2>
+          <p className="text-sm text-gray-700">
+            Laufzeit: {laufzeit} Tage | Tokens:{' '}
+            {project.tokenUsage >= 1000
+              ? `${Math.round(project.tokenUsage / 1000)}K`
+              : project.tokenUsage}{' '}
+            | Prompts: {project.promptCount} | EUR {project.monthlyCost.toFixed(2)}
+          </p>
+        </div>
 
-          {/* 05 / IDEEN — larger workspace */}
-          <section className="animate-fade-in stagger-5">
-            <SectionLabel number="05" title="IDEEN" />
-            <div className="min-h-[300px]">
-              <IdeaParking onSendPrompt={handleSendPrompt} />
-            </div>
-          </section>
+        {/* FORTSCHRITT */}
+        <div className="border border-gray-300 rounded-lg p-4 mb-4">
+          <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">FORTSCHRITT</h2>
+          <div className="flex flex-wrap gap-2">
+            {project.milestones.map((m) => (
+              <span
+                key={m.label}
+                className={`px-3 py-1 rounded border text-sm ${
+                  m.completed
+                    ? 'bg-gray-200 border-gray-400 text-black'
+                    : m.active
+                      ? 'bg-yellow-100 border-yellow-400 text-black font-bold'
+                      : 'bg-white border-gray-300 text-gray-500'
+                }`}
+              >
+                {m.completed ? '>' : m.active ? '●' : '○'} {m.label}
+              </span>
+            ))}
+          </div>
+        </div>
 
-          {/* 06 / MARKT — only if market exists */}
-          {project.market && (
-            <section className="animate-fade-in stagger-6">
-              <SectionLabel number="06" title="MARKT" />
-              <MarketOverview market={project.market} />
-            </section>
-          )}
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left column */}
+          <div className="space-y-4">
+            {/* TERMINAL */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">TERMINAL</h2>
+              <div className="border border-gray-300 rounded p-3 mb-3 min-h-[120px] bg-gray-50">
+                <p className="text-sm text-gray-700">KANI: Was soll ich als naechstes bauen?</p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={terminalInput}
+                  onChange={(e) => setTerminalInput(e.target.value)}
+                  placeholder="Eingabe..."
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+                />
+                <button
+                  onClick={() => {
+                    if (terminalInput.trim()) {
+                      showToast('Nachricht gesendet: ' + terminalInput);
+                      setTerminalInput('');
+                    }
+                  }}
+                  className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+                >
+                  Senden
+                </button>
+              </div>
+            </div>
+
+            {/* TIMELINE */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">TIMELINE</h2>
+              <div className="space-y-2">
+                {project.timeline.map((entry, i) => (
+                  <div key={i} className="text-sm text-gray-700">
+                    &bull;{' '}
+                    {new Date(entry.date).toLocaleDateString('de-DE', {
+                      day: '2-digit',
+                      month: '2-digit',
+                    })}{' '}
+                    {entry.title}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right column */}
+          <div className="space-y-4">
+            {/* IDEEN FUER DIESES PROJEKT */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">
+                IDEEN FUER DIESES PROJEKT
+              </h2>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={ideaInput}
+                  onChange={(e) => setIdeaInput(e.target.value)}
+                  placeholder="Neue Idee eingeben..."
+                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+                />
+              </div>
+              <div className="space-y-2">
+                {dummyIdeas.map((idea) => (
+                  <div key={idea} className="flex items-center justify-between border border-gray-200 rounded p-2">
+                    <span className="text-sm text-black">&bull; {idea}</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => showToast('Prompt fuer: ' + idea)}
+                        className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
+                      >
+                        &rarr; Prompt
+                      </button>
+                      <button
+                        onClick={() => showToast('Todo erstellt fuer: ' + idea)}
+                        className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
+                      >
+                        &rarr; Todo
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* TODOS */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">TODOS</h2>
+              <p className="text-sm text-gray-600 mb-3">
+                Offen: {dummyTodos.filter((t) => !t.done).length} | Erledigt: 12
+              </p>
+              <div className="space-y-2">
+                {dummyTodos.map((todo, i) => (
+                  <div key={i} className="flex items-center justify-between border border-gray-200 rounded p-2">
+                    <span className="text-sm text-black">
+                      {todo.done ? '[x]' : '[ ]'} {todo.text}
+                      {todo.date && ` (${todo.date})`}
+                    </span>
+                    <button
+                      onClick={() => showToast('Prompt fuer: ' + todo.text)}
+                      className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
+                    >
+                      &rarr; Prompt
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* PROJEKT-INFO */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">PROJEKT-INFO</h2>
+              <div className="space-y-1 text-sm text-gray-700">
+                <p>Business: {project.businessModel}</p>
+                {project.market && (
+                  <>
+                    <p>Markt: {project.market.potentialCustomers}</p>
+                    <p>Umsatz: {project.market.revenueEstimate}</p>
+                  </>
+                )}
+                <p>Skills: {project.skills.length} aktiv</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </PageContainer>
+    </div>
   );
 }
