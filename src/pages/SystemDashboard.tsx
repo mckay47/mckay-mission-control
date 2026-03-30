@@ -2,6 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui';
 import { skills, agents, mcpServers } from '../data/dummy';
 
+const btnClass =
+  'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
+
 export function SystemDashboard() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -22,9 +25,9 @@ export function SystemDashboard() {
           <h1 className="text-2xl font-bold text-black">SYSTEM</h1>
           <button
             onClick={() => navigate('/')}
-            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+            className={btnClass}
           >
-            &larr; Zurueck
+            Zurueck zum Cockpit
           </button>
         </div>
 
@@ -40,7 +43,7 @@ export function SystemDashboard() {
             />
             <button
               onClick={() => showToast('Recherche gestartet')}
-              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+              className={btnClass}
             >
               Recherchieren
             </button>
@@ -48,7 +51,7 @@ export function SystemDashboard() {
           <div className="mt-3">
             <button
               onClick={() => showToast('Terminal wird geoeffnet')}
-              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+              className={btnClass}
             >
               System-Terminal oeffnen
             </button>
@@ -68,7 +71,7 @@ export function SystemDashboard() {
               <div className="space-y-1">
                 {coreSkills.map((s) => (
                   <p key={s.name} className="text-sm text-gray-700">
-                    &bull; {s.name} ●
+                    &bull; {s.name}
                   </p>
                 ))}
               </div>
@@ -79,7 +82,7 @@ export function SystemDashboard() {
               <div className="space-y-1">
                 {projectTypeSkills.map((s) => (
                   <p key={s.name} className="text-sm text-gray-700">
-                    &bull; {s.name} ●
+                    &bull; {s.name}
                   </p>
                 ))}
               </div>
@@ -90,7 +93,7 @@ export function SystemDashboard() {
               <div className="space-y-1">
                 {domainSkills.map((s) => (
                   <p key={s.name} className="text-sm text-gray-700">
-                    &bull; {s.name} ●
+                    &bull; {s.name}
                   </p>
                 ))}
               </div>
@@ -101,7 +104,7 @@ export function SystemDashboard() {
               <div className="space-y-1">
                 {integrationSkills.map((s) => (
                   <p key={s.name} className="text-sm text-gray-700">
-                    &bull; {s.name} ●
+                    &bull; {s.name}
                   </p>
                 ))}
               </div>
@@ -121,7 +124,7 @@ export function SystemDashboard() {
                 <div className="space-y-1">
                   {coreAgents.map((a) => (
                     <p key={a.name} className="text-sm text-gray-700">
-                      &bull; {a.name} ●
+                      &bull; {a.name}
                     </p>
                   ))}
                 </div>
@@ -132,7 +135,7 @@ export function SystemDashboard() {
                 <div className="space-y-1">
                   {specialistAgents.map((a) => (
                     <p key={a.name} className="text-sm text-gray-700">
-                      &bull; {a.name} ●
+                      &bull; {a.name}
                     </p>
                   ))}
                 </div>
@@ -149,7 +152,7 @@ export function SystemDashboard() {
                   <div key={server.name} className="flex items-center justify-between border border-gray-200 rounded p-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-700">&bull; {server.name}</span>
-                      <span className="text-xs text-gray-500">● {server.status}</span>
+                      <span className="text-xs text-gray-500">{server.status}</span>
                     </div>
                     <span className="text-xs text-gray-500">({server.tools})</span>
                   </div>

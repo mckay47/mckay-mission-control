@@ -557,3 +557,25 @@ body {
   0%, 100% { box-shadow: 0 0 2px currentColor; }
   50% { box-shadow: 0 0 6px currentColor, 0 0 12px currentColor; }
 }
+
+/* ═══════════════════════════════════════════
+   3x3 GRID SYSTEM — Wireframe Layout
+   ═══════════════════════════════════════════ */
+
+.grid-cockpit {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  height: 100vh;
+  gap: 8px;
+  padding: 8px;
+}
+.grid-cell {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+}
+.span-2-cols { grid-column: span 2; }
+.span-2-rows { grid-row: span 2; }
+.span-3-cols { grid-column: span 3; }

@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useToast } from '../components/ui';
-import { projects } from '../data/dummy';
+import { projects, initialTodos, dummyChat } from '../data/dummy';
+
+const btnClass =
+  'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
+const btnSmClass =
+  'bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black';
 
 export function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const project = projects.find((p) => p.id === id);
 
@@ -22,10 +26,10 @@ export function ProjectDashboard() {
               Kein Projekt mit ID &quot;{id}&quot; im System.
             </p>
             <button
-              onClick={() => navigate('/projekte')}
-              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+              onClick={() => window.close()}
+              className={btnClass}
             >
-              &larr; Zurueck zu Projekte
+              Fenster schliessen
             </button>
           </div>
         </div>
@@ -37,208 +41,208 @@ export function ProjectDashboard() {
     (new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const dummyIdeas = [
-    'Onboarding Wizard',
-    'PDF Export',
-    'WhatsApp Integration',
-  ];
+  const projectTodos = initialTodos.filter((t) => t.projectId === project.id && !t.done);
+  const lastTimeline = project.timeline[project.timeline.length - 1];
+  const nextMilestone =
+    project.milestones.find((m) => m.active)?.label ||
+    project.milestones.find((m) => !m.completed)?.label ||
+    'Fertig';
 
-  const dummyTodos = [
-    { text: 'Mockup erweitern', date: '30.03', done: false },
-    { text: 'Validation', date: '05.04', done: false },
-    { text: 'Phase 1 starten', date: '', done: false },
-  ];
+  const dummyIdeas = ['Onboarding Wizard', 'PDF Export', 'WhatsApp Integration'];
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-4">
-          <button
-            onClick={() => navigate('/projekte')}
-            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black mb-4"
-          >
-            &larr; Zurueck zu Projekte
-          </button>
-          <div className="flex items-center gap-4 flex-wrap">
-            <h1 className="text-2xl font-bold text-black">PROJEKT: {project.name}</h1>
-            <span className="text-sm text-gray-600">
-              {project.phase} &middot; ● {project.health === 'healthy' ? 'Healthy' : project.health}
+    <div className="min-h-screen bg-white">
+      {/* Banner */}
+      <div className="border-b border-gray-300 bg-gray-50 px-6 py-2">
+        <p className="text-xs text-gray-500">
+          Dieses Fenster kann geschlossen werden — der Prozess laeuft weiter. Vom Cockpit aus wieder oeffnen.
+        </p>
+      </div>
+
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-xl font-bold text-black">PROJEKT: {project.name}</h1>
+            <p className="text-sm text-gray-600">
+              {project.phase} &middot; {project.health} &middot; {project.progressPercent}%
+            </p>
+          </div>
+          {project.deployUrl && (
+            <a
+              href={project.deployUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 underline"
+            >
+              {project.deployUrl.replace('https://', '')}
+            </a>
+          )}
+        </div>
+
+        {/* Metrics bar */}
+        <div className="mt-3 text-sm text-gray-600">
+          Laufzeit: {laufzeit} Tage | Tokens:{' '}
+          {project.tokenUsage >= 1000
+            ? `${Math.round(project.tokenUsage / 1000)}K`
+            : project.tokenUsage}{' '}
+          | Prompts: {project.promptCount} | EUR {project.monthlyCost.toFixed(2)}
+        </div>
+
+        {/* Milestones */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {project.milestones.map((m) => (
+            <span
+              key={m.label}
+              className={`px-2 py-0.5 rounded border text-xs ${
+                m.completed
+                  ? 'bg-gray-200 border-gray-400 text-black'
+                  : m.active
+                    ? 'bg-yellow-100 border-yellow-400 text-black font-bold'
+                    : 'bg-white border-gray-300 text-gray-500'
+              }`}
+            >
+              {m.completed ? '>' : m.active ? '●' : '○'} {m.label}
             </span>
-            {project.deployUrl && (
-              <a
-                href={project.deployUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-600 underline"
+          ))}
+        </div>
+      </div>
+
+      {/* Main content: 2/3 left (terminal) + 1/3 right */}
+      <div className="flex flex-col lg:flex-row" style={{ height: 'calc(100vh - 180px)' }}>
+        {/* Left 2/3 — TERMINAL */}
+        <div className="lg:w-2/3 p-4 flex flex-col border-r border-gray-200">
+          <div className="border border-gray-300 rounded-lg p-4 flex-1 flex flex-col">
+            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">TERMINAL</h2>
+
+            {/* Chat messages */}
+            <div className="flex-1 overflow-y-auto border border-gray-200 rounded p-3 mb-3 bg-gray-50 space-y-2">
+              {dummyChat.map((msg) => (
+                <div key={msg.id} className={`text-sm ${msg.sender === 'kani' ? 'text-gray-700' : 'text-black font-medium'}`}>
+                  <span className="text-xs text-gray-400 mr-1">[{msg.time}]</span>
+                  <span className="font-bold">{msg.sender === 'kani' ? 'KANI' : 'Mehti'}:</span>{' '}
+                  {msg.text.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      {i < msg.text.split('\n').length - 1 && <br />}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={terminalInput}
+                onChange={(e) => setTerminalInput(e.target.value)}
+                placeholder="Eingabe..."
+                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && terminalInput.trim()) {
+                    showToast('Nachricht gesendet: ' + terminalInput);
+                    setTerminalInput('');
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (terminalInput.trim()) {
+                    showToast('Nachricht gesendet: ' + terminalInput);
+                    setTerminalInput('');
+                  }
+                }}
+                className={btnClass}
               >
-                {project.deployUrl.replace('https://', '')}
-              </a>
-            )}
+                Senden
+              </button>
+            </div>
+
+            {/* Last / Next */}
+            <div className="mt-3 text-sm text-gray-600 space-y-1">
+              {lastTimeline && <p>Zuletzt: {lastTimeline.title}</p>}
+              <p>Naechster Step: {nextMilestone}</p>
+            </div>
           </div>
         </div>
 
-        {/* METRIKEN */}
-        <div className="border border-gray-300 rounded-lg p-4 mb-4">
-          <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">METRIKEN</h2>
-          <p className="text-sm text-gray-700">
-            Laufzeit: {laufzeit} Tage | Tokens:{' '}
-            {project.tokenUsage >= 1000
-              ? `${Math.round(project.tokenUsage / 1000)}K`
-              : project.tokenUsage}{' '}
-            | Prompts: {project.promptCount} | EUR {project.monthlyCost.toFixed(2)}
-          </p>
-        </div>
-
-        {/* FORTSCHRITT */}
-        <div className="border border-gray-300 rounded-lg p-4 mb-4">
-          <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">FORTSCHRITT</h2>
-          <div className="flex flex-wrap gap-2">
-            {project.milestones.map((m) => (
-              <span
-                key={m.label}
-                className={`px-3 py-1 rounded border text-sm ${
-                  m.completed
-                    ? 'bg-gray-200 border-gray-400 text-black'
-                    : m.active
-                      ? 'bg-yellow-100 border-yellow-400 text-black font-bold'
-                      : 'bg-white border-gray-300 text-gray-500'
-                }`}
-              >
-                {m.completed ? '>' : m.active ? '●' : '○'} {m.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Left column */}
-          <div className="space-y-4">
-            {/* TERMINAL */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">TERMINAL</h2>
-              <div className="border border-gray-300 rounded p-3 mb-3 min-h-[120px] bg-gray-50">
-                <p className="text-sm text-gray-700">KANI: Was soll ich als naechstes bauen?</p>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={terminalInput}
-                  onChange={(e) => setTerminalInput(e.target.value)}
-                  placeholder="Eingabe..."
-                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
-                />
-                <button
-                  onClick={() => {
-                    if (terminalInput.trim()) {
-                      showToast('Nachricht gesendet: ' + terminalInput);
-                      setTerminalInput('');
-                    }
-                  }}
-                  className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
-                >
-                  Senden
-                </button>
-              </div>
+        {/* Right 1/3 */}
+        <div className="lg:w-1/3 p-4 overflow-y-auto space-y-4">
+          {/* IDEEN */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">IDEEN</h2>
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={ideaInput}
+                onChange={(e) => setIdeaInput(e.target.value)}
+                placeholder="Neue Idee..."
+                className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black"
+              />
             </div>
-
-            {/* TIMELINE */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">TIMELINE</h2>
-              <div className="space-y-2">
-                {project.timeline.map((entry, i) => (
-                  <div key={i} className="text-sm text-gray-700">
-                    &bull;{' '}
-                    {new Date(entry.date).toLocaleDateString('de-DE', {
-                      day: '2-digit',
-                      month: '2-digit',
-                    })}{' '}
-                    {entry.title}
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-2">
+              {dummyIdeas.map((idea) => (
+                <div key={idea} className="flex items-center justify-between text-sm">
+                  <span className="text-black">{idea}</span>
+                  <button
+                    onClick={() => showToast('Prompt fuer: ' + idea)}
+                    className={btnSmClass}
+                  >
+                    Prompt
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right column */}
-          <div className="space-y-4">
-            {/* IDEEN FUER DIESES PROJEKT */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">
-                IDEEN FUER DIESES PROJEKT
-              </h2>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={ideaInput}
-                  onChange={(e) => setIdeaInput(e.target.value)}
-                  placeholder="Neue Idee eingeben..."
-                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
-                />
-              </div>
-              <div className="space-y-2">
-                {dummyIdeas.map((idea) => (
-                  <div key={idea} className="flex items-center justify-between border border-gray-200 rounded p-2">
-                    <span className="text-sm text-black">&bull; {idea}</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => showToast('Prompt fuer: ' + idea)}
-                        className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
-                      >
-                        &rarr; Prompt
-                      </button>
-                      <button
-                        onClick={() => showToast('Todo erstellt fuer: ' + idea)}
-                        className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
-                      >
-                        &rarr; Todo
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* TODOS */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">TODOS</h2>
-              <p className="text-sm text-gray-600 mb-3">
-                Offen: {dummyTodos.filter((t) => !t.done).length} | Erledigt: 12
-              </p>
-              <div className="space-y-2">
-                {dummyTodos.map((todo, i) => (
-                  <div key={i} className="flex items-center justify-between border border-gray-200 rounded p-2">
-                    <span className="text-sm text-black">
-                      {todo.done ? '[x]' : '[ ]'} {todo.text}
-                      {todo.date && ` (${todo.date})`}
+          {/* TODOS */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">TODOS</h2>
+            <div className="space-y-2">
+              {projectTodos.length > 0 ? (
+                projectTodos.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between text-sm">
+                    <span className="text-black">
+                      [ ] {t.text}
+                      {t.deadline && <span className="text-xs text-gray-400 ml-1">({t.deadline})</span>}
                     </span>
                     <button
-                      onClick={() => showToast('Prompt fuer: ' + todo.text)}
-                      className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
+                      onClick={() => showToast('Prompt fuer: ' + t.text)}
+                      className={btnSmClass}
                     >
-                      &rarr; Prompt
+                      Prompt
                     </button>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* PROJEKT-INFO */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h2 className="text-lg font-bold text-black mb-2 pb-2 border-b border-gray-200">PROJEKT-INFO</h2>
-              <div className="space-y-1 text-sm text-gray-700">
-                <p>Business: {project.businessModel}</p>
-                {project.market && (
-                  <>
-                    <p>Markt: {project.market.potentialCustomers}</p>
-                    <p>Umsatz: {project.market.revenueEstimate}</p>
-                  </>
-                )}
-                <p>Skills: {project.skills.length} aktiv</p>
-              </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-400">Keine offenen Todos</p>
+              )}
             </div>
           </div>
+
+          {/* PROJEKT-INFO */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">PROJEKT-INFO</h2>
+            <div className="space-y-1 text-sm text-gray-700">
+              <p>Business: {project.businessModel}</p>
+              {project.market && (
+                <>
+                  <p>Markt: {project.market.potentialCustomers}</p>
+                  <p>Umsatz: {project.market.revenueEstimate}</p>
+                </>
+              )}
+              <p>Skills: {project.skills.length} aktiv</p>
+            </div>
+          </div>
+
+          {/* Close button */}
+          <button
+            onClick={() => window.close()}
+            className={btnClass + ' w-full'}
+          >
+            Fenster schliessen
+          </button>
         </div>
       </div>
     </div>

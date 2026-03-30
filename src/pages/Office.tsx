@@ -5,6 +5,9 @@ import { useToast } from '../components/ui';
 type TodoMode = 'privat' | 'projekte';
 type CalendarView = 'tag' | 'woche' | 'monat';
 
+const btnClass =
+  'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
+
 const privateTodos = [
   { text: 'Zahnarzt', done: false },
   { text: 'Steuer', done: false },
@@ -39,9 +42,9 @@ export function Office() {
           <h1 className="text-2xl font-bold text-black">OFFICE</h1>
           <button
             onClick={() => navigate('/')}
-            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black"
+            className={btnClass}
           >
-            &larr; Zurueck
+            Zurueck zum Cockpit
           </button>
         </div>
 
