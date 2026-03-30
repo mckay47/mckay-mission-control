@@ -850,12 +850,79 @@ function DashboardView({
 
   return (
     <div className="grid-cockpit">
-      {/* [1,1] SYSTEM STATUS — clickable */}
-      <div className="grid-cell cursor-pointer" onClick={() => setDetail('system')}>
-        <h3 className="cell-title">SYSTEM STATUS</h3>
-        <p className="text-sm text-[#7B8DB5]">Status: <span className="text-[#00FF88] font-bold" style={{ textShadow: '0 0 8px rgba(0,255,136,0.4)' }}>Online</span></p>
-        <p className="text-sm text-[#7B8DB5]"><span className="stat-number text-base">{connectedMcp.length}</span> MCP verbunden</p>
-        <p className="text-xs text-[#4A5A7A] mt-2 font-mono">Klicken fuer Details</p>
+      {/* [1,1] SYSTEM STATUS — Vision Pro Glass Reference Cell */}
+      <div
+        className="grid-cell cursor-pointer group"
+        onClick={() => setDetail('system')}
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '20px',
+          padding: '20px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)',
+          transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        {/* Title row */}
+        <div className="flex items-center justify-between mb-4">
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.02em' }}>
+            System Status
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00FF88', boxShadow: '0 0 8px #00FF88', display: 'inline-block', animation: 'pulse-glow 2s ease-in-out infinite' }} />
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#00FF88' }}>ONLINE</span>
+          </span>
+        </div>
+
+        {/* Sub-grid: 2 cols top */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+          {/* CPU Gauge */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '10px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>CPU</div>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '1.4rem', fontWeight: 700, color: '#00F0FF', textShadow: '0 0 20px rgba(0,240,255,0.4)', lineHeight: 1 }}>42%</div>
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 8, overflow: 'hidden' }}>
+              <div style={{ width: '42%', height: '100%', background: 'linear-gradient(90deg, #00F0FF, #00FF88)', borderRadius: 2, boxShadow: '0 0 8px rgba(0,240,255,0.3)', animation: 'bar-grow 1.5s ease-out forwards', transformOrigin: 'left' }} />
+            </div>
+          </div>
+          {/* RAM Gauge */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '10px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>RAM</div>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '1.4rem', fontWeight: 700, color: '#8B5CF6', textShadow: '0 0 20px rgba(139,92,246,0.4)', lineHeight: 1 }}>68%</div>
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 8, overflow: 'hidden' }}>
+              <div style={{ width: '68%', height: '100%', background: 'linear-gradient(90deg, #8B5CF6, #FF2DAA)', borderRadius: 2, boxShadow: '0 0 8px rgba(139,92,246,0.3)' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Sub-grid: 3 cols - quick stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '8px 4px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '1.1rem', fontWeight: 700, color: '#E0E6F0' }}>3</div>
+            <div style={{ fontFamily: "'Space Grotesk'", fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Projekte</div>
+          </div>
+          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '8px 4px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '1.1rem', fontWeight: 700, color: '#E0E6F0' }}>2</div>
+            <div style={{ fontFamily: "'Space Grotesk'", fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Fenster</div>
+          </div>
+          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '8px 4px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: '1.1rem', fontWeight: 700, color: '#00FF88' }}>5</div>
+            <div style={{ fontFamily: "'Space Grotesk'", fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>MCP</div>
+          </div>
+        </div>
+
+        {/* Bottom: Internet + Session */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '8px 10px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00FF88', boxShadow: '0 0 6px #00FF88', display: 'inline-block' }} />
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)' }}>120 Mbps</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '8px 10px', border: '1px solid rgba(255,255,255,0.03)' }}>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: '0.65rem', color: '#00F0FF' }}>3h 24m</span>
+            <span style={{ fontFamily: "'Space Grotesk'", fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>aktiv</span>
+          </div>
+        </div>
       </div>
 
       {/* [1,2] TOKEN & KOSTEN — clickable */}

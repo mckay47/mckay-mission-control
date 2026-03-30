@@ -58,11 +58,7 @@ html {
 }
 
 body {
-  background: #080C18;
-  background-image: url('/bg-cockpit.png');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background: #0A0E1A;
   min-height: 100vh;
 }
 
@@ -575,20 +571,20 @@ body {
   padding: 6px;
 }
 .grid-cell {
-  background: rgba(10, 17, 32, 0.78);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 20px;
+  padding: 20px;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   color: #E0E6F0;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .grid-cell:hover {
-  border-color: rgba(0, 240, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 240, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25), 0 0 30px rgba(0, 240, 255, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .span-2-cols { grid-column: span 2; }
 .span-2-rows { grid-row: span 2; }
