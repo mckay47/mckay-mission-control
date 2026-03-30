@@ -21,6 +21,7 @@ export function ProjectDashboard() {
   const [todos, setTodos] = useState<TodoItem[]>(initialTodos.filter((t) => t.projectId === id));
   const [newTodo, setNewTodo] = useState('');
   const [dialog, setDialog] = useState<{ type: string; data?: string } | null>(null);
+  const [paused, setPaused] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,6 +154,15 @@ export function ProjectDashboard() {
                 {project.deployUrl.replace('https://', '')}
               </a>
             )}
+            <button
+              onClick={() => {
+                setPaused((prev) => !prev);
+                showToast(paused ? 'Projekt fortgesetzt: ' + project.name : 'Projekt pausiert: ' + project.name);
+              }}
+              className={`${btnClass} ${paused ? '!bg-yellow-100 !border-yellow-400' : ''}`}
+            >
+              {paused ? 'Fortsetzen' : 'Pausieren'}
+            </button>
             <button onClick={() => showToast('Aktionen-Menu kommt bald')} className={btnClass}>Aktionen ▾</button>
           </div>
         </div>
@@ -192,6 +202,25 @@ export function ProjectDashboard() {
         </div>
       </div>
 
+      {/* Paused Banner */}
+      {paused && (
+        <div className="mx-6 mt-3 border border-yellow-400 bg-yellow-50 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-yellow-800">Projekt pausiert</p>
+            <p className="text-xs text-yellow-600">Alle Arbeiten an diesem Projekt sind gestoppt. Klicke &quot;Fortsetzen&quot; um weiterzumachen.</p>
+          </div>
+          <button
+            onClick={() => {
+              setPaused(false);
+              showToast('Projekt fortgesetzt: ' + project.name);
+            }}
+            className={btnClass + ' !bg-yellow-200 !border-yellow-400'}
+          >
+            Fortsetzen
+          </button>
+        </div>
+      )}
+
       {/* Main: 2/3 terminal + 1/3 sidebar */}
       <div className="flex flex-col lg:flex-row" style={{ height: 'calc(100vh - 220px)' }}>
         {/* Left — TERMINAL */}
@@ -221,11 +250,12 @@ export function ProjectDashboard() {
                 type="text"
                 value={terminalInput}
                 onChange={(e) => setTerminalInput(e.target.value)}
-                placeholder="Eingabe..."
-                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+                placeholder={paused ? 'Projekt ist pausiert...' : 'Eingabe...'}
+                disabled={paused}
+                className={`flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black ${paused ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
               />
-              <button onClick={sendMessage} className={btnClass}>Senden</button>
+              <button onClick={sendMessage} disabled={paused} className={`${btnClass} ${paused ? 'opacity-50 cursor-not-allowed' : ''}`}>Senden</button>
             </div>
 
             {/* Context */}

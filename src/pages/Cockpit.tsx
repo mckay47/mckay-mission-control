@@ -9,11 +9,15 @@ import {
   mcpServers,
   initialTodos,
   pipelineIdeasV2,
+  priorities,
+  commands,
+  hooks,
 } from '../data/dummy';
 import type { PipelineIdeaV2 } from '../data/types';
 
 type Phase = 'boot' | 'login' | 'launch' | 'dashboard';
 type View = 'dashboard' | 'briefing' | 'thinktank';
+type DetailView = 'none' | 'system' | 'tokens' | 'agents' | 'projekte' | 'todos';
 type EntryCategory = 'alle' | 'Ideen' | 'Research' | 'Strategie' | 'Projekte' | 'Privat';
 
 const btnClass =
@@ -101,6 +105,677 @@ function LaunchPhase({ onLaunch }: { onLaunch: () => void }) {
   );
 }
 
+// --- DETAIL: SYSTEM STATUS ---
+function SystemDetailView({
+  onBack,
+}: {
+  onBack: () => void;
+}) {
+  const connectedMcp = mcpServers.filter((s) => s.status === 'connected');
+  const disconnectedMcp = mcpServers.filter((s) => s.status !== 'connected');
+  const totalTools = mcpServers.reduce((sum, s) => sum + s.tools, 0);
+  const uptime = '99.7%';
+
+  return (
+    <div className="grid-cockpit bg-white">
+      {/* [1,1] SYSTEM UEBERSICHT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">SYSTEM UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Status: <span className="text-green-600 font-bold">Online</span></p>
+          <p>Uptime: {uptime}</p>
+          <p>MCKAY OS v1.0</p>
+          <p>Build: Phase 0 (Mockup)</p>
+        </div>
+      </div>
+
+      {/* [1,2] MCP SERVER */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">MCP SERVER ({mcpServers.length})</h3>
+        <div className="space-y-2">
+          {mcpServers.map((server) => (
+            <div key={server.name} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${server.status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className="text-black font-medium">{server.name}</span>
+              </div>
+              <div className="flex items-center gap-3 text-gray-500">
+                <span className="text-xs">{server.tools} Tools</span>
+                <span className="text-xs">{server.status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-xs text-gray-500">
+          {connectedMcp.length} verbunden · {disconnectedMcp.length} getrennt · {totalTools} Tools gesamt
+        </div>
+      </div>
+
+      {/* [2,1] HOOKS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">HOOKS ({hooks.length})</h3>
+        <div className="space-y-2">
+          {hooks.map((hook) => (
+            <div key={hook.name} className="text-sm border-b border-gray-100 pb-2">
+              <p className="text-black font-medium">{hook.name}</p>
+              <p className="text-xs text-gray-500">Event: {hook.event}</p>
+              <p className="text-xs text-gray-400">{hook.purpose}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [2,2] COMMANDS */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">COMMANDS ({commands.length})</h3>
+        <div className="space-y-1">
+          {commands.map((cmd) => (
+            <div key={cmd.name} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+              <span className="text-black font-mono font-medium">{cmd.name}</span>
+              <span className="text-xs text-gray-500 text-right max-w-[60%]">{cmd.description}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,1] UMGEBUNGEN */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">UMGEBUNGEN</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex justify-between"><span>Local</span><span className="text-green-600">aktiv</span></div>
+          <div className="flex justify-between"><span>Staging (dev)</span><span className="text-yellow-600">bereit</span></div>
+          <div className="flex justify-between"><span>Production (main)</span><span className="text-green-600">live</span></div>
+        </div>
+      </div>
+
+      {/* [3,2] TECH STACK */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">TECH STACK</h3>
+        <div className="space-y-1 text-sm text-gray-600">
+          <p>React + Vite + TailwindCSS</p>
+          <p>Supabase (Auth + DB)</p>
+          <p>Vercel (Hosting)</p>
+          <p>n8n / Make (Automation)</p>
+          <p>Claude API (AI)</p>
+        </div>
+      </div>
+
+      {/* [3,3] NAVIGATION */}
+      <div className="grid-cell flex flex-col justify-end">
+        <button onClick={onBack} className={btnClass}>
+          Zurueck zum Cockpit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- DETAIL: TOKEN & KOSTEN ---
+function TokensDetailView({
+  onBack,
+}: {
+  onBack: () => void;
+}) {
+  const totalTokens = projects.reduce((sum, p) => sum + p.tokenUsage, 0);
+  const totalCost = projects.reduce((sum, p) => sum + p.monthlyCost, 0);
+  const totalPrompts = projects.reduce((sum, p) => sum + p.promptCount, 0);
+  const limit = 500000;
+  const usagePercent = Math.round((totalTokens / limit) * 100);
+
+  const sortedByCost = [...projects].sort((a, b) => b.monthlyCost - a.monthlyCost);
+  const sortedByTokens = [...projects].sort((a, b) => b.tokenUsage - a.tokenUsage);
+
+  return (
+    <div className="grid-cockpit bg-white">
+      {/* [1,1] TOKEN UEBERSICHT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">TOKEN UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Verbraucht: <span className="font-bold text-black">{Math.round(totalTokens / 1000)}K</span> / {limit / 1000}K</p>
+          <p>Auslastung: <span className={`font-bold ${usagePercent > 80 ? 'text-red-600' : usagePercent > 50 ? 'text-yellow-600' : 'text-green-600'}`}>{usagePercent}%</span></p>
+          <div className="w-full h-3 bg-gray-200 rounded-full mt-2">
+            <div className={`h-full rounded-full ${usagePercent > 80 ? 'bg-red-500' : usagePercent > 50 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Prompts gesamt: {totalPrompts}</p>
+        </div>
+      </div>
+
+      {/* [1,2] KOSTEN UEBERSICHT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">KOSTEN UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Monatskosten: <span className="font-bold text-black">EUR {totalCost.toFixed(2)}</span></p>
+          <p>Durchschnitt/Projekt: EUR {(totalCost / projects.length).toFixed(2)}</p>
+          <p>Hochrechnung/Jahr: EUR {(totalCost * 12).toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* [1,3] BUDGET STATUS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">BUDGET STATUS</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Budget: EUR 200/Monat</p>
+          <p>Verbraucht: EUR {totalCost.toFixed(2)}</p>
+          <p>Uebrig: <span className="font-bold text-green-600">EUR {(200 - totalCost).toFixed(2)}</span></p>
+          <div className="w-full h-3 bg-gray-200 rounded-full mt-2">
+            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min((totalCost / 200) * 100, 100)}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {/* [2,1]+[2,2] KOSTEN PRO PROJEKT */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">KOSTEN PRO PROJEKT</h3>
+        <div className="space-y-2">
+          {sortedByCost.map((p) => {
+            const costPercent = totalCost > 0 ? Math.round((p.monthlyCost / totalCost) * 100) : 0;
+            return (
+              <div key={p.id} className="text-sm">
+                <div className="flex justify-between mb-1">
+                  <span className="text-black font-medium">{p.name}</span>
+                  <span className="text-gray-600">EUR {p.monthlyCost.toFixed(2)} ({costPercent}%)</span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full">
+                  <div className="h-full bg-blue-400 rounded-full" style={{ width: `${costPercent}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* [2,3] TOKENS PRO PROJEKT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">TOKENS PRO PROJEKT</h3>
+        <div className="space-y-2">
+          {sortedByTokens.map((p) => (
+            <div key={p.id} className="flex justify-between text-sm border-b border-gray-100 pb-1">
+              <span className="text-black">{p.name}</span>
+              <span className="text-gray-500 font-mono">{p.tokenUsage >= 1000 ? `${Math.round(p.tokenUsage / 1000)}K` : p.tokenUsage}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,1] PROMPTS PRO PROJEKT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">PROMPTS PRO PROJEKT</h3>
+        <div className="space-y-2">
+          {projects.map((p) => (
+            <div key={p.id} className="flex justify-between text-sm border-b border-gray-100 pb-1">
+              <span className="text-black">{p.name}</span>
+              <span className="text-gray-500 font-mono">{p.promptCount}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,2] EFFIZIENZ */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">EFFIZIENZ</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          {projects.filter((p) => p.promptCount > 0).map((p) => {
+            const tokensPerPrompt = Math.round(p.tokenUsage / p.promptCount);
+            const costPerPrompt = (p.monthlyCost / p.promptCount).toFixed(3);
+            return (
+              <div key={p.id} className="border-b border-gray-100 pb-1">
+                <p className="text-black font-medium">{p.name}</p>
+                <p className="text-xs">{tokensPerPrompt} Tokens/Prompt · EUR {costPerPrompt}/Prompt</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* [3,3] NAVIGATION */}
+      <div className="grid-cell flex flex-col justify-end">
+        <button onClick={onBack} className={btnClass}>
+          Zurueck zum Cockpit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- DETAIL: AGENTS & SKILLS ---
+function AgentsDetailView({
+  onBack,
+  navigate,
+}: {
+  onBack: () => void;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const coreAgents = agents.filter((a) => a.type === 'core');
+  const specialistAgents = agents.filter((a) => a.type === 'specialist');
+  const coreSkills = skills.filter((s) => s.category === 'core');
+  const projectTypeSkills = skills.filter((s) => s.category === 'project-types');
+  const domainSkills = skills.filter((s) => s.category === 'domains');
+  const integrationSkills = skills.filter((s) => s.category === 'integrations');
+  const activeSkills = skills.filter((s) => s.status === 'active');
+
+  return (
+    <div className="grid-cockpit bg-white">
+      {/* [1,1] AGENTS — CORE */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">AGENTS — CORE ({coreAgents.length})</h3>
+        <div className="space-y-2">
+          {coreAgents.map((a) => (
+            <div key={a.name} className="text-sm border-b border-gray-100 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-black font-medium">{a.name}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">{a.purpose}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [1,2] AGENTS — SPECIALISTS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">AGENTS — SPECIALISTS ({specialistAgents.length})</h3>
+        <div className="space-y-2">
+          {specialistAgents.map((a) => (
+            <div key={a.name} className="text-sm border-b border-gray-100 pb-2">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${a.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <span className="text-black font-medium">{a.name}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">{a.triggers}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [1,3] ZUSAMMENFASSUNG */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">ZUSAMMENFASSUNG</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>{agents.length} Agents ({coreAgents.length} Core + {specialistAgents.length} Specialists)</p>
+          <p>{activeSkills.length} Skills aktiv</p>
+          <p>{coreSkills.length} Core · {projectTypeSkills.length} Project Types</p>
+          <p>{domainSkills.length} Domains · {integrationSkills.length} Integrations</p>
+        </div>
+        <div className="mt-4">
+          <button onClick={() => navigate('/system')} className={btnSmClass}>
+            System-Detail oeffnen
+          </button>
+        </div>
+      </div>
+
+      {/* [2,1] SKILLS — CORE */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">SKILLS — CORE ({coreSkills.length})</h3>
+        <div className="space-y-1">
+          {coreSkills.map((s) => (
+            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
+              <span className="text-black font-medium">{s.name}</span>
+              <p className="text-xs text-gray-400">{s.purpose.slice(0, 60)}...</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [2,2] SKILLS — PROJECT TYPES */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">SKILLS — PROJECT TYPES ({projectTypeSkills.length})</h3>
+        <div className="space-y-1">
+          {projectTypeSkills.map((s) => (
+            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
+              <span className="text-black font-medium">{s.name}</span>
+              <p className="text-xs text-gray-400">{s.activateWhen || ''}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [2,3] SKILLS — DOMAINS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">SKILLS — DOMAINS ({domainSkills.length})</h3>
+        <div className="space-y-1">
+          {domainSkills.map((s) => (
+            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
+              <span className="text-black font-medium">{s.name}</span>
+              <p className="text-xs text-gray-400">{s.activateWhen || ''}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,1] SKILLS — INTEGRATIONS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">SKILLS — INTEGRATIONS ({integrationSkills.length})</h3>
+        <div className="space-y-1">
+          {integrationSkills.map((s) => (
+            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
+              <span className="text-black font-medium">{s.name}</span>
+              <p className="text-xs text-gray-400">{s.activateWhen || ''}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,2] MCP SERVER QUICK */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">MCP SERVER ({mcpServers.length})</h3>
+        <div className="space-y-1">
+          {mcpServers.map((s) => (
+            <div key={s.name} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${s.status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className="text-black">{s.name}</span>
+              </div>
+              <span className="text-xs text-gray-500">{s.tools} Tools</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,3] NAVIGATION */}
+      <div className="grid-cell flex flex-col justify-end">
+        <button onClick={onBack} className={btnClass}>
+          Zurueck zum Cockpit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- DETAIL: PROJEKTE ---
+function ProjekteDetailView({
+  onBack,
+  showToast,
+}: {
+  onBack: () => void;
+  showToast: (msg: string) => void;
+}) {
+  const activeProjects = projects.filter((p) => p.status === 'building');
+  const liveProjects = projects.filter((p) => p.status === 'live');
+  const totalRevenue = projects.reduce((sum, p) => {
+    const estimate = p.market?.revenueEstimate || '';
+    const match = estimate.match(/[\d.]+/);
+    return sum + (match ? parseFloat(match[0].replace('.', '')) : 0);
+  }, 0);
+
+  const openProject = (id: string) => {
+    window.open(`/project/${id}`, '_blank', 'width=1200,height=800');
+  };
+
+  return (
+    <div className="grid-cockpit bg-white">
+      {/* [1,1] PORTFOLIO UEBERSICHT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">PORTFOLIO UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Projekte gesamt: <span className="font-bold text-black">{projects.length}</span></p>
+          <p>In Entwicklung: {activeProjects.length}</p>
+          <p>Live: {liveProjects.length}</p>
+          <p>Pipeline Ideen: {pipelineIdeasV2.length}</p>
+          <p className="text-xs text-gray-400 mt-2">Umsatzpotenzial: EUR {totalRevenue.toLocaleString('de-DE')}/Jahr</p>
+        </div>
+      </div>
+
+      {/* [1,2]+[1,3] PROJECT CARDS */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">PROJEKTE</h3>
+        <div className="space-y-3">
+          {projects.map((p) => {
+            const laufzeit = Math.floor(
+              (new Date().getTime() - new Date(p.startDate).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            return (
+              <div key={p.id} className="border border-gray-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${p.health === 'healthy' ? 'bg-green-500' : p.health === 'attention' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                    <span className="text-black font-bold">{p.name}</span>
+                    <span className="text-xs text-gray-400">{p.phase}</span>
+                  </div>
+                  <button
+                    onClick={() => p.status === 'live' ? showToast('Live: ' + p.name) : openProject(p.id)}
+                    className={btnSmClass}
+                  >
+                    {p.status === 'live' ? 'Ansehen' : 'Oeffnen'}
+                  </button>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-500 mb-2">
+                  <span>{laufzeit} Tage</span>
+                  <span>{p.progressPercent}%</span>
+                  <span>{p.promptCount} Prompts</span>
+                  <span>EUR {p.monthlyCost.toFixed(2)}/mo</span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full">
+                  <div className={`h-full rounded-full ${p.health === 'healthy' ? 'bg-green-500' : p.health === 'attention' ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${p.progressPercent}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* [2,1] MILESTONES */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">MILESTONES</h3>
+        <div className="space-y-3">
+          {projects.filter((p) => p.status === 'building').map((p) => {
+            const activeMilestone = p.milestones.find((m) => m.active)?.label || 'n/a';
+            const completedCount = p.milestones.filter((m) => m.completed).length;
+            return (
+              <div key={p.id} className="text-sm">
+                <p className="text-black font-medium mb-1">{p.name}</p>
+                <p className="text-xs text-gray-500 mb-1">Aktuell: {activeMilestone} ({completedCount}/{p.milestones.length})</p>
+                <div className="flex gap-1">
+                  {p.milestones.map((m) => (
+                    <span
+                      key={m.label}
+                      title={m.label}
+                      className={`h-3 flex-1 rounded-sm ${
+                        m.completed ? 'bg-green-400' : m.active ? 'bg-yellow-400' : 'bg-gray-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* [2,3] BUSINESS MODELS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">BUSINESS MODELS</h3>
+        <div className="space-y-2">
+          {projects.map((p) => (
+            <div key={p.id} className="text-sm border-b border-gray-100 pb-1">
+              <span className="text-black font-medium">{p.name}</span>
+              <p className="text-xs text-gray-500">{p.businessModel}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,1] PIPELINE */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">IDEEN PIPELINE ({pipelineIdeasV2.length})</h3>
+        <div className="space-y-2">
+          {pipelineIdeasV2.map((idea) => (
+            <div key={idea.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+              <div>
+                <span className="text-black font-medium">{idea.name}</span>
+                <span className="text-xs text-gray-400 ml-2">{idea.type}</span>
+              </div>
+              <span className="text-xs text-gray-400">{idea.createdAt}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [3,3] NAVIGATION */}
+      <div className="grid-cell flex flex-col justify-end">
+        <button onClick={onBack} className={btnClass}>
+          Zurueck zum Cockpit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- DETAIL: TODOS ---
+function TodosDetailView({
+  onBack,
+  setView,
+  showToast,
+}: {
+  onBack: () => void;
+  setView: (v: View) => void;
+  showToast: (msg: string) => void;
+}) {
+  const [todos, setTodos] = useState(initialTodos);
+  const [newTodoText, setNewTodoText] = useState('');
+
+  const openTodos = todos.filter((t) => !t.done);
+  const doneTodos = todos.filter((t) => t.done);
+  const highPriority = openTodos.filter((t) => t.priority === 'high');
+  const medPriority = openTodos.filter((t) => t.priority === 'medium');
+  const lowPriority = openTodos.filter((t) => t.priority === 'low' || !t.priority);
+
+  const toggleTodo = (id: string) => {
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  };
+
+  const addTodo = () => {
+    if (!newTodoText.trim()) return;
+    const newTodo = { id: `t-${Date.now()}`, text: newTodoText, done: false };
+    setTodos((prev) => [newTodo, ...prev]);
+    setNewTodoText('');
+    showToast('Todo hinzugefuegt');
+  };
+
+  return (
+    <div className="grid-cockpit bg-white">
+      {/* [1,1] TODO UEBERSICHT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">TODO UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Offen: <span className="font-bold text-black">{openTodos.length}</span></p>
+          <p>Erledigt: <span className="text-green-600">{doneTodos.length}</span></p>
+          <p className="text-red-600 font-medium">Hoch: {highPriority.length}</p>
+          <p className="text-yellow-600">Mittel: {medPriority.length}</p>
+          <p className="text-gray-400">Niedrig: {lowPriority.length}</p>
+        </div>
+      </div>
+
+      {/* [1,2] NEUES TODO */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">NEUES TODO</h3>
+        <div className="flex flex-col gap-2">
+          <input
+            type="text"
+            value={newTodoText}
+            onChange={(e) => setNewTodoText(e.target.value)}
+            placeholder="Todo eingeben..."
+            className="border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+            onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }}
+          />
+          <button onClick={addTodo} className={btnClass}>
+            + Hinzufuegen
+          </button>
+        </div>
+      </div>
+
+      {/* [1,3] PRIORITAETEN */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">PRIORITAETEN</h3>
+        <div className="space-y-2">
+          {priorities.map((p) => (
+            <div key={p.id} className="text-sm border-b border-gray-100 pb-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${p.impact === 'high' ? 'bg-red-500' : p.impact === 'medium' ? 'bg-yellow-500' : 'bg-gray-400'}`} />
+                <span className="text-black">{p.text}</span>
+              </div>
+              {p.project && <p className="text-xs text-gray-400 ml-4">{p.project}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* [2,1]+[2,2] OFFENE TODOS */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">OFFENE TODOS ({openTodos.length})</h3>
+        <div className="space-y-1">
+          {openTodos.map((t) => {
+            const proj = projects.find((p) => p.id === t.projectId);
+            return (
+              <div key={t.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={false} onChange={() => toggleTodo(t.id)} className="cursor-pointer" />
+                  <span className={`w-1.5 h-1.5 rounded-full ${t.priority === 'high' ? 'bg-red-500' : t.priority === 'medium' ? 'bg-yellow-500' : 'bg-gray-300'}`} />
+                  <span className="text-black">{t.text}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {proj && <span className="text-xs text-gray-400">{proj.name}</span>}
+                  {t.deadline && <span className="text-xs text-gray-400">{t.deadline}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* [2,3] ERLEDIGTE TODOS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">ERLEDIGT ({doneTodos.length})</h3>
+        <div className="space-y-1">
+          {doneTodos.map((t) => (
+            <div key={t.id} className="flex items-center gap-2 text-sm text-gray-400 border-b border-gray-100 pb-1">
+              <input type="checkbox" checked onChange={() => toggleTodo(t.id)} className="cursor-pointer" />
+              <span className="line-through">{t.text}</span>
+            </div>
+          ))}
+          {doneTodos.length === 0 && <p className="text-sm text-gray-400 italic">Keine erledigten Todos</p>}
+        </div>
+      </div>
+
+      {/* [3,1] TODOS PRO PROJEKT */}
+      <div className="grid-cell span-2-cols">
+        <h3 className="text-sm font-bold text-black mb-3">TODOS PRO PROJEKT</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {projects.map((p) => {
+            const projectTodos = openTodos.filter((t) => t.projectId === p.id);
+            return (
+              <div key={p.id} className="text-sm">
+                <p className="text-black font-medium">{p.name} ({projectTodos.length})</p>
+                {projectTodos.slice(0, 2).map((t) => (
+                  <p key={t.id} className="text-xs text-gray-500">- {t.text}</p>
+                ))}
+                {projectTodos.length === 0 && <p className="text-xs text-gray-400 italic">Keine offenen Todos</p>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* [3,3] NAVIGATION */}
+      <div className="grid-cell flex flex-col justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-black mb-3">AKTIONEN</h3>
+          <div className="space-y-2">
+            <button onClick={() => setView('briefing')} className={btnClass + ' w-full text-left'}>
+              Briefing
+            </button>
+            <button onClick={() => setView('thinktank')} className={btnClass + ' w-full text-left'}>
+              Thinktank
+            </button>
+          </div>
+        </div>
+        <button onClick={onBack} className={btnClass + ' mt-4'}>
+          Zurueck zum Cockpit
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // --- DASHBOARD VIEW ---
 function DashboardView({
   setView,
@@ -111,6 +786,7 @@ function DashboardView({
   navigate: ReturnType<typeof useNavigate>;
   showToast: (msg: string) => void;
 }) {
+  const [detail, setDetail] = useState<DetailView>('none');
   const activeSkills = skills.filter((s) => s.status === 'active');
   const activeAgents = agents.filter((a) => a.status === 'active');
   const connectedMcp = mcpServers.filter((s) => s.status === 'connected');
@@ -122,34 +798,46 @@ function DashboardView({
     window.open(`/project/${id}`, '_blank', 'width=1200,height=800');
   };
 
+  const goBack = () => setDetail('none');
+
+  // Render detail views
+  if (detail === 'system') return <SystemDetailView onBack={goBack} />;
+  if (detail === 'tokens') return <TokensDetailView onBack={goBack} />;
+  if (detail === 'agents') return <AgentsDetailView onBack={goBack} navigate={navigate} />;
+  if (detail === 'projekte') return <ProjekteDetailView onBack={goBack} showToast={showToast} />;
+  if (detail === 'todos') return <TodosDetailView onBack={goBack} setView={setView} showToast={showToast} />;
+
   return (
     <div className="grid-cockpit bg-white">
-      {/* [1,1] SYSTEM STATUS */}
-      <div className="grid-cell">
+      {/* [1,1] SYSTEM STATUS — clickable */}
+      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('system')}>
         <h3 className="text-sm font-bold text-black mb-3">SYSTEM STATUS</h3>
-        <p className="text-sm text-gray-600">Online</p>
-        <p className="text-sm text-gray-600">Aktive Fenster: 2</p>
+        <p className="text-sm text-gray-600">Status: <span className="text-green-600 font-bold">Online</span></p>
+        <p className="text-sm text-gray-600">{connectedMcp.length} MCP verbunden</p>
+        <p className="text-xs text-gray-400 mt-2">Klicken fuer Details</p>
       </div>
 
-      {/* [1,2] TOKEN & KOSTEN */}
-      <div className="grid-cell">
+      {/* [1,2] TOKEN & KOSTEN — clickable */}
+      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('tokens')}>
         <h3 className="text-sm font-bold text-black mb-3">TOKEN &amp; KOSTEN</h3>
         <p className="text-sm text-gray-600">
           Tokens: {Math.round(totalTokens / 1000)}K / 500K ({Math.round((totalTokens / 500000) * 100)}%)
         </p>
         <p className="text-sm text-gray-600">Monatskosten: EUR {totalCost.toFixed(2)}</p>
+        <p className="text-xs text-gray-400 mt-2">Klicken fuer Details</p>
       </div>
 
-      {/* [1,3] AGENTS & SKILLS */}
-      <div className="grid-cell">
+      {/* [1,3] AGENTS & SKILLS — clickable */}
+      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('agents')}>
         <h3 className="text-sm font-bold text-black mb-3">AGENTS &amp; SKILLS</h3>
         <p className="text-sm text-gray-600">{activeAgents.length} Agents arbeiten</p>
         <p className="text-sm text-gray-600">{activeSkills.length} Skills aktiv</p>
         <p className="text-sm text-gray-600">{connectedMcp.length} MCP verbunden</p>
+        <p className="text-xs text-gray-400 mt-2">Klicken fuer Details</p>
       </div>
 
-      {/* [2,1] PROJEKTE */}
-      <div className="grid-cell">
+      {/* [2,1] PROJEKTE — clickable */}
+      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('projekte')}>
         <h3 className="text-sm font-bold text-black mb-3">PROJEKTE</h3>
         <div className="space-y-2">
           {projects.map((p) => (
@@ -158,7 +846,8 @@ function DashboardView({
                 {p.name} &middot; {p.phase} &middot; {p.progressPercent}%
               </span>
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (p.status === 'live') {
                     showToast('Live-Projekt: ' + p.name);
                   } else {
@@ -172,10 +861,11 @@ function DashboardView({
             </div>
           ))}
         </div>
+        <p className="text-xs text-gray-400 mt-2">Klicken fuer Portfolio-Uebersicht</p>
       </div>
 
-      {/* [2,2] PROJEKT-STATUS & TODOS */}
-      <div className="grid-cell">
+      {/* [2,2] PROJEKT-STATUS & TODOS — clickable */}
+      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('todos')}>
         <h3 className="text-sm font-bold text-black mb-3">PROJEKT-STATUS &amp; TODOS</h3>
         <div className="space-y-2 mb-3">
           {topTodos.map((t) => {
@@ -188,7 +878,7 @@ function DashboardView({
             );
           })}
         </div>
-        <p className="text-xs text-gray-500">Projekt-Ideen in Pipeline: {pipelineIdeasV2.length}</p>
+        <p className="text-xs text-gray-400">Klicken fuer Todo-Manager</p>
       </div>
 
       {/* [2,3] IDEEN PIPELINE */}
