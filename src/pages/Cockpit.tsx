@@ -17,7 +17,7 @@ import type { PipelineIdeaV2 } from '../data/types';
 
 type Phase = 'boot' | 'login' | 'launch' | 'dashboard';
 type View = 'dashboard' | 'briefing' | 'thinktank';
-type DetailView = 'none' | 'system' | 'tokens' | 'agents' | 'projekte' | 'todos';
+type DetailView = 'none' | 'system' | 'finanzen' | 'agents' | 'projekte' | 'todos';
 type EntryCategory = 'alle' | 'Ideen' | 'Research' | 'Strategie' | 'Projekte' | 'Privat';
 
 const btnClass =
@@ -210,8 +210,8 @@ function SystemDetailView({
   );
 }
 
-// --- DETAIL: TOKEN & KOSTEN ---
-function TokensDetailView({
+// --- DETAIL: FINANZEN ---
+function FinanzenDetailView({
   onBack,
 }: {
   onBack: () => void;
@@ -802,7 +802,7 @@ function DashboardView({
 
   // Render detail views
   if (detail === 'system') return <SystemDetailView onBack={goBack} />;
-  if (detail === 'tokens') return <TokensDetailView onBack={goBack} />;
+  if (detail === 'finanzen') return <FinanzenDetailView onBack={goBack} />;
   if (detail === 'agents') return <AgentsDetailView onBack={goBack} navigate={navigate} />;
   if (detail === 'projekte') return <ProjekteDetailView onBack={goBack} showToast={showToast} />;
   if (detail === 'todos') return <TodosDetailView onBack={goBack} setView={setView} showToast={showToast} />;
@@ -818,8 +818,8 @@ function DashboardView({
       </div>
 
       {/* [1,2] TOKEN & KOSTEN — clickable */}
-      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('tokens')}>
-        <h3 className="text-sm font-bold text-black mb-3">TOKEN &amp; KOSTEN</h3>
+      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('finanzen')}>
+        <h3 className="text-sm font-bold text-black mb-3">FINANZEN</h3>
         <p className="text-sm text-gray-600">
           Tokens: {Math.round(totalTokens / 1000)}K / 500K ({Math.round((totalTokens / 500000) * 100)}%)
         </p>
