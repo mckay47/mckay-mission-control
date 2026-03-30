@@ -20,11 +20,6 @@ type View = 'dashboard' | 'briefing' | 'thinktank';
 type DetailView = 'none' | 'system' | 'finanzen' | 'agents' | 'projekte' | 'todos';
 type EntryCategory = 'alle' | 'Ideen' | 'Research' | 'Strategie' | 'Projekte' | 'Privat';
 
-const btnClass =
-  'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
-const btnSmClass =
-  'bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black';
-
 function classifyType(type: string): EntryCategory {
   const lower = type.toLowerCase();
   if (lower.includes('research')) return 'Research';
@@ -37,11 +32,11 @@ function classifyType(type: string): EntryCategory {
 // --- BOOT PHASE ---
 function BootPhase({ onStart }: { onStart: () => void }) {
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit boot-bg">
       {/* 4 empty cells before center */}
       <div /><div /><div /><div />
-      <div className="grid-cell flex items-center justify-center">
-        <button onClick={onStart} className={btnClass + ' text-lg px-8 py-4'}>
+      <div className="grid-cell flex items-center justify-center" style={{ background: 'rgba(10,17,32,0.5)' }}>
+        <button onClick={onStart} className="vision-btn text-lg px-8 py-4 text-[#00F0FF] font-bold tracking-wider cursor-pointer">
           START
         </button>
       </div>
@@ -56,30 +51,30 @@ function LoginPhase({ onVerify }: { onVerify: () => void }) {
   const [pass, setPass] = useState('');
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit boot-bg">
       <div /><div /><div /><div />
-      <div className="grid-cell flex flex-col items-center justify-center gap-6">
-        <h1 className="text-2xl font-bold text-black">MCKAY MISSION CONTROL</h1>
-        <button onClick={onVerify} className={btnClass + ' text-base px-6 py-3'}>
+      <div className="grid-cell flex flex-col items-center justify-center gap-6" style={{ background: 'rgba(10,17,32,0.6)' }}>
+        <h1 className="text-2xl font-bold text-[#00F0FF] text-glow-cyan tracking-wider">MCKAY MISSION CONTROL</h1>
+        <button onClick={onVerify} className="vision-btn text-base px-6 py-3 text-[#E0E6F0] font-medium cursor-pointer">
           Touch ID
         </button>
-        <div className="text-sm text-gray-400">oder</div>
+        <div className="text-sm text-[#4A5A7A]">oder</div>
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <input
             type="text"
             value={user}
             onChange={(e) => setUser(e.target.value)}
             placeholder="Benutzername"
-            className="border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+            className="glass-input"
           />
           <input
             type="password"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
             placeholder="Passwort"
-            className="border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+            className="glass-input"
           />
-          <button onClick={onVerify} className={btnClass}>
+          <button onClick={onVerify} className="vision-btn px-4 py-2 text-[#E0E6F0] text-sm font-medium cursor-pointer">
             Anmelden
           </button>
         </div>
@@ -92,11 +87,11 @@ function LoginPhase({ onVerify }: { onVerify: () => void }) {
 // --- LAUNCH PHASE ---
 function LaunchPhase({ onLaunch }: { onLaunch: () => void }) {
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit boot-bg">
       <div /><div /><div /><div />
-      <div className="grid-cell flex flex-col items-center justify-center gap-6">
-        <p className="text-lg text-black font-bold">Verifiziert</p>
-        <button onClick={onLaunch} className={btnClass + ' text-base px-6 py-3'}>
+      <div className="grid-cell flex flex-col items-center justify-center gap-6" style={{ background: 'rgba(10,17,32,0.5)' }}>
+        <p className="text-lg text-[#00FF88] font-bold" style={{ textShadow: '0 0 12px rgba(0,255,136,0.4)' }}>Verifiziert</p>
+        <button onClick={onLaunch} className="vision-btn text-base px-6 py-3 text-[#00F0FF] font-medium cursor-pointer">
           System starten
         </button>
       </div>
@@ -117,13 +112,13 @@ function SystemDetailView({
   const uptime = '99.7%';
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] SYSTEM UEBERSICHT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">SYSTEM UEBERSICHT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Status: <span className="text-green-600 font-bold">Online</span></p>
-          <p>Uptime: {uptime}</p>
+        <h3 className="cell-title">SYSTEM UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Status: <span className="text-[#00FF88] font-bold" style={{ textShadow: '0 0 8px rgba(0,255,136,0.4)' }}>Online</span></p>
+          <p>Uptime: <span className="stat-number text-base">{uptime}</span></p>
           <p>MCKAY OS v1.0</p>
           <p>Build: Phase 0 (Mockup)</p>
         </div>
@@ -131,35 +126,35 @@ function SystemDetailView({
 
       {/* [1,2] MCP SERVER */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">MCP SERVER ({mcpServers.length})</h3>
+        <h3 className="cell-title">MCP SERVER ({mcpServers.length})</h3>
         <div className="space-y-2">
           {mcpServers.map((server) => (
-            <div key={server.name} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+            <div key={server.name} className="flex items-center justify-between text-sm border-b border-white/5 pb-1">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${server.status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-black font-medium">{server.name}</span>
+                <span className={server.status === 'connected' ? 'dot-green' : 'dot-red'} />
+                <span className="text-[#E0E6F0] font-medium">{server.name}</span>
               </div>
-              <div className="flex items-center gap-3 text-gray-500">
-                <span className="text-xs">{server.tools} Tools</span>
+              <div className="flex items-center gap-3 text-[#4A5A7A]">
+                <span className="text-xs font-mono">{server.tools} Tools</span>
                 <span className="text-xs">{server.status}</span>
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-3 text-xs text-gray-500">
-          {connectedMcp.length} verbunden · {disconnectedMcp.length} getrennt · {totalTools} Tools gesamt
+        <div className="mt-3 text-xs text-[#4A5A7A] font-mono">
+          {connectedMcp.length} verbunden &middot; {disconnectedMcp.length} getrennt &middot; {totalTools} Tools gesamt
         </div>
       </div>
 
       {/* [2,1] HOOKS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">HOOKS ({hooks.length})</h3>
+        <h3 className="cell-title">HOOKS ({hooks.length})</h3>
         <div className="space-y-2">
           {hooks.map((hook) => (
-            <div key={hook.name} className="text-sm border-b border-gray-100 pb-2">
-              <p className="text-black font-medium">{hook.name}</p>
-              <p className="text-xs text-gray-500">Event: {hook.event}</p>
-              <p className="text-xs text-gray-400">{hook.purpose}</p>
+            <div key={hook.name} className="text-sm border-b border-white/5 pb-2">
+              <p className="text-[#E0E6F0] font-medium">{hook.name}</p>
+              <p className="text-xs text-[#4A5A7A]">Event: {hook.event}</p>
+              <p className="text-xs text-[#4A5A7A]">{hook.purpose}</p>
             </div>
           ))}
         </div>
@@ -167,12 +162,12 @@ function SystemDetailView({
 
       {/* [2,2] COMMANDS */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">COMMANDS ({commands.length})</h3>
+        <h3 className="cell-title">COMMANDS ({commands.length})</h3>
         <div className="space-y-1">
           {commands.map((cmd) => (
-            <div key={cmd.name} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
-              <span className="text-black font-mono font-medium">{cmd.name}</span>
-              <span className="text-xs text-gray-500 text-right max-w-[60%]">{cmd.description}</span>
+            <div key={cmd.name} className="flex items-center justify-between text-sm border-b border-white/5 pb-1">
+              <span className="text-[#00F0FF] font-mono font-medium">{cmd.name}</span>
+              <span className="text-xs text-[#4A5A7A] text-right max-w-[60%]">{cmd.description}</span>
             </div>
           ))}
         </div>
@@ -180,18 +175,18 @@ function SystemDetailView({
 
       {/* [3,1] UMGEBUNGEN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">UMGEBUNGEN</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <div className="flex justify-between"><span>Local</span><span className="text-green-600">aktiv</span></div>
-          <div className="flex justify-between"><span>Staging (dev)</span><span className="text-yellow-600">bereit</span></div>
-          <div className="flex justify-between"><span>Production (main)</span><span className="text-green-600">live</span></div>
+        <h3 className="cell-title">UMGEBUNGEN</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <div className="flex justify-between"><span>Local</span><span className="text-[#00FF88]" style={{ textShadow: '0 0 6px rgba(0,255,136,0.3)' }}>aktiv</span></div>
+          <div className="flex justify-between"><span>Staging (dev)</span><span className="text-[#FFD600]" style={{ textShadow: '0 0 6px rgba(255,214,0,0.3)' }}>bereit</span></div>
+          <div className="flex justify-between"><span>Production (main)</span><span className="text-[#00FF88]" style={{ textShadow: '0 0 6px rgba(0,255,136,0.3)' }}>live</span></div>
         </div>
       </div>
 
       {/* [3,2] TECH STACK */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">TECH STACK</h3>
-        <div className="space-y-1 text-sm text-gray-600">
+        <h3 className="cell-title">TECH STACK</h3>
+        <div className="space-y-1 text-sm text-[#7B8DB5]">
           <p>React + Vite + TailwindCSS</p>
           <p>Supabase (Auth + DB)</p>
           <p>Vercel (Hosting)</p>
@@ -202,14 +197,14 @@ function SystemDetailView({
 
       {/* [3,3] DEPLOYMENT STATUS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">DEPLOYMENT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Branch: <span className="font-mono text-black">dev → main</span></p>
+        <h3 className="cell-title">DEPLOYMENT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Branch: <span className="font-mono text-[#00F0FF]">dev → main</span></p>
           <p>Letzter Deploy: heute, 14:32</p>
-          <p>Vercel Status: <span className="text-green-600 font-bold">Ready</span></p>
-          <p>Build Time: 18s</p>
+          <p>Vercel Status: <span className="text-[#00FF88] font-bold" style={{ textShadow: '0 0 6px rgba(0,255,136,0.3)' }}>Ready</span></p>
+          <p>Build Time: <span className="font-mono text-[#E0E6F0]">18s</span></p>
         </div>
-        <button onClick={onBack} className={btnClass + ' mt-4'}>
+        <button onClick={onBack} className="cell-btn mt-4">
           Zurueck
         </button>
       </div>
@@ -232,26 +227,28 @@ function FinanzenDetailView({
   const sortedByCost = [...projects].sort((a, b) => b.monthlyCost - a.monthlyCost);
   const sortedByTokens = [...projects].sort((a, b) => b.tokenUsage - a.tokenUsage);
 
+  const barColor = usagePercent > 80 ? '#FF2D55' : usagePercent > 50 ? '#FFD600' : '#00FF88';
+
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] TOKEN UEBERSICHT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">TOKEN UEBERSICHT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Verbraucht: <span className="font-bold text-black">{Math.round(totalTokens / 1000)}K</span> / {limit / 1000}K</p>
-          <p>Auslastung: <span className={`font-bold ${usagePercent > 80 ? 'text-red-600' : usagePercent > 50 ? 'text-yellow-600' : 'text-green-600'}`}>{usagePercent}%</span></p>
-          <div className="w-full h-3 bg-gray-200 rounded-full mt-2">
-            <div className={`h-full rounded-full ${usagePercent > 80 ? 'bg-red-500' : usagePercent > 50 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+        <h3 className="cell-title">TOKEN UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Verbraucht: <span className="stat-number text-lg">{Math.round(totalTokens / 1000)}K</span> / {limit / 1000}K</p>
+          <p>Auslastung: <span className="stat-number text-lg" style={{ color: barColor, textShadow: `0 0 12px ${barColor}60` }}>{usagePercent}%</span></p>
+          <div className="cell-bar mt-2">
+            <div className="cell-bar-fill" style={{ width: `${Math.min(usagePercent, 100)}%`, background: `linear-gradient(90deg, ${barColor}, ${barColor}80)` }} />
           </div>
-          <p className="text-xs text-gray-400 mt-1">Prompts gesamt: {totalPrompts}</p>
+          <p className="text-xs text-[#4A5A7A] mt-1 font-mono">Prompts gesamt: {totalPrompts}</p>
         </div>
       </div>
 
       {/* [1,2] KOSTEN UEBERSICHT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KOSTEN UEBERSICHT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Monatskosten: <span className="font-bold text-black">EUR {totalCost.toFixed(2)}</span></p>
+        <h3 className="cell-title">KOSTEN UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Monatskosten: <span className="stat-number text-lg">EUR {totalCost.toFixed(2)}</span></p>
           <p>Durchschnitt/Projekt: EUR {(totalCost / projects.length).toFixed(2)}</p>
           <p>Hochrechnung/Jahr: EUR {(totalCost * 12).toFixed(2)}</p>
         </div>
@@ -259,31 +256,31 @@ function FinanzenDetailView({
 
       {/* [1,3] BUDGET STATUS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">BUDGET STATUS</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="cell-title">BUDGET STATUS</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
           <p>Budget: EUR 200/Monat</p>
           <p>Verbraucht: EUR {totalCost.toFixed(2)}</p>
-          <p>Uebrig: <span className="font-bold text-green-600">EUR {(200 - totalCost).toFixed(2)}</span></p>
-          <div className="w-full h-3 bg-gray-200 rounded-full mt-2">
-            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min((totalCost / 200) * 100, 100)}%` }} />
+          <p>Uebrig: <span className="stat-number text-lg">EUR {(200 - totalCost).toFixed(2)}</span></p>
+          <div className="cell-bar mt-2">
+            <div className="cell-bar-fill" style={{ width: `${Math.min((totalCost / 200) * 100, 100)}%` }} />
           </div>
         </div>
       </div>
 
       {/* [2,1]+[2,2] KOSTEN PRO PROJEKT */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">KOSTEN PRO PROJEKT</h3>
+        <h3 className="cell-title">KOSTEN PRO PROJEKT</h3>
         <div className="space-y-2">
           {sortedByCost.map((p) => {
             const costPercent = totalCost > 0 ? Math.round((p.monthlyCost / totalCost) * 100) : 0;
             return (
               <div key={p.id} className="text-sm">
                 <div className="flex justify-between mb-1">
-                  <span className="text-black font-medium">{p.name}</span>
-                  <span className="text-gray-600">EUR {p.monthlyCost.toFixed(2)} ({costPercent}%)</span>
+                  <span className="text-[#E0E6F0] font-medium">{p.name}</span>
+                  <span className="text-[#7B8DB5] font-mono">EUR {p.monthlyCost.toFixed(2)} ({costPercent}%)</span>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full">
-                  <div className="h-full bg-blue-400 rounded-full" style={{ width: `${costPercent}%` }} />
+                <div className="cell-bar">
+                  <div className="cell-bar-fill" style={{ width: `${costPercent}%` }} />
                 </div>
               </div>
             );
@@ -293,12 +290,12 @@ function FinanzenDetailView({
 
       {/* [2,3] TOKENS PRO PROJEKT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">TOKENS PRO PROJEKT</h3>
+        <h3 className="cell-title">TOKENS PRO PROJEKT</h3>
         <div className="space-y-2">
           {sortedByTokens.map((p) => (
-            <div key={p.id} className="flex justify-between text-sm border-b border-gray-100 pb-1">
-              <span className="text-black">{p.name}</span>
-              <span className="text-gray-500 font-mono">{p.tokenUsage >= 1000 ? `${Math.round(p.tokenUsage / 1000)}K` : p.tokenUsage}</span>
+            <div key={p.id} className="flex justify-between text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0]">{p.name}</span>
+              <span className="text-[#00F0FF] font-mono" style={{ textShadow: '0 0 8px rgba(0,240,255,0.3)' }}>{p.tokenUsage >= 1000 ? `${Math.round(p.tokenUsage / 1000)}K` : p.tokenUsage}</span>
             </div>
           ))}
         </div>
@@ -306,12 +303,12 @@ function FinanzenDetailView({
 
       {/* [3,1] PROMPTS PRO PROJEKT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">PROMPTS PRO PROJEKT</h3>
+        <h3 className="cell-title">PROMPTS PRO PROJEKT</h3>
         <div className="space-y-2">
           {projects.map((p) => (
-            <div key={p.id} className="flex justify-between text-sm border-b border-gray-100 pb-1">
-              <span className="text-black">{p.name}</span>
-              <span className="text-gray-500 font-mono">{p.promptCount}</span>
+            <div key={p.id} className="flex justify-between text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0]">{p.name}</span>
+              <span className="text-[#00F0FF] font-mono" style={{ textShadow: '0 0 8px rgba(0,240,255,0.3)' }}>{p.promptCount}</span>
             </div>
           ))}
         </div>
@@ -319,15 +316,15 @@ function FinanzenDetailView({
 
       {/* [3,2] EFFIZIENZ */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">EFFIZIENZ</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="cell-title">EFFIZIENZ</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
           {projects.filter((p) => p.promptCount > 0).map((p) => {
             const tokensPerPrompt = Math.round(p.tokenUsage / p.promptCount);
             const costPerPrompt = (p.monthlyCost / p.promptCount).toFixed(3);
             return (
-              <div key={p.id} className="border-b border-gray-100 pb-1">
-                <p className="text-black font-medium">{p.name}</p>
-                <p className="text-xs">{tokensPerPrompt} Tokens/Prompt · EUR {costPerPrompt}/Prompt</p>
+              <div key={p.id} className="border-b border-white/5 pb-1">
+                <p className="text-[#E0E6F0] font-medium">{p.name}</p>
+                <p className="text-xs font-mono">{tokensPerPrompt} Tokens/Prompt &middot; EUR {costPerPrompt}/Prompt</p>
               </div>
             );
           })}
@@ -336,14 +333,14 @@ function FinanzenDetailView({
 
       {/* [3,3] KOSTENPROGNOSE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">PROGNOSE</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Naechster Monat: EUR {(totalCost * 1.1).toFixed(2)}</p>
-          <p>Trend: <span className="text-yellow-600 font-medium">+10% (geschaetzt)</span></p>
-          <p className="text-xs text-gray-400 mt-2">Basierend auf aktuellem Verbrauch und geplanten Projekten</p>
-          <p className="text-xs text-gray-400">Stillprobleme.de Start erwartet hoehere Token-Nutzung</p>
+        <h3 className="cell-title">PROGNOSE</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Naechster Monat: <span className="font-mono text-[#E0E6F0]">EUR {(totalCost * 1.1).toFixed(2)}</span></p>
+          <p>Trend: <span className="text-[#FFD600] font-medium" style={{ textShadow: '0 0 6px rgba(255,214,0,0.3)' }}>+10% (geschaetzt)</span></p>
+          <p className="text-xs text-[#4A5A7A] mt-2">Basierend auf aktuellem Verbrauch und geplanten Projekten</p>
+          <p className="text-xs text-[#4A5A7A]">Stillprobleme.de Start erwartet hoehere Token-Nutzung</p>
         </div>
-        <button onClick={onBack} className={btnClass + ' mt-4'}>
+        <button onClick={onBack} className="cell-btn mt-4">
           Zurueck
         </button>
       </div>
@@ -368,18 +365,18 @@ function AgentsDetailView({
   const activeSkills = skills.filter((s) => s.status === 'active');
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] AGENTS — CORE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">AGENTS — CORE ({coreAgents.length})</h3>
+        <h3 className="cell-title">AGENTS — CORE ({coreAgents.length})</h3>
         <div className="space-y-2">
           {coreAgents.map((a) => (
-            <div key={a.name} className="text-sm border-b border-gray-100 pb-2">
+            <div key={a.name} className="text-sm border-b border-white/5 pb-2">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-black font-medium">{a.name}</span>
+                <span className="dot-green" />
+                <span className="text-[#E0E6F0] font-medium">{a.name}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{a.purpose}</p>
+              <p className="text-xs text-[#4A5A7A] mt-1">{a.purpose}</p>
             </div>
           ))}
         </div>
@@ -387,15 +384,15 @@ function AgentsDetailView({
 
       {/* [1,2] AGENTS — SPECIALISTS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">AGENTS — SPECIALISTS ({specialistAgents.length})</h3>
+        <h3 className="cell-title">AGENTS — SPECIALISTS ({specialistAgents.length})</h3>
         <div className="space-y-2">
           {specialistAgents.map((a) => (
-            <div key={a.name} className="text-sm border-b border-gray-100 pb-2">
+            <div key={a.name} className="text-sm border-b border-white/5 pb-2">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${a.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
-                <span className="text-black font-medium">{a.name}</span>
+                <span className={a.status === 'active' ? 'dot-green' : 'dot-yellow'} />
+                <span className="text-[#E0E6F0] font-medium">{a.name}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{a.triggers}</p>
+              <p className="text-xs text-[#4A5A7A] mt-1">{a.triggers}</p>
             </div>
           ))}
         </div>
@@ -403,15 +400,15 @@ function AgentsDetailView({
 
       {/* [1,3] ZUSAMMENFASSUNG */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">ZUSAMMENFASSUNG</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>{agents.length} Agents ({coreAgents.length} Core + {specialistAgents.length} Specialists)</p>
-          <p>{activeSkills.length} Skills aktiv</p>
-          <p>{coreSkills.length} Core · {projectTypeSkills.length} Project Types</p>
-          <p>{domainSkills.length} Domains · {integrationSkills.length} Integrations</p>
+        <h3 className="cell-title">ZUSAMMENFASSUNG</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p><span className="stat-number text-base">{agents.length}</span> Agents ({coreAgents.length} Core + {specialistAgents.length} Specialists)</p>
+          <p><span className="stat-number text-base">{activeSkills.length}</span> Skills aktiv</p>
+          <p>{coreSkills.length} Core &middot; {projectTypeSkills.length} Project Types</p>
+          <p>{domainSkills.length} Domains &middot; {integrationSkills.length} Integrations</p>
         </div>
         <div className="mt-4">
-          <button onClick={() => navigate('/system')} className={btnSmClass}>
+          <button onClick={() => navigate('/system')} className="cell-btn-sm">
             System-Detail oeffnen
           </button>
         </div>
@@ -419,12 +416,12 @@ function AgentsDetailView({
 
       {/* [2,1] SKILLS — CORE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">SKILLS — CORE ({coreSkills.length})</h3>
+        <h3 className="cell-title">SKILLS — CORE ({coreSkills.length})</h3>
         <div className="space-y-1">
           {coreSkills.map((s) => (
-            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
-              <span className="text-black font-medium">{s.name}</span>
-              <p className="text-xs text-gray-400">{s.purpose.slice(0, 60)}...</p>
+            <div key={s.name} className="text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0] font-medium">{s.name}</span>
+              <p className="text-xs text-[#4A5A7A]">{s.purpose.slice(0, 60)}...</p>
             </div>
           ))}
         </div>
@@ -432,12 +429,12 @@ function AgentsDetailView({
 
       {/* [2,2] SKILLS — PROJECT TYPES */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">SKILLS — PROJECT TYPES ({projectTypeSkills.length})</h3>
+        <h3 className="cell-title">SKILLS — PROJECT TYPES ({projectTypeSkills.length})</h3>
         <div className="space-y-1">
           {projectTypeSkills.map((s) => (
-            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
-              <span className="text-black font-medium">{s.name}</span>
-              <p className="text-xs text-gray-400">{s.activateWhen || ''}</p>
+            <div key={s.name} className="text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0] font-medium">{s.name}</span>
+              <p className="text-xs text-[#4A5A7A]">{s.activateWhen || ''}</p>
             </div>
           ))}
         </div>
@@ -445,12 +442,12 @@ function AgentsDetailView({
 
       {/* [2,3] SKILLS — DOMAINS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">SKILLS — DOMAINS ({domainSkills.length})</h3>
+        <h3 className="cell-title">SKILLS — DOMAINS ({domainSkills.length})</h3>
         <div className="space-y-1">
           {domainSkills.map((s) => (
-            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
-              <span className="text-black font-medium">{s.name}</span>
-              <p className="text-xs text-gray-400">{s.activateWhen || ''}</p>
+            <div key={s.name} className="text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0] font-medium">{s.name}</span>
+              <p className="text-xs text-[#4A5A7A]">{s.activateWhen || ''}</p>
             </div>
           ))}
         </div>
@@ -458,12 +455,12 @@ function AgentsDetailView({
 
       {/* [3,1] SKILLS — INTEGRATIONS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">SKILLS — INTEGRATIONS ({integrationSkills.length})</h3>
+        <h3 className="cell-title">SKILLS — INTEGRATIONS ({integrationSkills.length})</h3>
         <div className="space-y-1">
           {integrationSkills.map((s) => (
-            <div key={s.name} className="text-sm border-b border-gray-100 pb-1">
-              <span className="text-black font-medium">{s.name}</span>
-              <p className="text-xs text-gray-400">{s.activateWhen || ''}</p>
+            <div key={s.name} className="text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0] font-medium">{s.name}</span>
+              <p className="text-xs text-[#4A5A7A]">{s.activateWhen || ''}</p>
             </div>
           ))}
         </div>
@@ -471,15 +468,15 @@ function AgentsDetailView({
 
       {/* [3,2] MCP SERVER QUICK */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">MCP SERVER ({mcpServers.length})</h3>
+        <h3 className="cell-title">MCP SERVER ({mcpServers.length})</h3>
         <div className="space-y-1">
           {mcpServers.map((s) => (
-            <div key={s.name} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+            <div key={s.name} className="flex items-center justify-between text-sm border-b border-white/5 pb-1">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${s.status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-black">{s.name}</span>
+                <span className={s.status === 'connected' ? 'dot-green' : 'dot-red'} />
+                <span className="text-[#E0E6F0]">{s.name}</span>
               </div>
-              <span className="text-xs text-gray-500">{s.tools} Tools</span>
+              <span className="text-xs text-[#4A5A7A] font-mono">{s.tools} Tools</span>
             </div>
           ))}
         </div>
@@ -487,17 +484,17 @@ function AgentsDetailView({
 
       {/* [3,3] SKILL NUTZUNG */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">SKILL NUTZUNG</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="cell-title">SKILL NUTZUNG</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
           <p>Am meisten genutzt:</p>
           <div className="space-y-1">
-            <p className="text-black font-medium">code-quality <span className="text-xs text-gray-400">— jeder Build</span></p>
-            <p className="text-black font-medium">scaffold-project <span className="text-xs text-gray-400">— 3x</span></p>
-            <p className="text-black font-medium">booking-system <span className="text-xs text-gray-400">— 2x</span></p>
+            <p className="text-[#E0E6F0] font-medium">code-quality <span className="text-xs text-[#4A5A7A]">— jeder Build</span></p>
+            <p className="text-[#E0E6F0] font-medium">scaffold-project <span className="text-xs text-[#4A5A7A]">— 3x</span></p>
+            <p className="text-[#E0E6F0] font-medium">booking-system <span className="text-xs text-[#4A5A7A]">— 2x</span></p>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Keine inaktiven Skills erkannt</p>
+          <p className="text-xs text-[#4A5A7A] mt-2">Keine inaktiven Skills erkannt</p>
         </div>
-        <button onClick={onBack} className={btnClass + ' mt-3'}>
+        <button onClick={onBack} className="cell-btn mt-3">
           Zurueck
         </button>
       </div>
@@ -526,50 +523,51 @@ function ProjekteDetailView({
   };
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] PORTFOLIO UEBERSICHT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">PORTFOLIO UEBERSICHT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Projekte gesamt: <span className="font-bold text-black">{projects.length}</span></p>
-          <p>In Entwicklung: {activeProjects.length}</p>
-          <p>Live: {liveProjects.length}</p>
-          <p>Pipeline Ideen: {pipelineIdeasV2.length}</p>
-          <p className="text-xs text-gray-400 mt-2">Umsatzpotenzial: EUR {totalRevenue.toLocaleString('de-DE')}/Jahr</p>
+        <h3 className="cell-title">PORTFOLIO UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Projekte gesamt: <span className="stat-number text-lg">{projects.length}</span></p>
+          <p>In Entwicklung: <span className="stat-number text-base">{activeProjects.length}</span></p>
+          <p>Live: <span className="stat-number text-base">{liveProjects.length}</span></p>
+          <p>Pipeline Ideen: <span className="stat-number text-base">{pipelineIdeasV2.length}</span></p>
+          <p className="text-xs text-[#4A5A7A] mt-2 font-mono">Umsatzpotenzial: EUR {totalRevenue.toLocaleString('de-DE')}/Jahr</p>
         </div>
       </div>
 
       {/* [1,2]+[1,3] PROJECT CARDS */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">PROJEKTE</h3>
+        <h3 className="cell-title">PROJEKTE</h3>
         <div className="space-y-3">
           {projects.map((p) => {
             const laufzeit = Math.floor(
               (new Date().getTime() - new Date(p.startDate).getTime()) / (1000 * 60 * 60 * 24)
             );
+            const healthColor = p.health === 'healthy' ? '#00FF88' : p.health === 'attention' ? '#FFD600' : '#FF2D55';
             return (
-              <div key={p.id} className="border border-gray-200 rounded-lg p-3">
+              <div key={p.id} className="glass-inner p-3">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${p.health === 'healthy' ? 'bg-green-500' : p.health === 'attention' ? 'bg-yellow-500' : 'bg-red-500'}`} />
-                    <span className="text-black font-bold">{p.name}</span>
-                    <span className="text-xs text-gray-400">{p.phase}</span>
+                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: healthColor, boxShadow: `0 0 6px ${healthColor}` }} />
+                    <span className="text-[#E0E6F0] font-bold">{p.name}</span>
+                    <span className="text-xs text-[#4A5A7A]">{p.phase}</span>
                   </div>
                   <button
                     onClick={() => p.status === 'live' ? showToast('Live: ' + p.name) : openProject(p.id)}
-                    className={btnSmClass}
+                    className="cell-btn-sm"
                   >
                     {p.status === 'live' ? 'Ansehen' : 'Oeffnen'}
                   </button>
                 </div>
-                <div className="flex gap-4 text-xs text-gray-500 mb-2">
+                <div className="flex gap-4 text-xs text-[#4A5A7A] mb-2 font-mono">
                   <span>{laufzeit} Tage</span>
-                  <span>{p.progressPercent}%</span>
+                  <span className="text-[#00F0FF]" style={{ textShadow: '0 0 6px rgba(0,240,255,0.3)' }}>{p.progressPercent}%</span>
                   <span>{p.promptCount} Prompts</span>
                   <span>EUR {p.monthlyCost.toFixed(2)}/mo</span>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full">
-                  <div className={`h-full rounded-full ${p.health === 'healthy' ? 'bg-green-500' : p.health === 'attention' ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${p.progressPercent}%` }} />
+                <div className="cell-bar">
+                  <div className="cell-bar-fill" style={{ width: `${p.progressPercent}%`, background: `linear-gradient(90deg, ${healthColor}, ${healthColor}80)` }} />
                 </div>
               </div>
             );
@@ -577,25 +575,27 @@ function ProjekteDetailView({
         </div>
       </div>
 
-      {/* [2,1] MILESTONES */}
+      {/* [2,1]+[2,2] MILESTONES */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">MILESTONES</h3>
+        <h3 className="cell-title">MILESTONES</h3>
         <div className="space-y-3">
           {projects.filter((p) => p.status === 'building').map((p) => {
             const activeMilestone = p.milestones.find((m) => m.active)?.label || 'n/a';
             const completedCount = p.milestones.filter((m) => m.completed).length;
             return (
               <div key={p.id} className="text-sm">
-                <p className="text-black font-medium mb-1">{p.name}</p>
-                <p className="text-xs text-gray-500 mb-1">Aktuell: {activeMilestone} ({completedCount}/{p.milestones.length})</p>
+                <p className="text-[#E0E6F0] font-medium mb-1">{p.name}</p>
+                <p className="text-xs text-[#4A5A7A] mb-1 font-mono">Aktuell: {activeMilestone} ({completedCount}/{p.milestones.length})</p>
                 <div className="flex gap-1">
                   {p.milestones.map((m) => (
                     <span
                       key={m.label}
                       title={m.label}
-                      className={`h-3 flex-1 rounded-sm ${
-                        m.completed ? 'bg-green-400' : m.active ? 'bg-yellow-400' : 'bg-gray-200'
-                      }`}
+                      className="h-3 flex-1 rounded-sm"
+                      style={{
+                        background: m.completed ? '#00FF88' : m.active ? '#00F0FF' : 'rgba(255,255,255,0.06)',
+                        boxShadow: m.completed ? '0 0 4px rgba(0,255,136,0.3)' : m.active ? '0 0 4px rgba(0,240,255,0.3)' : 'none',
+                      }}
                     />
                   ))}
                 </div>
@@ -607,28 +607,28 @@ function ProjekteDetailView({
 
       {/* [2,3] BUSINESS MODELS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">BUSINESS MODELS</h3>
+        <h3 className="cell-title">BUSINESS MODELS</h3>
         <div className="space-y-2">
           {projects.map((p) => (
-            <div key={p.id} className="text-sm border-b border-gray-100 pb-1">
-              <span className="text-black font-medium">{p.name}</span>
-              <p className="text-xs text-gray-500">{p.businessModel}</p>
+            <div key={p.id} className="text-sm border-b border-white/5 pb-1">
+              <span className="text-[#E0E6F0] font-medium">{p.name}</span>
+              <p className="text-xs text-[#4A5A7A]">{p.businessModel}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* [3,1] PIPELINE */}
+      {/* [3,1]+[3,2] PIPELINE */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">IDEEN PIPELINE ({pipelineIdeasV2.length})</h3>
+        <h3 className="cell-title">IDEEN PIPELINE ({pipelineIdeasV2.length})</h3>
         <div className="space-y-2">
           {pipelineIdeasV2.map((idea) => (
-            <div key={idea.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+            <div key={idea.id} className="flex items-center justify-between text-sm border-b border-white/5 pb-1">
               <div>
-                <span className="text-black font-medium">{idea.name}</span>
-                <span className="text-xs text-gray-400 ml-2">{idea.type}</span>
+                <span className="text-[#E0E6F0] font-medium">{idea.name}</span>
+                <span className="text-xs text-[#4A5A7A] ml-2">{idea.type}</span>
               </div>
-              <span className="text-xs text-gray-400">{idea.createdAt}</span>
+              <span className="text-xs text-[#4A5A7A] font-mono">{idea.createdAt}</span>
             </div>
           ))}
         </div>
@@ -636,14 +636,14 @@ function ProjekteDetailView({
 
       {/* [3,3] NAECHSTES PROJEKT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">NAECHSTES PROJEKT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p className="text-black font-medium">findemeinehebamme-v2</p>
+        <h3 className="cell-title">NAECHSTES PROJEKT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p className="text-[#00F0FF] font-medium" style={{ textShadow: '0 0 8px rgba(0,240,255,0.3)' }}>findemeinehebamme-v2</p>
           <p>Status: PLANNING</p>
           <p>Typ: Marketplace</p>
-          <p className="text-xs text-gray-400 mt-2">Wartet auf Abschluss von Hebammenbuero Phase 0 und Stillprobleme Phase 0</p>
+          <p className="text-xs text-[#4A5A7A] mt-2">Wartet auf Abschluss von Hebammenbuero Phase 0 und Stillprobleme Phase 0</p>
         </div>
-        <button onClick={onBack} className={btnClass + ' mt-3'}>
+        <button onClick={onBack} className="cell-btn mt-3">
           Zurueck
         </button>
       </div>
@@ -683,32 +683,32 @@ function TodosDetailView({
   };
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] TODO UEBERSICHT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">TODO UEBERSICHT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Offen: <span className="font-bold text-black">{openTodos.length}</span></p>
-          <p>Erledigt: <span className="text-green-600">{doneTodos.length}</span></p>
-          <p className="text-red-600 font-medium">Hoch: {highPriority.length}</p>
-          <p className="text-yellow-600">Mittel: {medPriority.length}</p>
-          <p className="text-gray-400">Niedrig: {lowPriority.length}</p>
+        <h3 className="cell-title">TODO UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Offen: <span className="stat-number text-lg">{openTodos.length}</span></p>
+          <p>Erledigt: <span className="text-[#00FF88] font-mono" style={{ textShadow: '0 0 6px rgba(0,255,136,0.3)' }}>{doneTodos.length}</span></p>
+          <p className="text-[#FF2D55] font-medium">Hoch: {highPriority.length}</p>
+          <p className="text-[#FFD600]">Mittel: {medPriority.length}</p>
+          <p className="text-[#4A5A7A]">Niedrig: {lowPriority.length}</p>
         </div>
       </div>
 
       {/* [1,2] NEUES TODO */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">NEUES TODO</h3>
+        <h3 className="cell-title">NEUES TODO</h3>
         <div className="flex flex-col gap-2">
           <input
             type="text"
             value={newTodoText}
             onChange={(e) => setNewTodoText(e.target.value)}
             placeholder="Todo eingeben..."
-            className="border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black"
+            className="glass-input"
             onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }}
           />
-          <button onClick={addTodo} className={btnClass}>
+          <button onClick={addTodo} className="cell-btn">
             + Hinzufuegen
           </button>
         </div>
@@ -716,15 +716,15 @@ function TodosDetailView({
 
       {/* [1,3] PRIORITAETEN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">PRIORITAETEN</h3>
+        <h3 className="cell-title">PRIORITAETEN</h3>
         <div className="space-y-2">
           {priorities.map((p) => (
-            <div key={p.id} className="text-sm border-b border-gray-100 pb-1">
+            <div key={p.id} className="text-sm border-b border-white/5 pb-1">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${p.impact === 'high' ? 'bg-red-500' : p.impact === 'medium' ? 'bg-yellow-500' : 'bg-gray-400'}`} />
-                <span className="text-black">{p.text}</span>
+                <span className={p.impact === 'high' ? 'dot-red' : p.impact === 'medium' ? 'dot-yellow' : 'dot-cyan'} />
+                <span className="text-[#E0E6F0]">{p.text}</span>
               </div>
-              {p.project && <p className="text-xs text-gray-400 ml-4">{p.project}</p>}
+              {p.project && <p className="text-xs text-[#4A5A7A] ml-4">{p.project}</p>}
             </div>
           ))}
         </div>
@@ -732,20 +732,20 @@ function TodosDetailView({
 
       {/* [2,1]+[2,2] OFFENE TODOS */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">OFFENE TODOS ({openTodos.length})</h3>
+        <h3 className="cell-title">OFFENE TODOS ({openTodos.length})</h3>
         <div className="space-y-1">
           {openTodos.map((t) => {
             const proj = projects.find((p) => p.id === t.projectId);
             return (
-              <div key={t.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
+              <div key={t.id} className="flex items-center justify-between text-sm border-b border-white/5 pb-1">
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" checked={false} onChange={() => toggleTodo(t.id)} className="cursor-pointer" />
-                  <span className={`w-1.5 h-1.5 rounded-full ${t.priority === 'high' ? 'bg-red-500' : t.priority === 'medium' ? 'bg-yellow-500' : 'bg-gray-300'}`} />
-                  <span className="text-black">{t.text}</span>
+                  <input type="checkbox" checked={false} onChange={() => toggleTodo(t.id)} className="cursor-pointer accent-[#00F0FF]" />
+                  <span className={t.priority === 'high' ? 'dot-red' : t.priority === 'medium' ? 'dot-yellow' : 'dot-cyan'} />
+                  <span className="text-[#E0E6F0]">{t.text}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {proj && <span className="text-xs text-gray-400">{proj.name}</span>}
-                  {t.deadline && <span className="text-xs text-gray-400">{t.deadline}</span>}
+                  {proj && <span className="text-xs text-[#4A5A7A]">{proj.name}</span>}
+                  {t.deadline && <span className="text-xs text-[#4A5A7A] font-mono">{t.deadline}</span>}
                 </div>
               </div>
             );
@@ -755,31 +755,31 @@ function TodosDetailView({
 
       {/* [2,3] ERLEDIGTE TODOS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">ERLEDIGT ({doneTodos.length})</h3>
+        <h3 className="cell-title">ERLEDIGT ({doneTodos.length})</h3>
         <div className="space-y-1">
           {doneTodos.map((t) => (
-            <div key={t.id} className="flex items-center gap-2 text-sm text-gray-400 border-b border-gray-100 pb-1">
+            <div key={t.id} className="flex items-center gap-2 text-sm text-[#4A5A7A] border-b border-white/5 pb-1">
               <input type="checkbox" checked onChange={() => toggleTodo(t.id)} className="cursor-pointer" />
               <span className="line-through">{t.text}</span>
             </div>
           ))}
-          {doneTodos.length === 0 && <p className="text-sm text-gray-400 italic">Keine erledigten Todos</p>}
+          {doneTodos.length === 0 && <p className="text-sm text-[#4A5A7A] italic">Keine erledigten Todos</p>}
         </div>
       </div>
 
-      {/* [3,1] TODOS PRO PROJEKT */}
+      {/* [3,1]+[3,2] TODOS PRO PROJEKT */}
       <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">TODOS PRO PROJEKT</h3>
+        <h3 className="cell-title">TODOS PRO PROJEKT</h3>
         <div className="grid grid-cols-2 gap-3">
           {projects.map((p) => {
             const projectTodos = openTodos.filter((t) => t.projectId === p.id);
             return (
               <div key={p.id} className="text-sm">
-                <p className="text-black font-medium">{p.name} ({projectTodos.length})</p>
+                <p className="text-[#E0E6F0] font-medium">{p.name} (<span className="text-[#00F0FF]">{projectTodos.length}</span>)</p>
                 {projectTodos.slice(0, 2).map((t) => (
-                  <p key={t.id} className="text-xs text-gray-500">- {t.text}</p>
+                  <p key={t.id} className="text-xs text-[#4A5A7A]">- {t.text}</p>
                 ))}
-                {projectTodos.length === 0 && <p className="text-xs text-gray-400 italic">Keine offenen Todos</p>}
+                {projectTodos.length === 0 && <p className="text-xs text-[#4A5A7A] italic">Keine offenen Todos</p>}
               </div>
             );
           })}
@@ -788,16 +788,16 @@ function TodosDetailView({
 
       {/* [3,3] DEADLINES */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">NAECHSTE DEADLINES</h3>
+        <h3 className="cell-title">NAECHSTE DEADLINES</h3>
         <div className="space-y-2">
           {openTodos.filter((t) => t.deadline).sort((a, b) => (a.deadline || '').localeCompare(b.deadline || '')).slice(0, 4).map((t) => {
             const daysLeft = Math.ceil((new Date(t.deadline!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
             const isOverdue = daysLeft < 0;
             const isUrgent = daysLeft <= 2 && !isOverdue;
             return (
-              <div key={t.id} className="text-sm border-b border-gray-100 pb-1">
-                <p className="text-black">{t.text}</p>
-                <p className={`text-xs ${isOverdue ? 'text-red-600 font-bold' : isUrgent ? 'text-yellow-600 font-medium' : 'text-gray-400'}`}>
+              <div key={t.id} className="text-sm border-b border-white/5 pb-1">
+                <p className="text-[#E0E6F0]">{t.text}</p>
+                <p className={`text-xs font-mono ${isOverdue ? 'text-[#FF2D55] font-bold' : isUrgent ? 'text-[#FFD600] font-medium' : 'text-[#4A5A7A]'}`} style={isOverdue ? { textShadow: '0 0 6px rgba(255,45,85,0.3)' } : isUrgent ? { textShadow: '0 0 6px rgba(255,214,0,0.3)' } : {}}>
                   {isOverdue ? `${Math.abs(daysLeft)} Tage ueberfaellig` : `${daysLeft} Tage uebrig`}
                 </p>
               </div>
@@ -805,10 +805,10 @@ function TodosDetailView({
           })}
         </div>
         <div className="mt-3 space-y-2">
-          <button onClick={() => setView('briefing')} className={btnSmClass + ' w-full text-left'}>
+          <button onClick={() => setView('briefing')} className="cell-btn-sm w-full text-left">
             Briefing oeffnen
           </button>
-          <button onClick={onBack} className={btnSmClass + ' w-full text-left'}>
+          <button onClick={onBack} className="cell-btn-sm w-full text-left">
             Zurueck
           </button>
         </div>
@@ -849,42 +849,42 @@ function DashboardView({
   if (detail === 'todos') return <TodosDetailView onBack={goBack} setView={setView} showToast={showToast} />;
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] SYSTEM STATUS — clickable */}
-      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('system')}>
-        <h3 className="text-sm font-bold text-black mb-3">SYSTEM STATUS</h3>
-        <p className="text-sm text-gray-600">Status: <span className="text-green-600 font-bold">Online</span></p>
-        <p className="text-sm text-gray-600">{connectedMcp.length} MCP verbunden</p>
-        <p className="text-xs text-gray-400 mt-2">Klicken fuer Details</p>
+      <div className="grid-cell cursor-pointer" onClick={() => setDetail('system')}>
+        <h3 className="cell-title">SYSTEM STATUS</h3>
+        <p className="text-sm text-[#7B8DB5]">Status: <span className="text-[#00FF88] font-bold" style={{ textShadow: '0 0 8px rgba(0,255,136,0.4)' }}>Online</span></p>
+        <p className="text-sm text-[#7B8DB5]"><span className="stat-number text-base">{connectedMcp.length}</span> MCP verbunden</p>
+        <p className="text-xs text-[#4A5A7A] mt-2 font-mono">Klicken fuer Details</p>
       </div>
 
       {/* [1,2] TOKEN & KOSTEN — clickable */}
-      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('finanzen')}>
-        <h3 className="text-sm font-bold text-black mb-3">FINANZEN</h3>
-        <p className="text-sm text-gray-600">
-          Tokens: {Math.round(totalTokens / 1000)}K / 500K ({Math.round((totalTokens / 500000) * 100)}%)
+      <div className="grid-cell cursor-pointer" onClick={() => setDetail('finanzen')}>
+        <h3 className="cell-title">FINANZEN</h3>
+        <p className="text-sm text-[#7B8DB5]">
+          Tokens: <span className="stat-number text-base">{Math.round(totalTokens / 1000)}K</span> / 500K (<span className="text-[#00F0FF] font-mono">{Math.round((totalTokens / 500000) * 100)}%</span>)
         </p>
-        <p className="text-sm text-gray-600">Monatskosten: EUR {totalCost.toFixed(2)}</p>
-        <p className="text-xs text-gray-400 mt-2">Klicken fuer Details</p>
+        <p className="text-sm text-[#7B8DB5]">Monatskosten: <span className="stat-number text-base">EUR {totalCost.toFixed(2)}</span></p>
+        <p className="text-xs text-[#4A5A7A] mt-2 font-mono">Klicken fuer Details</p>
       </div>
 
       {/* [1,3] AGENTS & SKILLS — clickable */}
-      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('agents')}>
-        <h3 className="text-sm font-bold text-black mb-3">AGENTS &amp; SKILLS</h3>
-        <p className="text-sm text-gray-600">{activeAgents.length} Agents arbeiten</p>
-        <p className="text-sm text-gray-600">{activeSkills.length} Skills aktiv</p>
-        <p className="text-sm text-gray-600">{connectedMcp.length} MCP verbunden</p>
-        <p className="text-xs text-gray-400 mt-2">Klicken fuer Details</p>
+      <div className="grid-cell cursor-pointer" onClick={() => setDetail('agents')}>
+        <h3 className="cell-title">AGENTS &amp; SKILLS</h3>
+        <p className="text-sm text-[#7B8DB5]"><span className="stat-number text-base">{activeAgents.length}</span> Agents arbeiten</p>
+        <p className="text-sm text-[#7B8DB5]"><span className="stat-number text-base">{activeSkills.length}</span> Skills aktiv</p>
+        <p className="text-sm text-[#7B8DB5]"><span className="stat-number text-base">{connectedMcp.length}</span> MCP verbunden</p>
+        <p className="text-xs text-[#4A5A7A] mt-2 font-mono">Klicken fuer Details</p>
       </div>
 
       {/* [2,1] PROJEKTE — clickable */}
-      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('projekte')}>
-        <h3 className="text-sm font-bold text-black mb-3">PROJEKTE</h3>
+      <div className="grid-cell cursor-pointer" onClick={() => setDetail('projekte')}>
+        <h3 className="cell-title">PROJEKTE</h3>
         <div className="space-y-2">
           {projects.map((p) => (
             <div key={p.id} className="flex items-center justify-between text-sm">
-              <span className="text-black">
-                {p.name} &middot; {p.phase} &middot; {p.progressPercent}%
+              <span className="text-[#E0E6F0]">
+                {p.name} &middot; {p.phase} &middot; <span className="text-[#00F0FF] font-mono" style={{ textShadow: '0 0 6px rgba(0,240,255,0.3)' }}>{p.progressPercent}%</span>
               </span>
               <button
                 onClick={(e) => {
@@ -895,78 +895,78 @@ function DashboardView({
                     openProject(p.id);
                   }
                 }}
-                className={btnSmClass}
+                className="cell-btn-sm"
               >
                 {p.status === 'live' ? 'Ansehen' : 'Oeffnen'}
               </button>
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-400 mt-2">Klicken fuer Portfolio-Uebersicht</p>
+        <p className="text-xs text-[#4A5A7A] mt-2 font-mono">Klicken fuer Portfolio-Uebersicht</p>
       </div>
 
       {/* [2,2] PROJEKT-STATUS & TODOS — clickable */}
-      <div className="grid-cell cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setDetail('todos')}>
-        <h3 className="text-sm font-bold text-black mb-3">PROJEKT-STATUS &amp; TODOS</h3>
+      <div className="grid-cell cursor-pointer" onClick={() => setDetail('todos')}>
+        <h3 className="cell-title">PROJEKT-STATUS &amp; TODOS</h3>
         <div className="space-y-2 mb-3">
           {topTodos.map((t) => {
             const proj = projects.find((p) => p.id === t.projectId);
             return (
-              <div key={t.id} className="text-sm text-gray-600">
-                [{proj?.name || 'Allgemein'}] {t.text}
-                {t.deadline && <span className="text-xs text-gray-400 ml-1">({t.deadline})</span>}
+              <div key={t.id} className="text-sm text-[#7B8DB5]">
+                <span className="text-[#4A5A7A]">[{proj?.name || 'Allgemein'}]</span> {t.text}
+                {t.deadline && <span className="text-xs text-[#4A5A7A] ml-1 font-mono">({t.deadline})</span>}
               </div>
             );
           })}
         </div>
-        <p className="text-xs text-gray-400">Klicken fuer Todo-Manager</p>
+        <p className="text-xs text-[#4A5A7A] font-mono">Klicken fuer Todo-Manager</p>
       </div>
 
       {/* [2,3] IDEEN PIPELINE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">IDEEN PIPELINE</h3>
+        <h3 className="cell-title">IDEEN PIPELINE</h3>
         <div className="space-y-2 mb-3">
           {pipelineIdeasV2.map((idea) => (
-            <div key={idea.id} className="text-sm text-gray-600">
-              {idea.name} &middot; {idea.type}
+            <div key={idea.id} className="text-sm text-[#7B8DB5]">
+              <span className="text-[#E0E6F0]">{idea.name}</span> &middot; <span className="text-[#4A5A7A]">{idea.type}</span>
             </div>
           ))}
         </div>
-        <button onClick={() => setView('thinktank')} className={btnSmClass}>
+        <button onClick={() => setView('thinktank')} className="cell-btn-sm">
           + Neue Idee
         </button>
       </div>
 
       {/* [3,1] ACTION: BRIEFING */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">ACTION: BRIEFING</h3>
-        <p className="text-sm text-gray-600 mb-3">Was war gestern, was kommt heute</p>
-        <button onClick={() => setView('briefing')} className={btnClass}>
+        <h3 className="cell-title">ACTION: BRIEFING</h3>
+        <p className="text-sm text-[#7B8DB5] mb-3">Was war gestern, was kommt heute</p>
+        <button onClick={() => setView('briefing')} className="cell-btn">
           Briefing oeffnen
         </button>
       </div>
 
       {/* [3,2] ACTION: THINKTANK */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">ACTION: THINKTANK</h3>
-        <p className="text-sm text-gray-600 mb-3">Gedanken teilen und strukturieren</p>
-        <button onClick={() => setView('thinktank')} className={btnClass}>
+        <h3 className="cell-title">ACTION: THINKTANK</h3>
+        <p className="text-sm text-[#7B8DB5] mb-3">Gedanken teilen und strukturieren</p>
+        <button onClick={() => setView('thinktank')} className="cell-btn">
           Thinktank oeffnen
         </button>
       </div>
 
       {/* [3,3] KANI STATUS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KANI STATUS</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="cell-title">KANI STATUS</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-black font-medium">Online</span>
+            <span className="dot-green" />
+            <span className="text-[#E0E6F0] font-medium">Online</span>
           </div>
-          <p>Letzte Aktion: vor 3 Min</p>
-          <p>Session: 2h 14m</p>
-          <p>Kontext: 47% belegt</p>
-          <p className="text-xs text-gray-400 mt-2">MCKAY OS v1.0 · Phase 0</p>
+          <p>Letzte Aktion: <span className="text-[#E0E6F0] font-mono">vor 3 Min</span></p>
+          <p>Session: <span className="stat-number text-base">2h 14m</span></p>
+          <p>Kontext: <span className="stat-number text-base">47%</span> belegt</p>
+          <p className="text-xs text-[#4A5A7A] mt-2 font-mono">MCKAY OS v1.0 &middot; Phase 0</p>
         </div>
       </div>
     </div>
@@ -976,38 +976,38 @@ function DashboardView({
 // --- BRIEFING VIEW ---
 function BriefingView({ setView }: { setView: (v: View) => void }) {
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] GESTERN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">GESTERN</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <p>12 Todos erledigt</p>
+        <h3 className="cell-title">GESTERN</h3>
+        <div className="space-y-1 text-sm text-[#7B8DB5]">
+          <p><span className="stat-number text-base">12</span> Todos erledigt</p>
           <p>3 Projekte bearbeitet: Hebammenbuero, TennisCoach, Mission Control</p>
-          <p>Fortschritt: +8% gesamt</p>
+          <p>Fortschritt: <span className="text-[#00FF88] font-mono" style={{ textShadow: '0 0 6px rgba(0,255,136,0.3)' }}>+8%</span> gesamt</p>
           <p>2 neue Ideen erstellt</p>
         </div>
       </div>
 
       {/* [1,2] + [2,2] EMPFEHLUNG — spans 2 rows */}
       <div className="grid-cell span-2-rows">
-        <h3 className="text-sm font-bold text-black mb-3">EMPFEHLUNG</h3>
-        <p className="text-sm text-gray-600 mb-3">Empfohlene Reihenfolge:</p>
-        <ol className="list-decimal list-inside text-sm text-gray-700 space-y-2 mb-6">
+        <h3 className="cell-title">EMPFEHLUNG</h3>
+        <p className="text-sm text-[#7B8DB5] mb-3">Empfohlene Reihenfolge:</p>
+        <ol className="list-decimal list-inside text-sm text-[#7B8DB5] space-y-2 mb-6">
           <li>
-            <span className="font-bold">Hebammenbuero</span> — Mockup Review
+            <span className="font-bold text-[#E0E6F0]">Hebammenbuero</span> — Mockup Review
           </li>
           <li>
-            <span className="font-bold">Stillprobleme</span> — Mockup bauen
+            <span className="font-bold text-[#E0E6F0]">Stillprobleme</span> — Mockup bauen
           </li>
           <li>
-            <span className="font-bold">TennisCoach</span> — Phase 4 planen
+            <span className="font-bold text-[#E0E6F0]">TennisCoach</span> — Phase 4 planen
           </li>
         </ol>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setView('dashboard')} className={btnClass}>
+          <button onClick={() => setView('dashboard')} className="cell-btn">
             Cockpit
           </button>
-          <button onClick={() => setView('thinktank')} className={btnClass}>
+          <button onClick={() => setView('thinktank')} className="cell-btn">
             Thinktank
           </button>
         </div>
@@ -1015,21 +1015,21 @@ function BriefingView({ setView }: { setView: (v: View) => void }) {
 
       {/* [1,3] HEUTE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">HEUTE</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <p>6 Todos geplant</p>
+        <h3 className="cell-title">HEUTE</h3>
+        <div className="space-y-1 text-sm text-[#7B8DB5]">
+          <p><span className="stat-number text-base">6</span> Todos geplant</p>
           <p>Projekte: Hebammenbuero, Stillprobleme</p>
           <p>Termine: 14:00 Designer, 16:00 Testing</p>
-          <p>Ziel: +15% Fortschritt</p>
+          <p>Ziel: <span className="text-[#00F0FF] font-mono" style={{ textShadow: '0 0 6px rgba(0,240,255,0.3)' }}>+15%</span> Fortschritt</p>
         </div>
       </div>
 
       {/* [2,1] PROJEKTE GESTERN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">PROJEKTE GESTERN</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <p>Hebammenbuero: Mockup erweitert (+8%)</p>
-          <p>TennisCoach: Auth fertig gebaut (+5%)</p>
+        <h3 className="cell-title">PROJEKTE GESTERN</h3>
+        <div className="space-y-1 text-sm text-[#7B8DB5]">
+          <p>Hebammenbuero: Mockup erweitert (<span className="text-[#00FF88]">+8%</span>)</p>
+          <p>TennisCoach: Auth fertig gebaut (<span className="text-[#00FF88]">+5%</span>)</p>
         </div>
       </div>
 
@@ -1037,46 +1037,46 @@ function BriefingView({ setView }: { setView: (v: View) => void }) {
 
       {/* [2,3] TERMINE HEUTE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">TERMINE HEUTE</h3>
-        <div className="space-y-1 text-sm text-gray-600">
-          <p>09:00 Standup mit KANI</p>
-          <p>11:00 Hebammenbuero Review</p>
-          <p>14:00 Call mit Designer</p>
-          <p>16:00 TennisCoach Testing</p>
+        <h3 className="cell-title">TERMINE HEUTE</h3>
+        <div className="space-y-1 text-sm text-[#7B8DB5]">
+          <p><span className="text-[#00F0FF] font-mono">09:00</span> Standup mit KANI</p>
+          <p><span className="text-[#00F0FF] font-mono">11:00</span> Hebammenbuero Review</p>
+          <p><span className="text-[#00F0FF] font-mono">14:00</span> Call mit Designer</p>
+          <p><span className="text-[#00F0FF] font-mono">16:00</span> TennisCoach Testing</p>
         </div>
       </div>
 
       {/* [3,1] KANI INSIGHT 1 */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KANI INSIGHT</h3>
-        <p className="text-sm text-gray-600 italic">
+        <h3 className="cell-title">KANI INSIGHT</h3>
+        <p className="text-sm text-[#8B5CF6] italic" style={{ textShadow: '0 0 12px rgba(139,92,246,0.3)' }}>
           &quot;Hebammenbuero + Stillprobleme teilen 80% der Skills&quot;
         </p>
       </div>
 
       {/* [3,2] KANI INSIGHT 2 */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KANI INSIGHT</h3>
-        <p className="text-sm text-gray-600 italic">
+        <h3 className="cell-title">KANI INSIGHT</h3>
+        <p className="text-sm text-[#8B5CF6] italic" style={{ textShadow: '0 0 12px rgba(139,92,246,0.3)' }}>
           &quot;TennisCoach: Stripe dauert ~2 Tage&quot;
         </p>
       </div>
 
       {/* [3,3] FOKUS-TIMER */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">FOKUS</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="cell-title">FOKUS</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
           <p>Heutiger Fokus:</p>
-          <p className="text-black font-bold text-lg">Hebammenbuero</p>
+          <p className="text-[#00F0FF] font-bold text-lg" style={{ textShadow: '0 0 16px rgba(0,240,255,0.4)' }}>Hebammenbuero</p>
           <p>Mockup Review + Validation</p>
-          <p className="text-xs text-gray-400 mt-3">Empfohlen: 3h Fokuszeit</p>
-          <p className="text-xs text-gray-400">Ablenkungen vermeiden bis 14:00</p>
+          <p className="text-xs text-[#4A5A7A] mt-3 font-mono">Empfohlen: 3h Fokuszeit</p>
+          <p className="text-xs text-[#4A5A7A] font-mono">Ablenkungen vermeiden bis 14:00</p>
         </div>
         <div className="mt-3 space-y-2">
-          <button onClick={() => setView('dashboard')} className={btnClass + ' w-full'}>
+          <button onClick={() => setView('dashboard')} className="cell-btn w-full">
             Zurueck
           </button>
-          <button onClick={() => setView('thinktank')} className={btnSmClass + ' w-full'}>
+          <button onClick={() => setView('thinktank')} className="cell-btn-sm w-full">
             Thinktank
           </button>
         </div>
@@ -1293,7 +1293,7 @@ function ThinktankView({ setView }: { setView: (v: View) => void }) {
               {kaniProcessing ? 'Analysiere...' : 'Absenden'}
             </button>
             <span className="text-[10px] font-mono text-text-muted">
-              Enter zum Senden · Shift+Enter fuer neue Zeile
+              Enter zum Senden &middot; Shift+Enter fuer neue Zeile
             </span>
           </div>
         </div>
@@ -1435,8 +1435,8 @@ function ThinktankView({ setView }: { setView: (v: View) => void }) {
             </div>
             <div className="space-y-2 text-[11px] font-mono text-text-muted">
               <p>{filteredEntries.length} sichtbar von {entries.length}</p>
-              <p>{categoryCounts['Ideen']} Ideen · {categoryCounts['Strategie']} Strategien</p>
-              <p>{categoryCounts['Research']} Research · {categoryCounts['Privat']} Privat</p>
+              <p>{categoryCounts['Ideen']} Ideen &middot; {categoryCounts['Strategie']} Strategien</p>
+              <p>{categoryCounts['Research']} Research &middot; {categoryCounts['Privat']} Privat</p>
             </div>
           </div>
           <button

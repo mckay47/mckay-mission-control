@@ -58,7 +58,11 @@ html {
 }
 
 body {
-  background-color: var(--color-bg-primary);
+  background: #080C18;
+  background-image: url('/bg-cockpit.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
@@ -567,15 +571,147 @@ body {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   height: 100vh;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px;
 }
 .grid-cell {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  background: rgba(10, 17, 32, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   padding: 16px;
   overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #E0E6F0;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.grid-cell:hover {
+  border-color: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 240, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .span-2-cols { grid-column: span 2; }
 .span-2-rows { grid-row: span 2; }
 .span-3-cols { grid-column: span 3; }
+
+/* ═══════════════════════════════════════════
+   V9 — CELL DESIGN SYSTEM (Glass Cockpit)
+   ═══════════════════════════════════════════ */
+
+/* Glass cell title */
+.cell-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #00F0FF;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Stat number */
+.stat-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #00F0FF;
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+
+/* Progress bar in cells */
+.cell-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.cell-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #00F0FF, #00FF88);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+
+/* Cell button */
+.cell-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  color: #E0E6F0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.cell-btn:hover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: rgba(0, 240, 255, 0.3);
+  color: #00F0FF;
+}
+
+/* Cell button small variant */
+.cell-btn-sm {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  color: #E0E6F0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.cell-btn-sm:hover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: rgba(0, 240, 255, 0.3);
+  color: #00F0FF;
+}
+
+/* Status dots */
+.dot-green { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #00FF88; box-shadow: 0 0 6px #00FF88; }
+.dot-yellow { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #FFD600; box-shadow: 0 0 6px #FFD600; }
+.dot-red { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #FF2D55; box-shadow: 0 0 6px #FF2D55; }
+.dot-cyan { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #00F0FF; box-shadow: 0 0 6px #00F0FF; }
+.dot-orange { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #FF6B2C; box-shadow: 0 0 6px #FF6B2C; }
+
+/* Glass input field */
+.glass-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: #E0E6F0;
+  transition: all 0.3s;
+}
+.glass-input::placeholder {
+  color: #4A5A7A;
+}
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.1);
+}
+.glass-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Inner glass panel (sub-card inside a cell) */
+.glass-inner {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* Separator line */
+.cell-separator {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Boot phase dark background (no cockpit image) */
+.boot-bg {
+  background: #080C18;
+  background-image: none;
+}

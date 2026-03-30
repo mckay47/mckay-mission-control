@@ -28,18 +28,18 @@ export function Shell() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen text-[#E0E6F0]">
       {showBreadcrumb && (
-        <nav className="fixed top-0 left-0 right-0 z-30 h-10 flex items-center px-6 bg-white border-b border-gray-200">
+        <nav className="fixed top-0 left-0 right-0 z-30 h-10 flex items-center px-6 breadcrumb-bar">
           <div className="flex items-center gap-1.5 text-sm">
             <button
               onClick={() => navigate('/')}
-              className="text-gray-500 hover:text-black cursor-pointer"
+              className="text-[#7B8DB5] hover:text-[#00F0FF] cursor-pointer transition-colors"
             >
               Cockpit
             </button>
-            <span className="text-gray-400">/</span>
-            <span className="text-black font-medium">{label}</span>
+            <span className="text-[#4A5A7A]">/</span>
+            <span className="text-[#E0E6F0] font-medium">{label}</span>
           </div>
         </nav>
       )}
@@ -48,8 +48,15 @@ export function Shell() {
         <Outlet />
       </main>
 
-      {/* Persistent bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 h-12 flex items-center justify-center gap-1 bg-white border-t border-gray-200 px-4">
+      {/* Persistent bottom navigation — glass style */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 h-12 flex items-center justify-center gap-1 px-4"
+        style={{
+          background: 'rgba(10, 17, 32, 0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        }}
+      >
         {navButtons.map((btn) => {
           const active = isActive(btn.path);
           return (
@@ -58,8 +65,8 @@ export function Shell() {
               onClick={() => navigate(btn.path)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                 active
-                  ? 'bg-black text-white'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-black'
+                  ? 'text-[#00F0FF] bg-[rgba(0,240,255,0.1)] border border-[rgba(0,240,255,0.2)]'
+                  : 'text-[#7B8DB5] hover:text-[#E0E6F0] hover:bg-[rgba(255,255,255,0.05)] border border-transparent'
               }`}
             >
               <btn.icon size={16} />
@@ -67,10 +74,10 @@ export function Shell() {
             </button>
           );
         })}
-        <div className="w-px h-6 bg-gray-200 mx-2" />
+        <div className="w-px h-6 bg-[rgba(255,255,255,0.08)] mx-2" />
         <button
           onClick={() => setShowFeierabend(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[#FF2D55] hover:bg-[rgba(255,45,85,0.1)] transition-all cursor-pointer border border-transparent"
         >
           <Power size={16} />
           <span>Feierabend</span>

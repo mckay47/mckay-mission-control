@@ -4,9 +4,6 @@ import { useToast } from '../components/ui';
 type TodoMode = 'privat' | 'projekte';
 type CalendarView = 'tag' | 'woche' | 'monat';
 
-const btnClass =
-  'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
-
 const privateTodos = [
   { text: 'Zahnarzt', done: false },
   { text: 'Steuer', done: false },
@@ -41,39 +38,39 @@ export function Office() {
   const activeTodos = todoMode === 'privat' ? privateTodos : projektTodos;
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit">
       {/* [1,1] KPI UEBERSICHT */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">UEBERSICHT</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>Termine heute: <span className="font-bold text-black">{calendarEntries.length}</span></p>
-          <p>Mails offen: <span className="font-bold text-black">{emails.filter((e) => !e.auto).length}</span></p>
-          <p>Todos privat: <span className="font-bold text-black">{privateTodos.filter((t) => !t.done).length}</span></p>
-          <p>Todos Projekte: <span className="font-bold text-black">{projektTodos.filter((t) => !t.done).length}</span></p>
-          <p className="text-xs text-gray-400 mt-2">Naechster Termin: {calendarEntries[0]?.time} {calendarEntries[0]?.title}</p>
+        <h3 className="cell-title">UEBERSICHT</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
+          <p>Termine heute: <span className="stat-number text-base">{calendarEntries.length}</span></p>
+          <p>Mails offen: <span className="stat-number text-base">{emails.filter((e) => !e.auto).length}</span></p>
+          <p>Todos privat: <span className="stat-number text-base">{privateTodos.filter((t) => !t.done).length}</span></p>
+          <p>Todos Projekte: <span className="stat-number text-base">{projektTodos.filter((t) => !t.done).length}</span></p>
+          <p className="text-xs text-[#4A5A7A] mt-2">Naechster Termin: {calendarEntries[0]?.time} {calendarEntries[0]?.title}</p>
         </div>
       </div>
 
       {/* [1,2] AUFGABEN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">AUFGABEN</h3>
+        <h3 className="cell-title">AUFGABEN</h3>
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setTodoMode('privat')}
-            className={`px-3 py-1 rounded border text-sm cursor-pointer ${
+            className={`px-3 py-1 rounded-lg border text-sm cursor-pointer transition-all ${
               todoMode === 'privat'
-                ? 'bg-gray-300 border-gray-500 text-black font-bold'
-                : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
+                ? 'bg-[rgba(0,240,255,0.1)] border-[rgba(0,240,255,0.3)] text-[#00F0FF] font-bold'
+                : 'cell-btn'
             }`}
           >
             Privat
           </button>
           <button
             onClick={() => setTodoMode('projekte')}
-            className={`px-3 py-1 rounded border text-sm cursor-pointer ${
+            className={`px-3 py-1 rounded-lg border text-sm cursor-pointer transition-all ${
               todoMode === 'projekte'
-                ? 'bg-gray-300 border-gray-500 text-black font-bold'
-                : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
+                ? 'bg-[rgba(0,240,255,0.1)] border-[rgba(0,240,255,0.3)] text-[#00F0FF] font-bold'
+                : 'cell-btn'
             }`}
           >
             Projekte
@@ -81,15 +78,15 @@ export function Office() {
         </div>
         <div className="space-y-2">
           {activeTodos.map((todo, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-black">
-              <span>{todo.done ? '[x]' : '[ ]'}</span>
+            <div key={i} className="flex items-center gap-2 text-sm text-[#E0E6F0]">
+              <span className="text-[#4A5A7A]">{todo.done ? '[x]' : '[ ]'}</span>
               <span>{todo.text}</span>
             </div>
           ))}
         </div>
         <button
           onClick={() => showToast('Neues Todo')}
-          className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded border border-gray-300 cursor-pointer text-sm text-black mt-3"
+          className="cell-btn mt-3"
         >
           + Neues Todo
         </button>
@@ -97,14 +94,15 @@ export function Office() {
 
       {/* [1,3] KALENDER */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KALENDER</h3>
-        <p className="text-sm text-gray-600 mb-3">
+        <h3 className="cell-title">KALENDER</h3>
+        <p className="text-sm text-[#7B8DB5] mb-3">
           Heute {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
         </p>
         <div className="space-y-2 mb-4">
           {calendarEntries.map((entry, i) => (
-            <div key={i} className="text-sm text-black">
-              {entry.time} {entry.title}
+            <div key={i} className="text-sm text-[#E0E6F0] flex gap-2">
+              <span className="text-[#00F0FF] font-mono">{entry.time}</span>
+              <span>{entry.title}</span>
             </div>
           ))}
         </div>
@@ -119,10 +117,10 @@ export function Office() {
                   setCalendarView(view);
                 }
               }}
-              className={`px-3 py-1 rounded border text-xs cursor-pointer ${
+              className={`px-3 py-1 rounded-lg border text-xs cursor-pointer transition-all ${
                 calendarView === view
-                  ? 'bg-gray-300 border-gray-500 text-black font-bold'
-                  : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
+                  ? 'bg-[rgba(0,240,255,0.1)] border-[rgba(0,240,255,0.3)] text-[#00F0FF] font-bold'
+                  : 'cell-btn-sm'
               }`}
             >
               {view.charAt(0).toUpperCase() + view.slice(1)}
@@ -133,23 +131,23 @@ export function Office() {
 
       {/* [2,1] POSTEINGANG */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">POSTEINGANG</h3>
+        <h3 className="cell-title">POSTEINGANG</h3>
         <div className="space-y-3">
           {emails.map((email, i) => (
-            <div key={i} className={`border border-gray-200 rounded p-2 ${email.auto ? 'opacity-50' : ''}`}>
-              <p className="text-sm font-bold text-black">{email.subject}</p>
-              <p className="text-xs text-gray-600">von: {email.from}</p>
+            <div key={i} className={`glass-inner ${email.auto ? 'opacity-50' : ''}`}>
+              <p className="text-sm font-bold text-[#E0E6F0]">{email.subject}</p>
+              <p className="text-xs text-[#7B8DB5]">von: {email.from}</p>
               {!email.auto && (
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => showToast('Antworten: ' + email.subject)}
-                    className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
+                    className="cell-btn-sm"
                   >
                     Antworten
                   </button>
                   <button
                     onClick={() => showToast('Geparkt: ' + email.subject)}
-                    className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
+                    className="cell-btn-sm"
                   >
                     Parken
                   </button>
@@ -157,40 +155,41 @@ export function Office() {
               )}
             </div>
           ))}
-          <p className="text-xs text-gray-500">3 ignoriert</p>
+          <p className="text-xs text-[#4A5A7A]">3 ignoriert</p>
         </div>
       </div>
 
       {/* [2,2] NOTIZEN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">NOTIZEN</h3>
+        <h3 className="cell-title">NOTIZEN</h3>
         <textarea
           value={noteText}
           onChange={(e) => setNoteText(e.target.value)}
           placeholder="Freitext-Editor..."
           rows={8}
-          className="w-full border border-gray-300 rounded p-3 text-sm text-black bg-white resize-none"
+          className="w-full glass-input resize-none"
+          style={{ borderRadius: '12px', padding: '12px' }}
         />
       </div>
 
       {/* [2,3] KONTAKTE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KONTAKTE</h3>
+        <h3 className="cell-title">KONTAKTE</h3>
         <div className="space-y-2">
           {[
             { name: 'Designer', info: 'Letzer Call: gestern' },
             { name: 'Rechtsanwalt', info: 'Vertrag offen' },
             { name: 'Steuerberater', info: 'Quartalsabschluss' },
           ].map((contact) => (
-            <div key={contact.name} className="text-sm border-b border-gray-100 pb-1">
-              <p className="text-black font-medium">{contact.name}</p>
-              <p className="text-xs text-gray-400">{contact.info}</p>
+            <div key={contact.name} className="text-sm border-b border-white/5 pb-1">
+              <p className="text-[#E0E6F0] font-medium">{contact.name}</p>
+              <p className="text-xs text-[#4A5A7A]">{contact.info}</p>
             </div>
           ))}
         </div>
         <button
           onClick={() => showToast('Kontakte-Modul kommt in Phase 1')}
-          className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black mt-3"
+          className="cell-btn-sm mt-3"
         >
           Alle Kontakte
         </button>
@@ -198,12 +197,12 @@ export function Office() {
 
       {/* [3,1] ZUKUENFTIGE MODULE */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">ZUKUENFTIGE MODULE</h3>
+        <h3 className="cell-title">ZUKUENFTIGE MODULE</h3>
         <div className="space-y-2">
           {['E-Mail Agent', 'Finanzen', 'Docs', 'Reisen'].map((mod) => (
-            <div key={mod} className="border border-gray-300 rounded p-2 text-center opacity-50">
-              <p className="text-sm text-gray-600">{mod}</p>
-              <p className="text-xs text-gray-400">Gesperrt</p>
+            <div key={mod} className="glass-inner text-center opacity-50">
+              <p className="text-sm text-[#7B8DB5]">{mod}</p>
+              <p className="text-xs text-[#4A5A7A]">Gesperrt</p>
             </div>
           ))}
         </div>
@@ -211,40 +210,40 @@ export function Office() {
 
       {/* [3,2] TAGESPLAN */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">TAGESPLAN</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="cell-title">TAGESPLAN</h3>
+        <div className="space-y-2 text-sm text-[#7B8DB5]">
           <p>Morgen: Standup, Mails checken</p>
           <p>Vormittag: Hebammenbuero Review</p>
           <p>Nachmittag: Designer Call + Testing</p>
           <p>Abend: Familie</p>
         </div>
-        <p className="text-xs text-gray-400 mt-3">Automatisch generiert (Mockup)</p>
+        <p className="text-xs text-[#4A5A7A] mt-3">Automatisch generiert (Mockup)</p>
       </div>
 
       {/* [3,3] QUICK LINKS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">QUICK LINKS</h3>
+        <h3 className="cell-title">QUICK LINKS</h3>
         <div className="space-y-2">
           <button
             onClick={() => showToast('Google Calendar oeffnen')}
-            className={btnClass + ' w-full text-left'}
+            className="cell-btn w-full text-left"
           >
             Google Calendar
           </button>
           <button
             onClick={() => showToast('Gmail oeffnen')}
-            className={btnClass + ' w-full text-left'}
+            className="cell-btn w-full text-left"
           >
             Gmail
           </button>
           <button
             onClick={() => showToast('Drive oeffnen')}
-            className={btnClass + ' w-full text-left'}
+            className="cell-btn w-full text-left"
           >
             Google Drive
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-3">Integration kommt in Phase 1</p>
+        <p className="text-xs text-[#4A5A7A] mt-3">Integration kommt in Phase 1</p>
       </div>
     </div>
   );

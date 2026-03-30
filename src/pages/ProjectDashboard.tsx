@@ -4,11 +4,6 @@ import { useToast } from '../components/ui';
 import { projects, initialTodos, dummyChat } from '../data/dummy';
 import type { ChatMessage, TodoItem } from '../data/types';
 
-const btnClass =
-  'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
-const btnSmClass =
-  'bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black';
-
 export function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const { showToast } = useToast();
@@ -30,13 +25,11 @@ export function ProjectDashboard() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-white p-6">
-        <div className="max-w-4xl mx-auto text-center py-20">
-          <div className="border border-gray-300 rounded-lg p-8">
-            <p className="text-lg font-bold text-black mb-2">Projekt nicht gefunden</p>
-            <p className="text-sm text-gray-600 mb-4">Kein Projekt mit ID &quot;{id}&quot;</p>
-            <button onClick={() => window.close()} className={btnClass}>Fenster schliessen</button>
-          </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080C18' }}>
+        <div className="glass-elevated rounded-2xl p-8 max-w-md text-center">
+          <p className="text-lg font-bold text-[#E0E6F0] mb-2">Projekt nicht gefunden</p>
+          <p className="text-sm text-[#7B8DB5] mb-4">Kein Projekt mit ID &quot;{id}&quot;</p>
+          <button onClick={() => window.close()} className="cell-btn">Fenster schliessen</button>
         </div>
       </div>
     );
@@ -107,21 +100,21 @@ export function ProjectDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: '#080C18', backgroundImage: 'url(/bg-cockpit.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
       {/* Dialog Modal */}
       {dialog && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white border border-gray-300 rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+          <div className="glass-elevated rounded-2xl p-6 max-w-md w-full mx-4">
             {dialog.type === 'confirm-idea' && (
               <>
-                <h3 className="font-bold text-black mb-2">Idee speichern?</h3>
-                <p className="text-sm text-gray-600 mb-4">&quot;{dialog.data}&quot;</p>
-                <p className="text-xs text-gray-400 mb-4">
+                <h3 className="font-bold text-[#E0E6F0] mb-2">Idee speichern?</h3>
+                <p className="text-sm text-[#7B8DB5] mb-4">&quot;{dialog.data}&quot;</p>
+                <p className="text-xs text-[#4A5A7A] mb-4">
                   Die Idee wird zur Ideenliste hinzugefuegt. Du kannst sie spaeter als Prompt ins Terminal uebernehmen.
                 </p>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setDialog(null)} className={btnClass}>Abbrechen</button>
-                  <button onClick={confirmIdea} className={btnClass + ' !bg-black !text-white'}>Speichern</button>
+                  <button onClick={() => setDialog(null)} className="cell-btn">Abbrechen</button>
+                  <button onClick={confirmIdea} className="cell-btn" style={{ background: 'rgba(0,240,255,0.15)', borderColor: 'rgba(0,240,255,0.3)', color: '#00F0FF' }}>Speichern</button>
                 </div>
               </>
             )}
@@ -130,27 +123,27 @@ export function ProjectDashboard() {
       )}
 
       {/* Banner */}
-      <div className="border-b border-gray-300 bg-gray-50 px-6 py-2 flex items-center justify-between">
-        <p className="text-xs text-gray-500">
+      <div className="px-6 py-2 flex items-center justify-between" style={{ background: 'rgba(10,17,32,0.8)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <p className="text-xs text-[#4A5A7A]">
           Dieses Fenster kann geschlossen werden — der Prozess laeuft weiter. Vom Cockpit aus wieder oeffnen.
         </p>
-        <button onClick={() => window.close()} className="text-xs text-gray-400 hover:text-black">
-          [✕ Schliessen]
+        <button onClick={() => window.close()} className="text-xs text-[#4A5A7A] hover:text-[#00F0FF] transition-colors cursor-pointer">
+          [x Schliessen]
         </button>
       </div>
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-xl font-bold text-black">PROJEKT: {project.name}</h1>
-            <p className="text-sm text-gray-600">
-              {project.phase} &middot; {project.health} &middot; {project.progressPercent}%
+            <h1 className="text-xl font-bold text-[#E0E6F0]">PROJEKT: <span className="text-[#00F0FF]">{project.name}</span></h1>
+            <p className="text-sm text-[#7B8DB5]">
+              {project.phase} &middot; {project.health} &middot; <span className="stat-number text-sm">{project.progressPercent}%</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
             {project.deployUrl && (
-              <a href={project.deployUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">
+              <a href={project.deployUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-[#00F0FF] hover:text-[#00F0FF]/80 transition-colors">
                 {project.deployUrl.replace('https://', '')}
               </a>
             )}
@@ -159,27 +152,27 @@ export function ProjectDashboard() {
                 setPaused((prev) => !prev);
                 showToast(paused ? 'Projekt fortgesetzt: ' + project.name : 'Projekt pausiert: ' + project.name);
               }}
-              className={`${btnClass} ${paused ? '!bg-yellow-100 !border-yellow-400' : ''}`}
+              className={`cell-btn ${paused ? '!bg-[rgba(255,107,44,0.15)] !border-[rgba(255,107,44,0.3)] !text-[#FF6B2C]' : ''}`}
             >
               {paused ? 'Fortsetzen' : 'Pausieren'}
             </button>
-            <button onClick={() => showToast('Aktionen-Menu kommt bald')} className={btnClass}>Aktionen ▾</button>
+            <button onClick={() => showToast('Aktionen-Menu kommt bald')} className="cell-btn">Aktionen</button>
           </div>
         </div>
 
         {/* Metrics */}
-        <div className="mt-3 flex flex-wrap gap-4 text-sm">
-          <span className="border border-gray-300 rounded px-3 py-1 bg-gray-50">
-            {laufzeit} Tage Laufzeit
+        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+          <span className="glass-inner px-3 py-1 text-[#E0E6F0] font-mono text-xs">
+            <span className="stat-number text-sm">{laufzeit}</span> Tage
           </span>
-          <span className="border border-gray-300 rounded px-3 py-1 bg-gray-50">
-            {project.tokenUsage >= 1000 ? `${Math.round(project.tokenUsage / 1000)}K` : project.tokenUsage} Tokens
+          <span className="glass-inner px-3 py-1 text-[#E0E6F0] font-mono text-xs">
+            <span className="stat-number text-sm">{project.tokenUsage >= 1000 ? `${Math.round(project.tokenUsage / 1000)}K` : project.tokenUsage}</span> Tokens
           </span>
-          <span className="border border-gray-300 rounded px-3 py-1 bg-gray-50">
-            {project.promptCount} Prompts
+          <span className="glass-inner px-3 py-1 text-[#E0E6F0] font-mono text-xs">
+            <span className="stat-number text-sm">{project.promptCount}</span> Prompts
           </span>
-          <span className="border border-gray-300 rounded px-3 py-1 bg-gray-50">
-            EUR {project.monthlyCost.toFixed(2)}/mo
+          <span className="glass-inner px-3 py-1 text-[#E0E6F0] font-mono text-xs">
+            EUR <span className="stat-number text-sm">{project.monthlyCost.toFixed(2)}</span>/mo
           </span>
         </div>
 
@@ -188,15 +181,15 @@ export function ProjectDashboard() {
           {project.milestones.map((m) => (
             <span
               key={m.label}
-              className={`px-2 py-0.5 rounded border text-xs ${
+              className={`px-2 py-0.5 rounded-lg border text-xs font-mono ${
                 m.completed
-                  ? 'bg-gray-200 border-gray-400 text-black'
+                  ? 'bg-[rgba(0,255,136,0.1)] border-[rgba(0,255,136,0.3)] text-[#00FF88]'
                   : m.active
-                    ? 'bg-yellow-100 border-yellow-400 text-black font-bold'
-                    : 'bg-white border-gray-300 text-gray-400'
+                    ? 'bg-[rgba(0,240,255,0.1)] border-[rgba(0,240,255,0.3)] text-[#00F0FF] font-bold'
+                    : 'bg-white/[0.02] border-white/[0.08] text-[#4A5A7A]'
               }`}
             >
-              {m.completed ? '✓' : m.active ? '●' : '○'} {m.label}
+              {m.completed ? 'OK' : m.active ? '>>' : '--'} {m.label}
             </span>
           ))}
         </div>
@@ -204,17 +197,17 @@ export function ProjectDashboard() {
 
       {/* Paused Banner */}
       {paused && (
-        <div className="mx-6 mt-3 border border-yellow-400 bg-yellow-50 rounded-lg px-4 py-3 flex items-center justify-between">
+        <div className="mx-6 mt-3 rounded-xl px-4 py-3 flex items-center justify-between attention-border" style={{ background: 'rgba(255,107,44,0.1)', border: '1px solid rgba(255,107,44,0.3)' }}>
           <div>
-            <p className="text-sm font-bold text-yellow-800">Projekt pausiert</p>
-            <p className="text-xs text-yellow-600">Alle Arbeiten an diesem Projekt sind gestoppt. Klicke &quot;Fortsetzen&quot; um weiterzumachen.</p>
+            <p className="text-sm font-bold text-[#FF6B2C]">Projekt pausiert</p>
+            <p className="text-xs text-[#FF6B2C]/70">Alle Arbeiten an diesem Projekt sind gestoppt. Klicke &quot;Fortsetzen&quot; um weiterzumachen.</p>
           </div>
           <button
             onClick={() => {
               setPaused(false);
               showToast('Projekt fortgesetzt: ' + project.name);
             }}
-            className={btnClass + ' !bg-yellow-200 !border-yellow-400'}
+            className="cell-btn !border-[rgba(255,107,44,0.4)] !text-[#FF6B2C] hover:!bg-[rgba(255,107,44,0.15)]"
           >
             Fortsetzen
           </button>
@@ -224,18 +217,18 @@ export function ProjectDashboard() {
       {/* Main: 2/3 terminal + 1/3 sidebar */}
       <div className="flex flex-col lg:flex-row" style={{ height: 'calc(100vh - 220px)' }}>
         {/* Left — TERMINAL */}
-        <div className="lg:w-2/3 p-4 flex flex-col border-r border-gray-200">
-          <div className="border border-gray-300 rounded-lg p-4 flex-1 flex flex-col">
-            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">
+        <div className="lg:w-2/3 p-4 flex flex-col" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="terminal-panel p-4 flex-1 flex flex-col">
+            <h2 className="cell-title">
               TERMINAL — {project.name}
             </h2>
 
             {/* Chat */}
-            <div className="flex-1 overflow-y-auto border border-gray-200 rounded p-3 mb-3 bg-gray-50 space-y-2">
+            <div className="flex-1 overflow-y-auto rounded-xl p-3 mb-3 space-y-2" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}>
               {messages.map((msg) => (
-                <div key={msg.id} className={`text-sm ${msg.sender === 'kani' ? 'text-gray-700' : 'text-black font-medium'}`}>
-                  <span className="text-xs text-gray-400 mr-1">[{msg.time}]</span>
-                  <span className="font-bold">{msg.sender === 'kani' ? 'KANI' : 'Mehti'}:</span>{' '}
+                <div key={msg.id} className={`text-sm ${msg.sender === 'kani' ? 'text-[#7B8DB5]' : 'text-[#E0E6F0] font-medium'}`}>
+                  <span className="text-xs text-[#4A5A7A] mr-1 font-mono">[{msg.time}]</span>
+                  <span className={`font-bold ${msg.sender === 'kani' ? 'text-[#8B5CF6]' : 'text-[#00F0FF]'}`}>{msg.sender === 'kani' ? 'KANI' : 'Mehti'}:</span>{' '}
                   {msg.text.split('\n').map((line, i) => (
                     <span key={i}>{line}{i < msg.text.split('\n').length - 1 && <br />}</span>
                   ))}
@@ -252,28 +245,28 @@ export function ProjectDashboard() {
                 onChange={(e) => setTerminalInput(e.target.value)}
                 placeholder={paused ? 'Projekt ist pausiert...' : 'Eingabe...'}
                 disabled={paused}
-                className={`flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-white text-black ${paused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className="flex-1 glass-input"
                 onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
               />
-              <button onClick={sendMessage} disabled={paused} className={`${btnClass} ${paused ? 'opacity-50 cursor-not-allowed' : ''}`}>Senden</button>
+              <button onClick={sendMessage} disabled={paused} className={`cell-btn ${paused ? 'opacity-50 cursor-not-allowed' : ''}`}>Senden</button>
             </div>
 
             {/* Context */}
-            <div className="mt-3 text-xs text-gray-500 flex gap-4">
+            <div className="mt-3 text-xs text-[#4A5A7A] flex gap-4 font-mono">
               {lastTimeline && <span>Zuletzt: {lastTimeline.title}</span>}
               <span>Naechster Step: {nextMilestone}</span>
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="border border-gray-300 rounded-lg p-4 mt-4">
-            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">TIMELINE</h2>
+          <div className="glass-inner mt-4 p-4">
+            <h2 className="cell-title">TIMELINE</h2>
             <div className="space-y-1">
               {project.timeline.map((t, i) => (
-                <div key={i} className="text-xs text-gray-600 flex gap-2">
-                  <span className="text-gray-400 w-16">{t.date.slice(5)}</span>
-                  <span className="font-medium text-black">{t.title}</span>
-                  <span className="text-gray-400">— {t.description}</span>
+                <div key={i} className="text-xs text-[#7B8DB5] flex gap-2">
+                  <span className="text-[#4A5A7A] w-16 font-mono">{t.date.slice(5)}</span>
+                  <span className="font-medium text-[#E0E6F0]">{t.title}</span>
+                  <span className="text-[#4A5A7A]">— {t.description}</span>
                 </div>
               ))}
             </div>
@@ -283,8 +276,8 @@ export function ProjectDashboard() {
         {/* Right — SIDEBAR */}
         <div className="lg:w-1/3 p-4 overflow-y-auto space-y-4">
           {/* IDEEN */}
-          <div className="border border-gray-300 rounded-lg p-4">
-            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">
+          <div className="glass-inner p-4">
+            <h2 className="cell-title">
               IDEEN ({ideas.length})
             </h2>
             <div className="flex gap-2 mb-3">
@@ -293,18 +286,18 @@ export function ProjectDashboard() {
                 value={ideaInput}
                 onChange={(e) => setIdeaInput(e.target.value)}
                 placeholder="Neue Idee..."
-                className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black"
+                className="flex-1 glass-input text-sm"
                 onKeyDown={(e) => { if (e.key === 'Enter') addIdea(); }}
               />
-              <button onClick={addIdea} className={btnSmClass}>+ Hinzufuegen</button>
+              <button onClick={addIdea} className="cell-btn-sm">+ Hinzufuegen</button>
             </div>
             <div className="space-y-2">
               {ideas.map((idea, i) => (
-                <div key={i} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
-                  <span className="text-black">{idea}</span>
+                <div key={i} className="flex items-center justify-between text-sm border-b border-white/5 pb-1">
+                  <span className="text-[#E0E6F0]">{idea}</span>
                   <div className="flex gap-1">
-                    <button onClick={() => ideaToPrompt(idea)} className={btnSmClass}>→ Prompt</button>
-                    <button onClick={() => showToast('Todo erstellt: ' + idea)} className={btnSmClass}>→ Todo</button>
+                    <button onClick={() => ideaToPrompt(idea)} className="cell-btn-sm">Prompt</button>
+                    <button onClick={() => showToast('Todo erstellt: ' + idea)} className="cell-btn-sm">Todo</button>
                   </div>
                 </div>
               ))}
@@ -312,9 +305,9 @@ export function ProjectDashboard() {
           </div>
 
           {/* TODOS */}
-          <div className="border border-gray-300 rounded-lg p-4">
-            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">
-              TODOS — {openTodos.length} offen · {doneTodos.length} erledigt
+          <div className="glass-inner p-4">
+            <h2 className="cell-title">
+              TODOS — {openTodos.length} offen &middot; {doneTodos.length} erledigt
             </h2>
             <div className="flex gap-2 mb-3">
               <input
@@ -322,29 +315,29 @@ export function ProjectDashboard() {
                 value={newTodo}
                 onChange={(e) => setNewTodo(e.target.value)}
                 placeholder="Neues Todo..."
-                className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black"
+                className="flex-1 glass-input text-sm"
                 onKeyDown={(e) => { if (e.key === 'Enter') addTodo(); }}
               />
-              <button onClick={addTodo} className={btnSmClass}>+ Hinzufuegen</button>
+              <button onClick={addTodo} className="cell-btn-sm">+ Hinzufuegen</button>
             </div>
             <div className="space-y-1">
               {openTodos.map((t) => (
                 <div key={t.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={false} onChange={() => toggleTodo(t.id)} className="cursor-pointer" />
-                    <span className="text-black">{t.text}</span>
-                    {t.deadline && <span className="text-xs text-gray-400">({t.deadline})</span>}
+                    <input type="checkbox" checked={false} onChange={() => toggleTodo(t.id)} className="cursor-pointer accent-[#00F0FF]" />
+                    <span className="text-[#E0E6F0]">{t.text}</span>
+                    {t.deadline && <span className="text-xs text-[#4A5A7A]">({t.deadline})</span>}
                   </div>
-                  <button onClick={() => todoToPrompt(t.text)} className={btnSmClass}>→ Prompt</button>
+                  <button onClick={() => todoToPrompt(t.text)} className="cell-btn-sm">Prompt</button>
                 </div>
               ))}
               {doneTodos.length > 0 && (
                 <details className="mt-2">
-                  <summary className="text-xs text-gray-400 cursor-pointer">
+                  <summary className="text-xs text-[#4A5A7A] cursor-pointer hover:text-[#7B8DB5] transition-colors">
                     {doneTodos.length} erledigte anzeigen
                   </summary>
                   {doneTodos.map((t) => (
-                    <div key={t.id} className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                    <div key={t.id} className="flex items-center gap-2 text-sm text-[#4A5A7A] mt-1">
                       <input type="checkbox" checked onChange={() => toggleTodo(t.id)} className="cursor-pointer" />
                       <span className="line-through">{t.text}</span>
                     </div>
@@ -355,19 +348,19 @@ export function ProjectDashboard() {
           </div>
 
           {/* PROJEKT-INFO */}
-          <div className="border border-gray-300 rounded-lg p-4">
-            <h2 className="text-sm font-bold text-black mb-2 pb-2 border-b border-gray-200">PROJEKT-INFO</h2>
-            <div className="space-y-1 text-sm text-gray-700">
-              <p><strong>Business:</strong> {project.businessModel}</p>
+          <div className="glass-inner p-4">
+            <h2 className="cell-title">PROJEKT-INFO</h2>
+            <div className="space-y-1 text-sm text-[#7B8DB5]">
+              <p><strong className="text-[#E0E6F0]">Business:</strong> {project.businessModel}</p>
               {project.market && (
                 <>
-                  <p><strong>Markt:</strong> {project.market.marketSize}</p>
-                  <p><strong>Kunden:</strong> {project.market.potentialCustomers}</p>
-                  <p><strong>Umsatz:</strong> {project.market.revenueEstimate}</p>
-                  {project.market.profitEstimate && <p><strong>Gewinn:</strong> {project.market.profitEstimate}</p>}
+                  <p><strong className="text-[#E0E6F0]">Markt:</strong> {project.market.marketSize}</p>
+                  <p><strong className="text-[#E0E6F0]">Kunden:</strong> {project.market.potentialCustomers}</p>
+                  <p><strong className="text-[#E0E6F0]">Umsatz:</strong> {project.market.revenueEstimate}</p>
+                  {project.market.profitEstimate && <p><strong className="text-[#E0E6F0]">Gewinn:</strong> {project.market.profitEstimate}</p>}
                 </>
               )}
-              <p><strong>Skills:</strong> {project.skills.length} aktiv</p>
+              <p><strong className="text-[#E0E6F0]">Skills:</strong> {project.skills.length} aktiv</p>
             </div>
           </div>
         </div>
