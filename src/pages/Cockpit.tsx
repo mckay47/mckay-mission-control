@@ -340,6 +340,34 @@ function BriefingView({ setView }: { setView: (v: View) => void }) {
 }
 
 // --- THINKTANK VIEW ---
+
+const categoryActiveStyles: Record<EntryCategory, string> = {
+  alle: 'border-neon-cyan/50 text-neon-cyan bg-neon-cyan/10 shadow-[0_0_12px_rgba(0,240,255,0.1)]',
+  Ideen: 'border-neon-green/50 text-neon-green bg-neon-green/10 shadow-[0_0_12px_rgba(0,255,136,0.1)]',
+  Research: 'border-neon-purple/50 text-neon-purple bg-neon-purple/10 shadow-[0_0_12px_rgba(139,92,246,0.1)]',
+  Strategie: 'border-neon-orange/50 text-neon-orange bg-neon-orange/10 shadow-[0_0_12px_rgba(255,107,44,0.1)]',
+  Projekte: 'border-neon-cyan/50 text-neon-cyan bg-neon-cyan/10 shadow-[0_0_12px_rgba(0,240,255,0.1)]',
+  Privat: 'border-neon-pink/50 text-neon-pink bg-neon-pink/10 shadow-[0_0_12px_rgba(255,45,170,0.1)]',
+};
+
+const categoryBorderColors: Record<EntryCategory, string> = {
+  alle: 'border-neon-cyan/30',
+  Ideen: 'border-neon-green/30',
+  Research: 'border-neon-purple/30',
+  Strategie: 'border-neon-orange/30',
+  Projekte: 'border-neon-cyan/30',
+  Privat: 'border-neon-pink/30',
+};
+
+const categoryTextColors: Record<EntryCategory, string> = {
+  alle: 'text-neon-cyan',
+  Ideen: 'text-neon-green',
+  Research: 'text-neon-purple',
+  Strategie: 'text-neon-orange',
+  Projekte: 'text-neon-cyan',
+  Privat: 'text-neon-pink',
+};
+
 function ThinktankView({ setView }: { setView: (v: View) => void }) {
   const { showToast } = useToast();
   const [input, setInput] = useState('');
@@ -366,10 +394,13 @@ function ThinktankView({ setView }: { setView: (v: View) => void }) {
   const [activeCategory, setActiveCategory] = useState<EntryCategory>('alle');
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
   const [kaniResponse, setKaniResponse] = useState<string | null>(null);
+  const [kaniProcessing, setKaniProcessing] = useState(false);
 
   const handleSubmit = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
+
+    setKaniProcessing(true);
 
     const category = trimmed.toLowerCase().includes('strateg')
       ? 'Strategie'
@@ -391,14 +422,18 @@ function ThinktankView({ setView }: { setView: (v: View) => void }) {
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    setEntries((prev) => [newEntry, ...prev]);
-    setInput('');
-    setKaniResponse(`Eingeordnet als: ${category}`);
-    setTimeout(() => setKaniResponse(null), 4000);
+    setTimeout(() => {
+      setEntries((prev) => [newEntry, ...prev]);
+      setInput('');
+      setKaniProcessing(false);
+      setKaniResponse(`Eingeordnet als: ${category}\nEintrag wurde zur Sammlung hinzugefuegt.`);
+      setTimeout(() => setKaniResponse(null), 6000);
+    }, 600);
   };
 
   const handleDelete = (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+    showToast('Eintrag geloescht');
   };
 
   const categoryCounts = useMemo(() => {
@@ -424,39 +459,55 @@ function ThinktankView({ setView }: { setView: (v: View) => void }) {
 
   const categories: EntryCategory[] = ['alle', 'Ideen', 'Research', 'Strategie', 'Projekte', 'Privat'];
 
-  // Render up to 4 entries in grid cells [2,2], [2,3], [3,1], [3,2]
   const visibleEntries = filteredEntries.slice(0, 4);
 
-  const renderEntry = (entry: PipelineIdeaV2) => {
+  const renderEntry = (entry: PipelineIdeaV2, index: number) => {
     const cat = classifyType(entry.type);
     const isOrig = showOriginal[entry.id];
+    const colorClass = categoryTextColors[cat];
+    const borderColor = categoryBorderColors[cat];
+    const content = isOrig ? entry.rawTranscript : entry.structuredVersion;
+
     return (
-      <div key={entry.id}>
-        <h4 className="text-sm font-bold text-black mb-1">{entry.name}</h4>
-        <p className="text-xs text-gray-500 mb-1">
-          Typ: {cat} | {entry.createdAt}
+      <div key={entry.id} className={`animate-fade-in stagger-${Math.min(index + 2, 7)}`}>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h4 className="text-sm font-semibold text-text-primary leading-tight">{entry.name}</h4>
+          <span className={`text-[10px] font-mono uppercase tracking-wider ${colorClass} shrink-0`}>
+            {cat}
+          </span>
+        </div>
+        <p className="text-[11px] font-mono text-text-muted mb-2">
+          {entry.createdAt}
         </p>
-        <p className="text-xs text-gray-600 mb-2">
-          &quot;{(isOrig ? entry.rawTranscript : entry.structuredVersion).slice(0, 100)}
-          {(isOrig ? entry.rawTranscript : entry.structuredVersion).length > 100 ? '...' : ''}
-          &quot;
+        <p className="text-xs text-text-secondary leading-relaxed mb-3">
+          {content.slice(0, 120)}
+          {content.length > 120 ? '...' : ''}
         </p>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() =>
               setShowOriginal((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }))
             }
-            className={btnSmClass}
+            className={`px-2 py-1 rounded-md border ${borderColor} text-[11px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer bg-white/[0.02]`}
           >
             {isOrig ? 'Strukturiert' : 'Original'}
           </button>
-          <button onClick={() => showToast('Projekt starten: ' + entry.name)} className={btnSmClass}>
-            Projekt starten
+          <button
+            onClick={() => showToast('Projekt starten: ' + entry.name)}
+            className="px-2 py-1 rounded-md border border-neon-cyan/20 text-[11px] text-neon-cyan/80 hover:text-neon-cyan hover:border-neon-cyan/40 transition-colors cursor-pointer bg-white/[0.02]"
+          >
+            Projekt
           </button>
-          <button onClick={() => showToast('Research: ' + entry.name)} className={btnSmClass}>
+          <button
+            onClick={() => showToast('Research: ' + entry.name)}
+            className="px-2 py-1 rounded-md border border-neon-purple/20 text-[11px] text-neon-purple/80 hover:text-neon-purple hover:border-neon-purple/40 transition-colors cursor-pointer bg-white/[0.02]"
+          >
             Research
           </button>
-          <button onClick={() => handleDelete(entry.id)} className={btnSmClass}>
+          <button
+            onClick={() => handleDelete(entry.id)}
+            className="px-2 py-1 rounded-md border border-status-critical/20 text-[11px] text-status-critical/60 hover:text-status-critical hover:border-status-critical/40 transition-colors cursor-pointer bg-white/[0.02]"
+          >
             Loeschen
           </button>
         </div>
@@ -465,87 +516,190 @@ function ThinktankView({ setView }: { setView: (v: View) => void }) {
   };
 
   return (
-    <div className="grid-cockpit bg-white">
+    <div className="grid-cockpit bg-bg-primary">
       {/* [1,1]+[1,2] GEDANKEN TEILEN — span 2 cols */}
-      <div className="grid-cell span-2-cols">
-        <h3 className="text-sm font-bold text-black mb-3">GEDANKEN TEILEN</h3>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          placeholder="Schreib was du denkst..."
-          rows={4}
-          className="w-full border border-gray-300 rounded p-3 text-sm text-black bg-white resize-none mb-3"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!input.trim()}
-          className={btnClass + ' disabled:opacity-40 disabled:cursor-not-allowed'}
-        >
-          Absenden
-        </button>
+      <div className="monitor-tile monitor-cyan p-5 span-2-cols">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="hud-label"><span>01</span> / GEDANKEN TEILEN</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-neon-cyan/20 to-transparent" />
+          </div>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            placeholder="Schreib was du denkst — KANI strukturiert es automatisch..."
+            rows={4}
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-neon-cyan/40 focus:shadow-[0_0_20px_rgba(0,240,255,0.1)] transition-all resize-none mb-4"
+          />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSubmit}
+              disabled={!input.trim() || kaniProcessing}
+              className="physical-btn px-5 py-2.5 text-sm font-medium text-neon-cyan border border-neon-cyan/30 hover:border-neon-cyan/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+            >
+              {kaniProcessing ? 'Analysiere...' : 'Absenden'}
+            </button>
+            <span className="text-[10px] font-mono text-text-muted">
+              Enter zum Senden · Shift+Enter fuer neue Zeile
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* [1,3] KANI ANTWORT */}
-      <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">KANI ANTWORT</h3>
-        {kaniResponse ? (
-          <p className="text-sm text-black">{kaniResponse}</p>
-        ) : (
-          <p className="text-sm text-gray-400 italic">Warte auf Eingabe...</p>
-        )}
+      <div className="monitor-tile monitor-purple p-5">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="hud-label"><span>02</span> / KANI ANTWORT</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-neon-purple/20 to-transparent" />
+          </div>
+          {kaniProcessing ? (
+            <div className="flex items-center gap-3 py-6 animate-fade-in">
+              <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse-glow" />
+              <span className="text-sm text-text-secondary">Analysiere Eingabe...</span>
+            </div>
+          ) : kaniResponse ? (
+            <div className="animate-fade-in">
+              <div className="inset-display">
+                {kaniResponse.split('\n').map((line, i) => (
+                  <p key={i} className="text-sm text-neon-purple leading-relaxed">
+                    {line}
+                  </p>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse-glow" />
+                <span className="text-[10px] font-mono text-text-muted">Verarbeitet</span>
+              </div>
+            </div>
+          ) : (
+            <div className="py-6">
+              <p className="text-sm text-text-muted italic">Warte auf Eingabe...</p>
+              <div className="mt-4 space-y-2">
+                <p className="text-[11px] text-text-muted">Tipps:</p>
+                <p className="text-[11px] text-text-muted">&bull; Ideen werden automatisch kategorisiert</p>
+                <p className="text-[11px] text-text-muted">&bull; &quot;strateg&quot; im Text = Strategie</p>
+                <p className="text-[11px] text-text-muted">&bull; &quot;research&quot; im Text = Research</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* [2,1] FILTER TABS */}
-      <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">FILTER</h3>
-        <div className="flex flex-wrap gap-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-2 py-1 rounded border text-xs cursor-pointer ${
-                activeCategory === cat
-                  ? 'bg-gray-300 border-gray-500 text-black font-bold'
-                  : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-black'
-              }`}
-            >
-              {cat === 'alle' ? 'Alle' : cat}: {categoryCounts[cat]}
-            </button>
-          ))}
+      <div className="monitor-tile monitor-green p-5">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="hud-label"><span>03</span> / FILTER</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-neon-green/20 to-transparent" />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {categories.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg border text-[11px] font-mono cursor-pointer transition-all duration-200 ${
+                    isActive
+                      ? categoryActiveStyles[cat]
+                      : 'border-glass-border text-text-muted hover:text-text-secondary hover:border-glass-highlight bg-white/[0.02]'
+                  }`}
+                >
+                  {cat === 'alle' ? 'Alle' : cat}
+                  <span className="ml-1.5 text-[10px] opacity-70">{categoryCounts[cat]}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-3 border-t border-glass-border">
+            <div className="flex items-center justify-between text-[11px] font-mono text-text-muted">
+              <span>Gesamt: {entries.length} Eintraege</span>
+              <span>Anzeige: {filteredEntries.length}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* [2,2] ENTRY 1 */}
-      <div className="grid-cell">
-        {visibleEntries[0] ? renderEntry(visibleEntries[0]) : <p className="text-sm text-gray-400">Kein Eintrag</p>}
+      <div className="monitor-tile monitor-cyan p-5">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          {visibleEntries[0] ? (
+            renderEntry(visibleEntries[0], 0)
+          ) : (
+            <p className="text-sm text-text-muted italic py-4">Kein Eintrag</p>
+          )}
+        </div>
       </div>
 
       {/* [2,3] ENTRY 2 */}
-      <div className="grid-cell">
-        {visibleEntries[1] ? renderEntry(visibleEntries[1]) : <p className="text-sm text-gray-400">Kein Eintrag</p>}
+      <div className="monitor-tile monitor-cyan p-5">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          {visibleEntries[1] ? (
+            renderEntry(visibleEntries[1], 1)
+          ) : (
+            <p className="text-sm text-text-muted italic py-4">Kein Eintrag</p>
+          )}
+        </div>
       </div>
 
       {/* [3,1] ENTRY 3 */}
-      <div className="grid-cell">
-        {visibleEntries[2] ? renderEntry(visibleEntries[2]) : <p className="text-sm text-gray-400">Kein Eintrag</p>}
+      <div className="monitor-tile monitor-cyan p-5">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          {visibleEntries[2] ? (
+            renderEntry(visibleEntries[2], 2)
+          ) : (
+            <p className="text-sm text-text-muted italic py-4">Kein Eintrag</p>
+          )}
+        </div>
       </div>
 
       {/* [3,2] ENTRY 4 */}
-      <div className="grid-cell">
-        {visibleEntries[3] ? renderEntry(visibleEntries[3]) : <p className="text-sm text-gray-400">Kein Eintrag</p>}
+      <div className="monitor-tile monitor-cyan p-5">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10">
+          {visibleEntries[3] ? (
+            renderEntry(visibleEntries[3], 3)
+          ) : (
+            <p className="text-sm text-text-muted italic py-4">Kein Eintrag</p>
+          )}
+        </div>
       </div>
 
       {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={() => setView('dashboard')} className={btnClass}>
-          Zurueck zum Cockpit
-        </button>
+      <div className="monitor-tile monitor-orange p-5 flex flex-col justify-between">
+        <div className="monitor-glow-inner" />
+        <div className="relative z-10 flex flex-col justify-between h-full">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="hud-label"><span>04</span> / NAVIGATION</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-neon-orange/20 to-transparent" />
+            </div>
+            <div className="space-y-2 text-[11px] font-mono text-text-muted">
+              <p>{filteredEntries.length} sichtbar von {entries.length}</p>
+              <p>{categoryCounts['Ideen']} Ideen · {categoryCounts['Strategie']} Strategien</p>
+              <p>{categoryCounts['Research']} Research · {categoryCounts['Privat']} Privat</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setView('dashboard')}
+            className="physical-btn w-full px-4 py-3 text-sm font-medium text-neon-orange border border-neon-orange/30 hover:border-neon-orange/60 transition-all cursor-pointer mt-4"
+          >
+            Zurueck zum Cockpit
+          </button>
+        </div>
       </div>
     </div>
   );
