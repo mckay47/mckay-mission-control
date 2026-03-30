@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui';
 import { skills, agents, mcpServers, commands, hooks } from '../data/dummy';
 
@@ -6,7 +5,6 @@ const btnClass =
   'bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded border border-gray-300 cursor-pointer text-sm text-black';
 
 export function SystemDashboard() {
-  const navigate = useNavigate();
   const { showToast } = useToast();
 
   const coreSkills = skills.filter((s) => s.category === 'core');
@@ -152,35 +150,40 @@ export function SystemDashboard() {
         </div>
       </div>
 
-      {/* [3,3] QUICK ACTIONS & NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-black mb-3">QUICK ACTIONS</h3>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Skill recherchieren..."
-                className="border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black flex-1"
-              />
-              <button
-                onClick={() => showToast('Recherche gestartet')}
-                className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
-              >
-                Go
-              </button>
-            </div>
+      {/* [3,3] QUICK ACTIONS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">QUICK ACTIONS</h3>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Skill recherchieren..."
+              className="border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black flex-1"
+            />
             <button
-              onClick={() => showToast('Terminal wird geoeffnet')}
-              className={btnClass + ' w-full text-left'}
+              onClick={() => showToast('Recherche gestartet')}
+              className="bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded border border-gray-300 cursor-pointer text-xs text-black"
             >
-              System-Terminal oeffnen
+              Go
             </button>
           </div>
+          <button
+            onClick={() => showToast('Terminal wird geoeffnet')}
+            className={btnClass + ' w-full text-left'}
+          >
+            System-Terminal oeffnen
+          </button>
+          <button
+            onClick={() => showToast('Health-Check gestartet')}
+            className={btnClass + ' w-full text-left'}
+          >
+            Health-Check ausfuehren
+          </button>
         </div>
-        <button onClick={() => navigate('/')} className={btnClass + ' mt-4'}>
-          Zurueck zum Cockpit
-        </button>
+        <div className="mt-3 text-xs text-gray-400">
+          <p>Letzte Aenderung: heute, 14:32</p>
+          <p>Keine Konflikte erkannt</p>
+        </div>
       </div>
     </div>
   );

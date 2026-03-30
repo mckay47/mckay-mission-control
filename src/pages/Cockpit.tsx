@@ -200,10 +200,17 @@ function SystemDetailView({
         </div>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={onBack} className={btnClass}>
-          Zurueck zum Cockpit
+      {/* [3,3] DEPLOYMENT STATUS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">DEPLOYMENT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Branch: <span className="font-mono text-black">dev → main</span></p>
+          <p>Letzter Deploy: heute, 14:32</p>
+          <p>Vercel Status: <span className="text-green-600 font-bold">Ready</span></p>
+          <p>Build Time: 18s</p>
+        </div>
+        <button onClick={onBack} className={btnClass + ' mt-4'}>
+          Zurueck
         </button>
       </div>
     </div>
@@ -327,10 +334,17 @@ function FinanzenDetailView({
         </div>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={onBack} className={btnClass}>
-          Zurueck zum Cockpit
+      {/* [3,3] KOSTENPROGNOSE */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">PROGNOSE</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Naechster Monat: EUR {(totalCost * 1.1).toFixed(2)}</p>
+          <p>Trend: <span className="text-yellow-600 font-medium">+10% (geschaetzt)</span></p>
+          <p className="text-xs text-gray-400 mt-2">Basierend auf aktuellem Verbrauch und geplanten Projekten</p>
+          <p className="text-xs text-gray-400">Stillprobleme.de Start erwartet hoehere Token-Nutzung</p>
+        </div>
+        <button onClick={onBack} className={btnClass + ' mt-4'}>
+          Zurueck
         </button>
       </div>
     </div>
@@ -471,10 +485,20 @@ function AgentsDetailView({
         </div>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={onBack} className={btnClass}>
-          Zurueck zum Cockpit
+      {/* [3,3] SKILL NUTZUNG */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">SKILL NUTZUNG</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Am meisten genutzt:</p>
+          <div className="space-y-1">
+            <p className="text-black font-medium">code-quality <span className="text-xs text-gray-400">— jeder Build</span></p>
+            <p className="text-black font-medium">scaffold-project <span className="text-xs text-gray-400">— 3x</span></p>
+            <p className="text-black font-medium">booking-system <span className="text-xs text-gray-400">— 2x</span></p>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">Keine inaktiven Skills erkannt</p>
+        </div>
+        <button onClick={onBack} className={btnClass + ' mt-3'}>
+          Zurueck
         </button>
       </div>
     </div>
@@ -610,10 +634,17 @@ function ProjekteDetailView({
         </div>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={onBack} className={btnClass}>
-          Zurueck zum Cockpit
+      {/* [3,3] NAECHSTES PROJEKT */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">NAECHSTES PROJEKT</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p className="text-black font-medium">findemeinehebamme-v2</p>
+          <p>Status: PLANNING</p>
+          <p>Typ: Marketplace</p>
+          <p className="text-xs text-gray-400 mt-2">Wartet auf Abschluss von Hebammenbuero Phase 0 und Stillprobleme Phase 0</p>
+        </div>
+        <button onClick={onBack} className={btnClass + ' mt-3'}>
+          Zurueck
         </button>
       </div>
     </div>
@@ -755,22 +786,32 @@ function TodosDetailView({
         </div>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-black mb-3">AKTIONEN</h3>
-          <div className="space-y-2">
-            <button onClick={() => setView('briefing')} className={btnClass + ' w-full text-left'}>
-              Briefing
-            </button>
-            <button onClick={() => setView('thinktank')} className={btnClass + ' w-full text-left'}>
-              Thinktank
-            </button>
-          </div>
+      {/* [3,3] DEADLINES */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">NAECHSTE DEADLINES</h3>
+        <div className="space-y-2">
+          {openTodos.filter((t) => t.deadline).sort((a, b) => (a.deadline || '').localeCompare(b.deadline || '')).slice(0, 4).map((t) => {
+            const daysLeft = Math.ceil((new Date(t.deadline!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+            const isOverdue = daysLeft < 0;
+            const isUrgent = daysLeft <= 2 && !isOverdue;
+            return (
+              <div key={t.id} className="text-sm border-b border-gray-100 pb-1">
+                <p className="text-black">{t.text}</p>
+                <p className={`text-xs ${isOverdue ? 'text-red-600 font-bold' : isUrgent ? 'text-yellow-600 font-medium' : 'text-gray-400'}`}>
+                  {isOverdue ? `${Math.abs(daysLeft)} Tage ueberfaellig` : `${daysLeft} Tage uebrig`}
+                </p>
+              </div>
+            );
+          })}
         </div>
-        <button onClick={onBack} className={btnClass + ' mt-4'}>
-          Zurueck zum Cockpit
-        </button>
+        <div className="mt-3 space-y-2">
+          <button onClick={() => setView('briefing')} className={btnSmClass + ' w-full text-left'}>
+            Briefing oeffnen
+          </button>
+          <button onClick={onBack} className={btnSmClass + ' w-full text-left'}>
+            Zurueck
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -914,16 +955,18 @@ function DashboardView({
         </button>
       </div>
 
-      {/* [3,3] ACTIONS: SYSTEM & OFFICE */}
+      {/* [3,3] KANI STATUS */}
       <div className="grid-cell">
-        <h3 className="text-sm font-bold text-black mb-3">ACTIONS: SYSTEM &amp; OFFICE</h3>
-        <div className="space-y-2">
-          <button onClick={() => navigate('/system')} className={btnClass + ' w-full text-left'}>
-            System
-          </button>
-          <button onClick={() => navigate('/office')} className={btnClass + ' w-full text-left'}>
-            Office
-          </button>
+        <h3 className="text-sm font-bold text-black mb-3">KANI STATUS</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-black font-medium">Online</span>
+          </div>
+          <p>Letzte Aktion: vor 3 Min</p>
+          <p>Session: 2h 14m</p>
+          <p>Kontext: 47% belegt</p>
+          <p className="text-xs text-gray-400 mt-2">MCKAY OS v1.0 · Phase 0</p>
         </div>
       </div>
     </div>
@@ -1019,11 +1062,24 @@ function BriefingView({ setView }: { setView: (v: View) => void }) {
         </p>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={() => setView('dashboard')} className={btnClass}>
-          Zurueck zum Cockpit
-        </button>
+      {/* [3,3] FOKUS-TIMER */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">FOKUS</h3>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p>Heutiger Fokus:</p>
+          <p className="text-black font-bold text-lg">Hebammenbuero</p>
+          <p>Mockup Review + Validation</p>
+          <p className="text-xs text-gray-400 mt-3">Empfohlen: 3h Fokuszeit</p>
+          <p className="text-xs text-gray-400">Ablenkungen vermeiden bis 14:00</p>
+        </div>
+        <div className="mt-3 space-y-2">
+          <button onClick={() => setView('dashboard')} className={btnClass + ' w-full'}>
+            Zurueck
+          </button>
+          <button onClick={() => setView('thinktank')} className={btnSmClass + ' w-full'}>
+            Thinktank
+          </button>
+        </div>
       </div>
     </div>
   );

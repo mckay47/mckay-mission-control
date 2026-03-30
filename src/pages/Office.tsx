@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui';
 
 type TodoMode = 'privat' | 'projekte';
@@ -34,7 +33,6 @@ const emails = [
 ];
 
 export function Office() {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const [todoMode, setTodoMode] = useState<TodoMode>('privat');
   const [calendarView, setCalendarView] = useState<CalendarView>('tag');
@@ -223,11 +221,30 @@ export function Office() {
         <p className="text-xs text-gray-400 mt-3">Automatisch generiert (Mockup)</p>
       </div>
 
-      {/* [3,3] NAVIGATION */}
-      <div className="grid-cell flex flex-col justify-end">
-        <button onClick={() => navigate('/')} className={btnClass}>
-          Zurueck zum Cockpit
-        </button>
+      {/* [3,3] QUICK LINKS */}
+      <div className="grid-cell">
+        <h3 className="text-sm font-bold text-black mb-3">QUICK LINKS</h3>
+        <div className="space-y-2">
+          <button
+            onClick={() => showToast('Google Calendar oeffnen')}
+            className={btnClass + ' w-full text-left'}
+          >
+            Google Calendar
+          </button>
+          <button
+            onClick={() => showToast('Gmail oeffnen')}
+            className={btnClass + ' w-full text-left'}
+          >
+            Gmail
+          </button>
+          <button
+            onClick={() => showToast('Drive oeffnen')}
+            className={btnClass + ' w-full text-left'}
+          >
+            Google Drive
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-3">Integration kommt in Phase 1</p>
       </div>
     </div>
   );
