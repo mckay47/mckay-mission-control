@@ -1,53 +1,42 @@
-type BarColor = 'cyan' | 'green' | 'orange' | 'pink' | 'purple' | 'yellow';
+import { useEffect, useRef } from 'react'
 
 interface ProgressBarProps {
-  value: number;
-  color?: BarColor;
-  height?: 'sm' | 'md' | 'lg';
-  showLabel?: boolean;
-  className?: string;
+  name: string
+  value: string
+  percent: number
+  fillClass?: string
+  fillStyle?: string
+  subtitle?: string
+  nameStyle?: React.CSSProperties
+  valueStyle?: React.CSSProperties
 }
 
-const barColorMap: Record<BarColor, string> = {
-  cyan: 'bg-neon-cyan',
-  green: 'bg-neon-green',
-  orange: 'bg-neon-orange',
-  pink: 'bg-neon-pink',
-  purple: 'bg-neon-purple',
-  yellow: 'bg-neon-yellow',
-};
+export default function ProgressBar({ name, value, percent, fillClass, fillStyle, subtitle, nameStyle, valueStyle }: ProgressBarProps) {
+  const fillRef = useRef<HTMLDivElement>(null)
 
-const barGlowMap: Record<BarColor, string> = {
-  cyan: 'box-glow-cyan',
-  green: 'box-glow-green',
-  orange: 'box-glow-orange',
-  pink: 'box-glow-pink',
-  purple: 'box-glow-purple',
-  yellow: '',
-};
-
-const heightMap: Record<string, string> = {
-  sm: 'h-1',
-  md: 'h-2',
-  lg: 'h-3',
-};
-
-export function ProgressBar({ value, color = 'cyan', height = 'md', showLabel = false, className = '' }: ProgressBarProps) {
-  const clamped = Math.max(0, Math.min(100, value));
+  useEffect(() => {
+    const el = fillRef.current
+    if (!el) return
+    const timer = setTimeout(() => {
+      el.style.width = percent + '%'
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [percent])
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <div className={`flex-1 rounded-full bg-glass-bg overflow-hidden ${heightMap[height]}`}>
+    <div className="prg">
+      <div className="prg-top">
+        <span className="prg-n" style={nameStyle}>{name}</span>
+        <span className="prg-p" style={valueStyle}>{value}</span>
+      </div>
+      <div className="prg-bar">
         <div
-          className={`${heightMap[height]} rounded-full transition-all duration-700 ease-out ${barColorMap[color]} ${barGlowMap[color]}`}
-          style={{ width: `${clamped}%` }}
+          ref={fillRef}
+          className={`prg-fill${fillClass ? ' ' + fillClass : ''}`}
+          style={{ width: 0, ...(fillStyle ? { background: fillStyle } : {}) }}
         />
       </div>
-      {showLabel && (
-        <span className="tabular-nums text-xs text-text-secondary w-8 text-right">
-          {clamped}%
-        </span>
-      )}
+      {subtitle && <div className="prg-sub">{subtitle}</div>}
     </div>
-  );
+  )
 }
