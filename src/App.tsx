@@ -2,6 +2,16 @@ import { useState } from 'react'
 import Boot from './components/Boot'
 import Nav from './components/Nav'
 import Cockpit from './components/screens/Cockpit'
+import System from './components/screens/System'
+import Projects from './components/screens/Projects'
+import Finance from './components/screens/Finance'
+import Agents from './components/screens/Agents'
+import Thinktank from './components/screens/Thinktank'
+import Todos from './components/screens/Todos'
+import Briefing from './components/screens/Briefing'
+import Office from './components/screens/Office'
+import Productivity from './components/screens/Productivity'
+import Memory from './components/screens/Memory'
 
 const GRID_CLASS: Record<string, string> = {
   cockpit: 'gc',
@@ -31,28 +41,17 @@ export default function App() {
       <div className="gwrap">
         <div className={`grid ${gridClass}`} key={mode}>
           {mode === 'cockpit' && <Cockpit onModeChange={setMode} />}
-          {mode === 'system' && <PlaceholderScreen label="System" />}
-          {mode === 'projects' && <PlaceholderScreen label="Projekte" />}
-          {mode === 'finance' && <PlaceholderScreen label="Finanzen" />}
-          {mode === 'agents' && <PlaceholderScreen label="Agents" />}
-          {mode === 'thinktank' && <PlaceholderScreen label="Thinktank" />}
-          {mode === 'todos' && <PlaceholderScreen label="Todos" />}
-          {mode === 'briefing' && <PlaceholderScreen label="Briefing" />}
-          {mode === 'office' && <PlaceholderScreen label="Office" />}
-          {mode === 'productivity' && <PlaceholderScreen label="Stats" />}
-          {mode === 'memory' && <PlaceholderScreen label="Memory" />}
+          {mode === 'system' && <System />}
+          {mode === 'projects' && <Projects />}
+          {mode === 'finance' && <Finance />}
+          {mode === 'agents' && <Agents />}
+          {mode === 'thinktank' && <Thinktank />}
+          {mode === 'todos' && <Todos />}
+          {mode === 'briefing' && <Briefing />}
+          {mode === 'office' && <Office />}
+          {mode === 'productivity' && <Productivity />}
+          {mode === 'memory' && <Memory />}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function PlaceholderScreen({ label }: { label: string }) {
-  return (
-    <div className="card" style={{ gridColumn: '1/-1', gridRow: '1/-1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'var(--fh)', fontSize: 32, fontWeight: 700, color: 'var(--c)', marginBottom: 8 }}>{label}</div>
-        <div style={{ fontSize: 13, color: 'var(--t3)' }}>Screen wird in Phase 2 gebaut</div>
       </div>
     </div>
   )

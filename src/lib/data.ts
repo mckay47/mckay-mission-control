@@ -98,3 +98,15 @@ export const SCCAT: Record<string, string> = {
   Project: 'var(--a)',
   Domain: 'var(--g)',
 }
+
+export const MTRIX: Record<string, number[]> = {
+  'KANI Core': [1, 1, 1, 1],
+  'Deploy Agent': [0, 0, 1, 1],
+  'Code Agent': [1, 0, 0, 0],
+  'Research Agent': [1, 1, 0, 0],
+  'Memory Agent': [1, 1, 1, 1],
+  'Briefing Agent': [1, 0, 1, 0],
+  'SEO Agent': [0, 0, 0, 1],
+  'Test Agent': [0, 0, 1, 0],
+  'Design Agent': [1, 1, 0, 0],
+}
