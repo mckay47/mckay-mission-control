@@ -5,13 +5,13 @@ import { PROJ } from '../../lib/data'
 import { useToast } from '../Toast'
 import type { Project } from '../../lib/types'
 
-function AnimatedProjectBars({ id }: { id: string }) {
+function AnimatedProjectBars({ id, projects }: { id: string; projects: Project[] }) {
   useEffect(() => {
     const w = document.getElementById(id)
     if (!w) return
     w.innerHTML = ''
     const maxH = 80
-    PROJ.forEach((p, i) => {
+    projects.forEach((p, i) => {
       const b = document.createElement('div')
       b.style.cssText = `flex:1;height:0;border-radius:4px 4px 0 0;position:relative;overflow:hidden;transition:height 1.5s ${i * 0.12}s ease;background:rgba(${p.cr},0.16);border:1px solid rgba(${p.cr},0.38);border-bottom:none`
       const l = document.createElement('div')
@@ -24,18 +24,18 @@ function AnimatedProjectBars({ id }: { id: string }) {
       w.appendChild(b)
       setTimeout(() => { b.style.height = `${(p.pct / 100) * maxH}px` }, 400)
     })
-  }, [id])
+  }, [id, projects])
   return <div id={id} style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 90, paddingBottom: 20, flexShrink: 0 }} />
 }
 
-function AnimatedRevBars({ id }: { id: string }) {
+function AnimatedRevBars({ id, projects }: { id: string; projects: Project[] }) {
   useEffect(() => {
     const w = document.getElementById(id)
     if (!w) return
     w.innerHTML = ''
     const maxH = 90
-    const maxV = 600
-    PROJ.forEach((p, i) => {
+    const maxV = Math.max(...projects.map(p => p.rev), 1)
+    projects.forEach((p, i) => {
       const b = document.createElement('div')
       b.style.cssText = `flex:1;height:0;border-radius:4px 4px 0 0;position:relative;overflow:hidden;transition:height 1.5s ${i * 0.12}s ease;background:rgba(${p.cr},0.16);border:1px solid rgba(${p.cr},0.38);border-bottom:none`
       const l = document.createElement('div')
@@ -48,7 +48,7 @@ function AnimatedRevBars({ id }: { id: string }) {
       w.appendChild(b)
       setTimeout(() => { b.style.height = `${(p.rev / maxV) * maxH}px` }, 400)
     })
-  }, [id])
+  }, [id, projects])
   return <div id={id} style={{ display: 'flex', alignItems: 'flex-end', gap: 7, height: 100, paddingBottom: 20, flexShrink: 0 }} />
 }
 
@@ -72,20 +72,31 @@ interface ProjectsProps {
   onOpenTodoModal: () => void
 }
 
-const positions: [string, string][] = [['1/4', '1/2'], ['4/7', '1/2'], ['7/10', '1/2'], ['10/13', '1/2']]
+// Active projects = Phase 0+ (not IDEE, PIPELINE, PLANNING, PAUSED)
+const ACTIVE = PROJ.filter(p => ['Phase 0','Phase 1','Phase 2','Phase 2+','Phase 3','LIVE'].includes(p.phase))
+const DISPLAY = ACTIVE.length > 0 ? ACTIVE : PROJ.slice(0, 4)
+const positions: [string, string][] = DISPLAY.length <= 4
+  ? [['1/4', '1/2'], ['4/7', '1/2'], ['7/10', '1/2'], ['10/13', '1/2']]
+  : DISPLAY.map((_, i) => {
+      const cols = Math.min(DISPLAY.length, 6)
+      const span = Math.floor(12 / cols)
+      const start = 1 + i * span
+      const row = i < cols ? '1/2' : '2/3'
+      return [`${start}/${start + span}`, row] as [string, string]
+    })
 
 export default function Projects({ onOpenProject, onOpenTodoModal }: ProjectsProps) {
   const { toast } = useToast()
   return (
     <>
-      {/* 4 Project Cards — row 1 */}
-      {PROJ.map((p, i) => (
+      {/* Project Cards — row 1 */}
+      {DISPLAY.map((p, i) => (
         <Card
           key={p.id}
           title={p.n}
           badge={p.phase}
           badgeClass="bg"
-          style={{ gridColumn: positions[i][0], gridRow: positions[i][1] }}
+          style={{ gridColumn: positions[i]?.[0] || '1/4', gridRow: positions[i]?.[1] || '1/2' }}
         >
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
@@ -135,9 +146,9 @@ export default function Projects({ onOpenProject, onOpenTodoModal }: ProjectsPro
       ))}
 
       {/* Comparison — col 1/5, row 2/3 */}
-      <Card title="Vergleich" badge="4 Projekte" badgeClass="bb" style={{ gridColumn: '1/5', gridRow: '2/3' }}>
+      <Card title="Vergleich" badge={`${DISPLAY.length} Projekte`} badgeClass="bb" style={{ gridColumn: '1/5', gridRow: '2/3' }}>
         <div className="lbl" style={{ marginBottom: 5, flexShrink: 0 }}>Fortschritt</div>
-        <AnimatedProjectBars id="pr-cmp" />
+        <AnimatedProjectBars id="pr-cmp" projects={DISPLAY} />
       </Card>
 
       {/* Cost Donut — col 5/8, row 2/3 */}
@@ -170,7 +181,7 @@ export default function Projects({ onOpenProject, onOpenTodoModal }: ProjectsPro
       {/* Revenue Bars — col 8/11, row 2/3 */}
       <Card title="Revenue" badge={'\u20ac1M Prognose'} badgeClass="bg" style={{ gridColumn: '8/11', gridRow: '2/3' }}>
         <div className="lbl" style={{ marginBottom: 5, flexShrink: 0 }}>Umsatz Potenzial</div>
-        <AnimatedRevBars id="pr-rev" />
+        <AnimatedRevBars id="pr-rev" projects={DISPLAY} />
       </Card>
 
       {/* Timeline — col 11/13, row 2/3 */}
@@ -203,9 +214,9 @@ export default function Projects({ onOpenProject, onOpenTodoModal }: ProjectsPro
       </Card>
 
       {/* Todos per Project — col 5/13, row 3/4 */}
-      <Card title="Todos pro Projekt" badge="14 total" badgeClass="ba" style={{ gridColumn: '5/13', gridRow: '3/4' }}>
+      <Card title="Todos pro Projekt" badge={`${DISPLAY.reduce((s, p) => s + p.todos, 0)} total`} badgeClass="ba" style={{ gridColumn: '5/13', gridRow: '3/4' }}>
         <div className="lbl" style={{ marginBottom: 6, flexShrink: 0 }}>Todos / Projekt</div>
-        {PROJ.map(p => (
+        {DISPLAY.map(p => (
           <div key={p.id} className="dr">
             <span className="dl" style={{ fontSize: 12 }}>{p.e} {p.n}</span>
             <DeferredBar percent={p.todos * 25} color={p.col} />
