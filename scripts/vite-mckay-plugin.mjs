@@ -1,15 +1,19 @@
 /**
  * Vite Plugin: MCKAY OS Filesystem Bridge
- * - POST /api/todo   → writes todo to ~/mckay-os/todos/
- * - POST /api/idea   → writes idea to ~/mckay-os/ideas/
+ * - POST /api/todo       → writes todo to ~/mckay-os/todos/
+ * - POST /api/idea       → writes idea + AI processing to ~/mckay-os/ideas/
+ * - POST /api/idea/:id/research   → sets status to researching
+ * - POST /api/idea/:id/to-project → transforms idea to project
+ * - POST /api/idea/:id/park       → sets status to parked
  * - Watches ~/mckay-os/ for changes → re-generates data.ts → HMR auto-updates
  * - Registers/deregisters session in ACTIVE_SESSIONS.md
  */
 
-import { writeFileSync, readFileSync, readdirSync, existsSync, watch } from 'fs'
+import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync, watch } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { execSync } from 'child_process'
+import { processIdea } from './idea-processor.mjs'
 
 const MCKAY = join(homedir(), 'mckay-os')
 const SCRIPT = join(import.meta.dirname, 'generate-data.mjs')
@@ -180,60 +184,168 @@ ${title}
           return
         }
 
-        // POST /api/idea
+        // POST /api/idea — Create idea + AI processing (Stufe 1)
         if (req.method === 'POST' && req.url === '/api/idea') {
-          parseBody(req).then(data => {
+          parseBody(req).then(async (data) => {
             const { title, description = '', category = 'projekt', priority = 'medium' } = data
-            if (!title && !description) {
+            const rawText = description || title
+            if (!rawText) {
               res.writeHead(400, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({ error: 'title or description required' }))
               return
             }
-            const ideaTitle = title || description.slice(0, 60)
+            const ideaTitle = title || rawText.split(/[.\n]/)[0].slice(0, 80)
             const id = slugify(ideaTitle)
             const now = new Date().toISOString().slice(0, 10)
-            const content = `---
-id: "${id}"
-title: "${ideaTitle.replace(/"/g, '\\"')}"
-type: idea
-status: new
-category: "${category}"
-priority: ${priority}
-source: "dashboard"
-created: "${now}"
-updated: "${now}"
-tags: []
-project: ""
----
 
-## Description
-
-${description || ideaTitle}
-
-## Why
-
-[Noch nicht definiert]
-
-## Next Steps
-
-- [ ] Bewerten und kategorisieren
-`
+            // Step 1: Save raw idea immediately (user sees it fast)
+            const initialContent = buildIdeaFile({ id, title: ideaTitle, category, priority, now, rawText, status: 'processing' })
             const filePath = join(MCKAY, 'ideas', `${id}.md`)
-            writeFileSync(filePath, content, 'utf-8')
-            console.log(`[mckay] Idea written: ${filePath}`)
-
-            // Update index
+            writeFileSync(filePath, initialContent, 'utf-8')
+            console.log(`[mckay] Idea saved: ${filePath}`)
             updateIdeaIndex()
-
-            // Regenerate data.ts → triggers HMR
             regenerate()
 
+            // Step 2: AI processing (async — updates the file when done)
             res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: true, id, path: filePath }))
+            res.end(JSON.stringify({ ok: true, id, status: 'processing' }))
+
+            try {
+              console.log(`[mckay] Processing idea "${ideaTitle}" with AI...`)
+              const result = await processIdea(rawText)
+              console.log(`[mckay] AI processing done for "${ideaTitle}"`)
+
+              // Step 3: Update file with AI results
+              const enrichedContent = buildIdeaFile({
+                id, title: ideaTitle, category, priority, now, rawText,
+                status: 'new',
+                structured: result.structured,
+                feedback: result.feedback,
+                recommendation: result.recommendation,
+              })
+              writeFileSync(filePath, enrichedContent, 'utf-8')
+              updateIdeaIndex()
+              regenerate() // triggers HMR → dashboard auto-updates
+              console.log(`[mckay] Idea enriched and saved: ${filePath}`)
+            } catch (err) {
+              console.error(`[mckay] AI processing failed:`, err.message)
+              // Update status to 'new' even if AI fails
+              const fallbackContent = buildIdeaFile({ id, title: ideaTitle, category, priority, now, rawText, status: 'new' })
+              writeFileSync(filePath, fallbackContent, 'utf-8')
+              regenerate()
+            }
           }).catch(err => {
             res.writeHead(400, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: err.message }))
           })
+          return
+        }
+
+        // POST /api/idea/:id/research — Stufe 2a
+        if (req.method === 'POST' && req.url?.match(/^\/api\/idea\/([^/]+)\/research$/)) {
+          const id = req.url.match(/^\/api\/idea\/([^/]+)\/research$/)[1]
+          const filePath = join(MCKAY, 'ideas', `${id}.md`)
+          if (!existsSync(filePath)) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Idea not found' }))
+            return
+          }
+          const content = readFileSync(filePath, 'utf-8')
+          const updated = content.replace(/status: \w+/, 'status: researching')
+          writeFileSync(filePath, updated, 'utf-8')
+          updateIdeaIndex()
+          regenerate()
+          console.log(`[mckay] Idea ${id} → researching`)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, id, status: 'researching' }))
+          return
+        }
+
+        // POST /api/idea/:id/park — Stufe 2c
+        if (req.method === 'POST' && req.url?.match(/^\/api\/idea\/([^/]+)\/park$/)) {
+          const id = req.url.match(/^\/api\/idea\/([^/]+)\/park$/)[1]
+          const filePath = join(MCKAY, 'ideas', `${id}.md`)
+          if (!existsSync(filePath)) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Idea not found' }))
+            return
+          }
+          const content = readFileSync(filePath, 'utf-8')
+          const updated = content.replace(/status: \w+/, 'status: parked')
+          writeFileSync(filePath, updated, 'utf-8')
+          updateIdeaIndex()
+          regenerate()
+          console.log(`[mckay] Idea ${id} → parked`)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, id, status: 'parked' }))
+          return
+        }
+
+        // POST /api/idea/:id/to-project — Stufe 2b
+        if (req.method === 'POST' && req.url?.match(/^\/api\/idea\/([^/]+)\/to-project$/)) {
+          const id = req.url.match(/^\/api\/idea\/([^/]+)\/to-project$/)[1]
+          const filePath = join(MCKAY, 'ideas', `${id}.md`)
+          if (!existsSync(filePath)) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Idea not found' }))
+            return
+          }
+
+          // Read idea data
+          const ideaContent = readFileSync(filePath, 'utf-8')
+          const meta = parseFM(ideaContent)
+          const projName = id
+          const projDir = join(MCKAY, 'projects', projName)
+          const now = new Date().toISOString().slice(0, 10)
+
+          // Create project directory + files
+          if (!existsSync(projDir)) mkdirSync(projDir, { recursive: true })
+
+          writeFileSync(join(projDir, 'CLAUDE.md'), `# ${meta.title || projName} — Project CLAUDE.md
+> MCKAY OS Project | Owner: Mehti Kaymaz | Created: ${now}
+
+---
+
+## 1. Project Overview
+
+**Product:** ${meta.title || projName}
+**Type:** TBD
+**Status:** Phase 0 — Planning
+
+---
+
+## 2. Description
+
+${ideaContent.split('## Description')[1]?.split('##')[0]?.trim() || meta.title || ''}
+
+---
+
+## 3. Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React + Vite + TailwindCSS |
+| Database | Supabase |
+| Hosting | Vercel |
+
+---
+
+*Generated from idea "${id}" on ${now}*
+`, 'utf-8')
+
+          for (const file of ['CONTEXT.md', 'DECISIONS.md', 'TODOS.md', 'IDEAS.md', 'SESSIONS.md']) {
+            writeFileSync(join(projDir, file), `---\ntype: project-${file.replace('.md', '').toLowerCase()}\nproject: "${projName}"\nupdated: "${now}"\n---\n\n## ${file.replace('.md', '')}\n\n`, 'utf-8')
+          }
+
+          // Update idea status
+          const updated = ideaContent.replace(/status: \w+/, 'status: promoted')
+          writeFileSync(filePath, updated, 'utf-8')
+          updateIdeaIndex()
+          regenerate()
+
+          console.log(`[mckay] Idea ${id} → project created at ${projDir}`)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, id, project: projName, path: projDir }))
           return
         }
 
@@ -314,5 +426,65 @@ function parseFM(content) {
     meta[key] = val
   }
   return meta
+}
+
+function buildIdeaFile({ id, title, category, priority, now, rawText, status, structured, feedback, recommendation }) {
+  let body = `## Original
+
+${rawText}
+`
+
+  if (structured) {
+    body += `
+## Strukturiert
+
+${structured}
+`
+  }
+
+  if (feedback) {
+    body += `
+## Feedback
+
+- **Branche:** ${feedback.branche}
+- **Markt:** ${feedback.markt}
+- **Innovation:** ${feedback.innovation}/5
+- **Highlights:** ${feedback.highlights}
+- **Hauptproblem:** ${feedback.problem}
+- **Hauptnutzen:** ${feedback.nutzen}
+`
+  }
+
+  if (recommendation) {
+    body += `
+## Empfehlung
+
+${recommendation}
+`
+  }
+
+  if (!structured && !feedback) {
+    body += `
+## Next Steps
+
+- [ ] KANI Analyse ausstehend
+`
+  }
+
+  return `---
+id: "${id}"
+title: "${title.replace(/"/g, '\\"')}"
+type: idea
+status: ${status}
+category: "${category}"
+priority: ${priority}
+source: "dashboard"
+created: "${now}"
+updated: "${now}"
+tags: []
+project: ""
+---
+
+${body}`
 }
 

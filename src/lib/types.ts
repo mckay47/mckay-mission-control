@@ -49,6 +49,7 @@ export interface Skill {
 }
 
 export interface Idea {
+  id: string
   n: string
   cat: string
   st: string
@@ -62,6 +63,19 @@ export interface Idea {
   res: string
   rec: string
   col: string
+  // AI-generated fields (Stufe 1)
+  raw?: string
+  structured?: string
+  feedback?: IdeaFeedback
+}
+
+export interface IdeaFeedback {
+  branche: string
+  markt: string
+  innovation: number
+  highlights: string
+  problem: string
+  nutzen: string
 }
 
 export interface Todo {

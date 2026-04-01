@@ -315,7 +315,7 @@ function parseIdeas() {
   const files = readdirSync(ideasDir).filter(f => f.endsWith('.md') && !f.startsWith('_'))
   const ideas = []
 
-  const STATUS_MAP = { 'new': 'Neu', 'researching': 'Research', 'validated': 'Validiert', 'promoted': 'Aktiv', 'parked': 'Geparkt', 'archived': 'Archiviert' }
+  const STATUS_MAP = { 'new': 'Neu', 'processing': 'Verarbeitung', 'researching': 'Research', 'validated': 'Validiert', 'promoted': 'Projekt', 'parked': 'Geparkt', 'archived': 'Archiviert' }
   const CAT_MAP = { 'projekt': 'Projekt-Idee', 'feature': 'Feature', 'research': 'Research', 'strategie': 'Strategie', 'privat': 'Privat', 'tool': 'Tool' }
   const PRIO_SCORE = { 'critical': 5, 'high': 4, 'medium': 3, 'low': 2 }
   const CAT_COL = { 'Projekt-Idee': 'var(--bl)', 'Feature': 'var(--g)', 'Research': 'var(--p)', 'Strategie': 'var(--c)', 'Privat': 'var(--t3)', 'Tool': 'var(--a)' }
@@ -329,24 +329,52 @@ function parseIdeas() {
     const created = meta.created || ''
     const dateStr = created ? created.slice(5).replace('-', '.') : ''
 
-    // Extract first paragraph as description
-    const descMatch = body.match(/## Description\n\n([\s\S]*?)(?:\n##|$)/)
-    const desc = descMatch ? descMatch[1].trim().slice(0, 120) : body.slice(0, 120)
+    // Extract sections from body
+    const rawMatch = body.match(/## Original\n\n([\s\S]*?)(?=\n## |$)/)
+    const structuredMatch = body.match(/## Strukturiert\n\n([\s\S]*?)(?=\n## |$)/)
+    const feedbackMatch = body.match(/## Feedback\n\n([\s\S]*?)(?=\n## |$)/)
+    const recMatch = body.match(/## Empfehlung\n\n([\s\S]*?)(?=\n## |$)/)
+    const descMatch = body.match(/## Description\n\n([\s\S]*?)(?=\n## |$)/)
+
+    const raw = rawMatch ? rawMatch[1].trim() : ''
+    const structured = structuredMatch ? structuredMatch[1].trim() : ''
+    const desc = raw || (descMatch ? descMatch[1].trim().slice(0, 120) : body.slice(0, 120))
+    const rec = recMatch ? recMatch[1].trim() : (prio >= 4 ? 'Direkt planen' : 'Research first')
+
+    // Parse feedback section
+    let feedback = undefined
+    if (feedbackMatch) {
+      const fb = feedbackMatch[1].trim()
+      const get = (key) => { const m = fb.match(new RegExp(`\\*\\*${key}:\\*\\*\\s*(.+)`)); return m ? m[1].trim() : '' }
+      const innovMatch = fb.match(/\*\*Innovation:\*\*\s*(\d)/)
+      feedback = {
+        branche: get('Branche'),
+        markt: get('Markt'),
+        innovation: innovMatch ? parseInt(innovMatch[1]) : 3,
+        highlights: get('Highlights'),
+        problem: get('Hauptproblem'),
+        nutzen: get('Hauptnutzen'),
+      }
+    }
 
     ideas.push({
+      id: meta.id || file.replace('.md', ''),
       n: meta.title || file.replace('.md', ''),
       cat,
       st: STATUS_MAP[meta.status] || meta.status || 'Neu',
       date: dateStr,
       txt: desc,
-      f: prio,       // feasibility = priority as proxy
-      pot: prio,     // potential
-      c: 3,          // complexity (default medium)
-      spd: 3,        // speed (default medium)
-      r: meta.status === 'new' ? 1 : 2, // risk
-      res: meta.status === 'researching' ? 'läuft' : 'nicht gestartet',
-      rec: prio >= 4 ? 'Direkt planen' : 'Research first',
+      f: feedback ? feedback.innovation : prio,
+      pot: feedback ? feedback.innovation : prio,
+      c: 3,
+      spd: 3,
+      r: meta.status === 'new' ? 1 : 2,
+      res: meta.status === 'researching' ? 'läuft' : (structured ? 'analysiert' : 'nicht gestartet'),
+      rec,
       col: CAT_COL[cat] || 'var(--t3)',
+      raw,
+      structured,
+      feedback,
     })
   }
 
