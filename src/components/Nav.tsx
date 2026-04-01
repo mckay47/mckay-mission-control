@@ -1,6 +1,9 @@
+import { NOTIFS } from '../lib/data'
+
 interface NavProps {
   currentMode: string
   onModeChange: (mode: string) => void
+  onToggleNotifications: () => void
 }
 
 const TABS = [
@@ -22,7 +25,7 @@ function toggleTheme() {
   html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark')
 }
 
-export default function Nav({ currentMode, onModeChange }: NavProps) {
+export default function Nav({ currentMode, onModeChange, onToggleNotifications }: NavProps) {
   return (
     <nav className="tnav">
       <span className="tlogo">MCKAY<span>.</span>OS</span>
@@ -36,6 +39,21 @@ export default function Nav({ currentMode, onModeChange }: NavProps) {
             {tab.icon} {tab.label}
           </span>
         ))}
+      </div>
+      <div
+        className="nbtn"
+        onClick={onToggleNotifications}
+        style={{
+          cursor: 'pointer',
+          padding: '4px 8px',
+          borderRadius: 8,
+          fontSize: 14,
+          marginLeft: 8,
+          transition: 'all 0.2s',
+        }}
+      >
+        {'\u{1F514}'}
+        <span className="nbadge">{NOTIFS.length}</span>
       </div>
       <div className="tglbtn" onClick={toggleTheme} title="Dark/Light" />
     </nav>

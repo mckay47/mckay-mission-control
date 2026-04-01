@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import Card from '../ui/Card'
 import Gauge from '../ui/Gauge'
 import { PROJ } from '../../lib/data'
+import { useToast } from '../Toast'
+import type { Project } from '../../lib/types'
 
 function AnimatedProjectBars({ id }: { id: string }) {
   useEffect(() => {
@@ -65,9 +67,15 @@ function DeferredBar({ percent, color }: { percent: number; color: string }) {
   )
 }
 
+interface ProjectsProps {
+  onOpenProject: (p: Project) => void
+  onOpenTodoModal: () => void
+}
+
 const positions: [string, string][] = [['1/4', '1/2'], ['4/7', '1/2'], ['7/10', '1/2'], ['10/13', '1/2']]
 
-export default function Projects() {
+export default function Projects({ onOpenProject, onOpenTodoModal }: ProjectsProps) {
+  const { toast } = useToast()
   return (
     <>
       {/* 4 Project Cards — row 1 */}
@@ -118,9 +126,10 @@ export default function Projects() {
           <div style={{ fontSize: 12, color: 'var(--t2)', lineHeight: 1.5, marginBottom: 8, flexShrink: 0, padding: '6px 8px', background: 'var(--inp)', borderRadius: 8, border: '1px solid var(--b)' }}>{'\u2192'} {p.next}</div>
 
           {/* Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, flexShrink: 0 }}>
-            <button className="abtn p" style={{ margin: 0, fontSize: 11 }} onClick={() => alert('Projekt: ' + p.n)}>{'\u25B6'} Öffnen</button>
-            <button className="abtn s" style={{ margin: 0, fontSize: 11 }} onClick={() => alert('Deploy...')}>{'\u2197'} Deploy</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, flexShrink: 0 }}>
+            <button className="abtn p" style={{ margin: 0, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); onOpenProject(p) }}>{'\u25B6'} {'\u00d6'}ffnen</button>
+            <button className="abtn s" style={{ margin: 0, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); toast('Deploy ' + p.n + '...') }}>{'\u2197'} Deploy</button>
+            <button className="abtn" style={{ margin: 0, fontSize: 10 }} onClick={(e) => { e.stopPropagation(); window.open(`https://${p.dom}`, '_blank') }}>{'\u2197'} Fenster</button>
           </div>
         </Card>
       ))}
@@ -188,9 +197,9 @@ export default function Projects() {
 
       {/* Actions — col 1/5, row 3/4 */}
       <Card title="Actions" badge="Projekte" badgeClass="bo" style={{ gridColumn: '1/5', gridRow: '3/4' }}>
-        <button className="abtn s" onClick={() => alert('TennisCoach Deploy!')}>{'\u2197'} TennisCoach {'\u2192'} Deploy</button>
-        <button className="abtn p" onClick={() => alert('Neues Todo')}>+ Neues Todo</button>
-        <button className="abtn" onClick={() => alert('Projekt-Briefing')}>{'\u2600'} Projekt-Briefing</button>
+        <button className="abtn s" onClick={() => toast('TennisCoach Deploy gestartet...')}>{'\u2197'} TennisCoach {'\u2192'} Deploy</button>
+        <button className="abtn p" onClick={() => onOpenTodoModal()}>+ Neues Todo</button>
+        <button className="abtn" onClick={() => toast('Projekt-Briefing wird generiert...')}>{'\u2600'} Projekt-Briefing</button>
       </Card>
 
       {/* Todos per Project — col 5/13, row 3/4 */}

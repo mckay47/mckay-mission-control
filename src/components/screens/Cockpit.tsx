@@ -5,6 +5,9 @@ import { PROJ, AGENTS, SKILLS, TODOS, SCCAT } from '../../lib/data'
 
 interface CockpitProps {
   onModeChange: (mode: string) => void
+  onToggleNotifications: () => void
+  onOpenTodoModal: () => void
+  onOpenThoughtModal: () => void
 }
 
 function WaveEQ({ id }: { id: string }) {
@@ -89,7 +92,7 @@ function WeekBars({ id }: { id: string }) {
   return <div id={id} style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 80, paddingBottom: 20, flexShrink: 0 }} />
 }
 
-export default function Cockpit({ onModeChange }: CockpitProps) {
+export default function Cockpit({ onModeChange, onToggleNotifications, onOpenTodoModal, onOpenThoughtModal }: CockpitProps) {
   const [clock, setClock] = useState('--:--')
   const [cpuVal, setCpuVal] = useState(34)
   const [promptCtr, setPromptCtr] = useState(156)
@@ -164,10 +167,10 @@ export default function Cockpit({ onModeChange }: CockpitProps) {
           <div className="dr"><span className="led lg" style={{ animationDelay: '0.6s' }} /><span className="dl">MCP</span><span className="dval tg">5 {'\u25cf'}</span></div>
           <div className="dv" />
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            <button className="abtn p" style={{ margin: 0, flex: 1, fontSize: 10, padding: 6 }}>{'\u{1F4A1}'}</button>
-            <button className="abtn p" style={{ margin: 0, flex: 1, fontSize: 10, padding: 6 }}>+{'\u2713'}</button>
-            <button className="abtn" style={{ margin: 0, flex: 1, fontSize: 10, padding: 6 }}>{'\u2328'}</button>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--b)', borderRadius: 10, padding: 6, cursor: 'pointer', transition: 'all 0.2s', background: 'var(--inp)' }}>{'\u{1F514}'}</div>
+            <button className="abtn p" style={{ margin: 0, flex: 1, fontSize: 10, padding: 6 }} onClick={(e) => { e.stopPropagation(); onOpenThoughtModal() }}>{'\u{1F4A1}'}</button>
+            <button className="abtn p" style={{ margin: 0, flex: 1, fontSize: 10, padding: 6 }} onClick={(e) => { e.stopPropagation(); onOpenTodoModal() }}>+{'\u2713'}</button>
+            <button className="abtn" style={{ margin: 0, flex: 1, fontSize: 10, padding: 6 }} onClick={(e) => { e.stopPropagation() }}>{'\u2328'}</button>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--b)', borderRadius: 10, padding: 6, cursor: 'pointer', transition: 'all 0.2s', background: 'var(--inp)' }} onClick={(e) => { e.stopPropagation(); onToggleNotifications() }}>{'\u{1F514}'}</div>
           </div>
         </div>
       </Card>
@@ -197,7 +200,7 @@ export default function Cockpit({ onModeChange }: CockpitProps) {
         <div className="dv" />
         <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
           <button className="abtn p" style={{ margin: 0, flex: 1, fontSize: 11 }} onClick={() => onModeChange('projects')}>{'\u2192'} Detail</button>
-          <button className="abtn" style={{ margin: 0, flex: 1, fontSize: 11 }}>+ Todo</button>
+          <button className="abtn" style={{ margin: 0, flex: 1, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); onOpenTodoModal() }}>+ Todo</button>
         </div>
       </Card>
 
