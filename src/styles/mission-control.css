@@ -200,6 +200,11 @@ body {
   position: relative;
   z-index: 1;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-header:hover {
+  background: rgba(255,255,255,0.05);
 }
 .card-header-left { display: flex; align-items: center; gap: 18px; }
 .card-icon { width: 10px; height: 10px; border-radius: 50%; animation: dotPulse 3s ease-in-out infinite; }

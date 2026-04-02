@@ -172,6 +172,10 @@ export default function ProjekteDetail() {
           <div className="card-body">
             {projects.map((p, i) => (
               <div
+                onDoubleClick={() => {
+                  const pid = p.name.toLowerCase().replace(/\s+/g, '-').slice(0, 3)
+                  window.open(`/project/${pid}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no')
+                }}
                 key={p.name}
                 style={{
                   display: 'flex',

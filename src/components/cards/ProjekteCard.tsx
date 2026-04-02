@@ -1,9 +1,4 @@
 import type React from 'react'
-import type { Project } from '../../lib/types'
-
-interface ProjekteCardProps {
-  onOpenProject: (p: Project) => void
-}
 
 const ATTENTION = [
   { title: 'Stillprobleme', badge: 'BLOCKED', type: 'blocked' as const, desc: 'Waiting for Supabase API credentials to continue.', meta: '\u23f1 2d waiting \u00b7 Phase 0', actions: [{ label: 'Provide', primary: true }, { label: 'Delegate' }] },
@@ -52,7 +47,7 @@ function projectRowStyle(color: string, blocked?: boolean): React.CSSProperties 
   }
 }
 
-export default function ProjekteCard({ onOpenProject }: ProjekteCardProps) {
+export default function ProjekteCard() {
   return (
     <div className="card projekte">
       <div className="card-header">
@@ -118,7 +113,10 @@ export default function ProjekteCard({ onOpenProject }: ProjekteCardProps) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, overflowY: 'auto' }}>
             {PROJECTS.map(p => (
-              <div key={p.name} className="project-row" style={projectRowStyle(p.color, p.blocked)} onClick={() => onOpenProject({ id: p.name.slice(0,3).toLowerCase(), n: p.name, e: '', pct: p.pct, phN: 0, phase: p.blocked ? 'Blocked' : 'Active', health: p.blocked ? 'Blocked' : 'Healthy', col: `var(--${p.color})`, cr: '', tkn: 0, cost: 0, days: 0, term: '', dom: '', stack: '', model: '', prompts: 0, last: p.sub, next: '', todos: 0, ideas: 0, rev: 0, mkt: '' })}>
+              <div key={p.name} className="project-row" style={projectRowStyle(p.color, p.blocked)} onClick={() => {
+                const pid = p.name.toLowerCase().replace(/\s+/g, '-').slice(0, 3)
+                window.open(`/project/${pid}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no')
+              }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textAlign: 'center', color: p.rank === '\u2605' ? 'var(--orange)' : 'var(--text-muted)', textShadow: p.rank === '\u2605' ? '0 0 10px var(--orange-glow)' : 'none', animation: p.rank === '\u2605' ? 'float 2s ease-in-out infinite' : 'none' }}>{p.rank}</span>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: `var(--${p.color})`, boxShadow: `0 0 15px var(--${p.color})`, animation: !p.blocked ? 'dotPulse 2s ease-in-out infinite' : 'none' }} />
                 <div>
