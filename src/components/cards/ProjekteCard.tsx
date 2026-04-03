@@ -1,25 +1,74 @@
 import type React from 'react'
+import { PROJ } from '../../lib/data'
 
-const ATTENTION = [
-  { title: 'Stillprobleme', badge: 'BLOCKED', type: 'blocked' as const, desc: 'Waiting for Supabase API credentials to continue.', meta: '\u23f1 2d waiting \u00b7 Phase 0', actions: [{ label: 'Provide', primary: true }, { label: 'Delegate' }] },
-  { title: 'Hebammenbuero', badge: 'DECISION', type: 'decision' as const, desc: 'Calendar: Build custom vs Cal.com integration', meta: 'Architecture \u00b7 Impacts timeline', actions: [{ label: 'Custom', primary: true }, { label: 'Cal.com', primary: true }, { label: 'Compare' }] },
-  { title: 'TennisCoach', badge: 'REVIEW', type: 'review' as const, desc: 'Preview deployment ready. All tests passing.', meta: '\u2713 47 tests \u00b7 Preview live', actions: [{ label: 'Approve', primary: true }, { label: 'Preview' }] },
-  { title: 'FindeMeine', badge: 'REPORT', type: 'report' as const, desc: 'Weekly analytics by research-agent.', meta: '\u{1F4CA} 12 insights \u00b7 +23% traffic', actions: [{ label: 'View', primary: true }, { label: 'Summary' }] },
-]
+/* ── Derive ATTENTION items from projects needing attention ── */
+const ATTENTION = PROJ
+  .filter(p => p.health === 'Attention' && (p.phase === 'Phase 0' || p.phase === 'PLANNING'))
+  .slice(0, 4)
+  .map((p, i) => {
+    const types = ['blocked', 'decision', 'review', 'report'] as const
+    const badges = ['BLOCKED', 'DECISION', 'REVIEW', 'REPORT']
+    const type = types[i % types.length]
+    return {
+      title: p.n,
+      badge: badges[i % badges.length],
+      type,
+      desc: p.next || p.last || `${p.phase} in progress`,
+      meta: `${p.phase} \u00b7 ${p.days}d active`,
+      actions: type === 'blocked'
+        ? [{ label: 'Provide', primary: true }, { label: 'Delegate' }]
+        : type === 'decision'
+        ? [{ label: 'Option A', primary: true }, { label: 'Option B', primary: true }, { label: 'Compare' }]
+        : type === 'review'
+        ? [{ label: 'Approve', primary: true }, { label: 'Preview' }]
+        : [{ label: 'View', primary: true }, { label: 'Summary' }],
+    }
+  })
 
-const PROJECTS = [
-  { rank: '\u2605', name: 'Mission Control', sub: 'build-agent \u00b7 MVP in 2d', color: 'purple', pct: 67, trend: '\u2191', agents: '\u2022\u2022', cost: '\u20ac2.1k', spark: 'M0,18 L9,15 L18,16 L27,12 L36,9 L45,7 L54,5 L65,3' },
-  { rank: '2', name: 'Hebammenbuero', sub: '2 agents \u00b7 MVP in 5d', color: 'green', pct: 45, trend: '\u2192', agents: '\u2022\u2022', cost: '\u20ac0.8k', spark: 'M0,14 L9,13 L18,15 L27,12 L36,14 L45,11 L54,13 L65,10' },
-  { rank: '3', name: 'TennisCoach', sub: 'review \u00b7 Launch 3d', color: 'orange', pct: 80, trend: '\u2191', agents: '\u2022', cost: '\u20ac0.3k', spark: 'M0,20 L9,16 L18,18 L27,12 L36,8 L45,6 L54,4 L65,3' },
-  { rank: '4', name: 'FindeMeine', sub: '\u20ac340/mo \u00b7 Maintenance', color: 'cyan', pct: 100, trend: '\u2191', agents: '\u2022', cost: '\u20ac1.2k', spark: 'M0,18 L9,14 L18,16 L27,10 L36,8 L45,6 L54,4 L65,3', live: true },
-  { rank: '\u2014', name: 'Stillprobleme', sub: 'Waiting for credentials', color: 'red', pct: 23, trend: '\u23f8', agents: '\u25cb', cost: '\u20ac0.1k', spark: 'M0,11 L65,11', blocked: true },
-]
+/* ── Derive PROJECTS list from active (non-PIPELINE, non-IDEE) projects ── */
+function makeSparkline(pct: number): string {
+  const pts = 8
+  const w = 65
+  const h = 22
+  const step = w / (pts - 1)
+  return Array.from({ length: pts }, (_, i) => {
+    const y = h - (pct / 100) * h * (0.3 + 0.7 * (i / (pts - 1))) + Math.sin(i * 1.2) * 3
+    return `${i === 0 ? 'M' : 'L'}${Math.round(i * step)},${Math.round(Math.max(2, Math.min(h - 1, y)))}`
+  }).join(' ')
+}
 
-const PIPELINE = [
-  { name: 'Stillprobleme v2', tag: 'planning', tagClass: 'planning' },
-  { name: 'Hebammen-App', tag: 'research', tagClass: 'research' },
-  { name: 'MCKAY Mobile', tag: 'idea', tagClass: 'idea' },
-]
+const COL_TO_CSS: Record<string, string> = {
+  'var(--p)': 'purple', 'var(--g)': 'green', 'var(--o)': 'orange',
+  'var(--c)': 'cyan', 'var(--bl)': 'blue', 'var(--a)': 'amber',
+  'var(--t3)': 'gray',
+}
+
+const activeProjects = PROJ.filter(p => !['PIPELINE', 'IDEE'].includes(p.phase))
+const PROJECTS = activeProjects.map((p, i) => {
+  const cssColor = COL_TO_CSS[p.col] || 'cyan'
+  const isBlocked = p.term === 'Waiting' || p.health === 'Blocked'
+  const isLive = p.dom !== '' && p.pct >= 80
+  return {
+    rank: i === 0 ? '\u2605' : `${i + 1}`,
+    name: p.n,
+    sub: `${p.phase} \u00b7 ${p.days}d active`,
+    color: cssColor,
+    pct: p.pct,
+    trend: isBlocked ? '\u23f8' : p.pct >= 50 ? '\u2191' : '\u2192',
+    agents: p.term === 'Active' ? '\u2022\u2022' : '\u25cb',
+    cost: `\u20ac${(p.cost / 1000).toFixed(1)}k`,
+    spark: makeSparkline(p.pct),
+    live: isLive,
+    blocked: isBlocked,
+  }
+})
+
+/* ── Derive PIPELINE from PIPELINE/PLANNING status projects ── */
+const pipelineProjects = PROJ.filter(p => ['PIPELINE', 'PLANNING', 'IDEE'].includes(p.phase))
+const PIPELINE = pipelineProjects.slice(0, 5).map(p => {
+  const tag = p.phase === 'PLANNING' ? 'planning' : p.phase === 'PIPELINE' ? 'pipeline' : 'idea'
+  return { name: p.n, tag, tagClass: tag === 'planning' ? 'planning' : tag === 'pipeline' ? 'research' : 'idea' }
+})
 
 const COLOR_RGB: Record<string, string> = {
   purple: '139,92,246',
@@ -53,9 +102,9 @@ export default function ProjekteCard() {
       <div className="card-header">
         <div className="card-header-left"><span className="card-icon cyan" /><span className="card-title">Projekte</span></div>
         <div className="pills">
-          <div className="pill"><span className="pill-dot" style={{ background: 'var(--orange)' }} /><span style={{ color: 'var(--orange)' }}>2</span> Attention</div>
-          <div className="pill"><span className="pill-dot" style={{ background: 'var(--green)' }} /><span style={{ color: 'var(--green)' }}>4</span> Autopilot</div>
-          <div className="pill"><span className="pill-dot" style={{ background: 'var(--red)' }} /><span style={{ color: 'var(--red)' }}>1</span> Blocked</div>
+          <div className="pill"><span className="pill-dot" style={{ background: 'var(--orange)' }} /><span style={{ color: 'var(--orange)' }}>{PROJ.filter(p => p.health === 'Attention').length}</span> Attention</div>
+          <div className="pill"><span className="pill-dot" style={{ background: 'var(--green)' }} /><span style={{ color: 'var(--green)' }}>{PROJ.filter(p => p.health === 'Healthy').length}</span> Autopilot</div>
+          <div className="pill"><span className="pill-dot" style={{ background: 'var(--red)' }} /><span style={{ color: 'var(--red)' }}>{PROJ.filter(p => p.health === 'Blocked' || p.term === 'Waiting').length}</span> Blocked</div>
         </div>
         <div className="btns">
           <button className="btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></svg>Briefing</button>
@@ -71,7 +120,7 @@ export default function ProjekteCard() {
               <svg viewBox="0 0 24 24" width={10} height={10} stroke="currentColor" strokeWidth={2} fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
             </div>
             <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: 1.5 }}>Attention Queue</span>
-            <span style={{ fontSize: 8, padding: '2px 7px', background: 'rgba(245,158,11,0.12)', color: 'var(--orange)', borderRadius: 10, marginLeft: 'auto' }}>4</span>
+            <span style={{ fontSize: 8, padding: '2px 7px', background: 'rgba(245,158,11,0.12)', color: 'var(--orange)', borderRadius: 10, marginLeft: 'auto' }}>{ATTENTION.length}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto' }}>
             {ATTENTION.map(a => (
@@ -90,7 +139,9 @@ export default function ProjekteCard() {
               </div>
             ))}
           </div>
-          <div style={{ textAlign: 'center', padding: 8, fontSize: 8, color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 10, cursor: 'pointer', marginTop: 'auto' }}>{'\u2193'} 2 more items</div>
+          {PROJ.filter(p => p.health === 'Attention').length > ATTENTION.length && (
+            <div style={{ textAlign: 'center', padding: 8, fontSize: 8, color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 10, cursor: 'pointer', marginTop: 'auto' }}>{'\u2193'} {PROJ.filter(p => p.health === 'Attention').length - ATTENTION.length} more items</div>
+          )}
         </div>
 
         {/* Autopilot Monitor */}
@@ -104,10 +155,10 @@ export default function ProjekteCard() {
             </div>
             <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.02)', padding: 3, borderRadius: 10 }}>
               <span style={{ padding: '5px 10px', fontSize: 8, color: 'var(--cyan)', borderRadius: 8, background: 'rgba(0,212,200,0.12)' }}>Active</span>
-              <span style={{ padding: '5px 10px', fontSize: 8, color: 'var(--text-muted)', borderRadius: 8 }}>All 13</span>
+              <span style={{ padding: '5px 10px', fontSize: 8, color: 'var(--text-muted)', borderRadius: 8 }}>All {PROJ.length}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10 }}>
-              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{'\u20ac'}4.4k/w</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{'\u20ac'}{(PROJ.reduce((s, p) => s + p.cost, 0) / 1000).toFixed(1)}k/w</span>
               <span style={{ fontSize: 9, color: 'var(--green)' }}>{'\u2193'}8%</span>
             </div>
           </div>
@@ -154,7 +205,7 @@ export default function ProjekteCard() {
                   <circle cx={35} cy={35} r={28} fill="none" stroke="url(#gaugeGrad)" strokeWidth={5} strokeLinecap="round" strokeDasharray={176} strokeDashoffset={84} />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>52</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{Math.round(activeProjects.reduce((s, p) => s + p.pct, 0) / (activeProjects.length || 1))}</span>
                   <span style={{ fontSize: 6, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Progress</span>
                 </div>
               </div>
@@ -165,7 +216,7 @@ export default function ProjekteCard() {
             </div>
           </div>
           <div className="stat-block" style={{ borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 7, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Pipeline {'\u00b7'} 3 planned</div>
+            <div style={{ fontSize: 7, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Pipeline {'\u00b7'} {pipelineProjects.length} planned</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {PIPELINE.map(p => (
                 <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9 }}>
@@ -178,7 +229,7 @@ export default function ProjekteCard() {
           </div>
           <div className="stat-block" style={{ borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
             <div style={{ fontSize: 7, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Milestones</div>
-            {[['MC MVP', 'purple', '2d'], ['Tennis Launch', 'orange', '3d'], ['Hebammen MVP', 'green', '5d']].map(([n, c, d]) => (
+            {activeProjects.slice(0, 3).map(p => [p.n, COL_TO_CSS[p.col] || 'cyan', `${p.days}d`] as [string, string, string]).map(([n, c, d]) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9, marginBottom: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: `var(--${c})` }} />
                 <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{n}</span>
@@ -196,7 +247,7 @@ export default function ProjekteCard() {
           </div>
           <div className="stat-block" style={{ borderRadius: 12, padding: 12, border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Weekly Burn</span>
-            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{'\u20ac'}4.4k<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/w</span></span>
+            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{'\u20ac'}{(PROJ.reduce((s, p) => s + p.cost, 0) / 1000).toFixed(1)}k<span style={{ fontSize: 9, color: 'var(--text-muted)' }}>/w</span></span>
           </div>
         </div>
       </div>

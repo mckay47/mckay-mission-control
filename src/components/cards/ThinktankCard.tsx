@@ -1,3 +1,9 @@
+import { IDEAS } from '../../lib/data'
+
+const newCount = IDEAS.filter(i => i.st === 'Neu').length
+const parkedCount = IDEAS.filter(i => i.st === 'Geparkt').length
+const totalCount = IDEAS.length
+
 export default function ThinktankCard() {
   return (
     <div className="card thinktank">
@@ -9,11 +15,15 @@ export default function ThinktankCard() {
         <div className="pills">
           <div className="pill">
             <span className="pill-dot" style={{ background: 'var(--cyan)' }} />
-            <span style={{ color: 'var(--cyan)' }}>4</span> Research
+            <span style={{ color: 'var(--cyan)' }}>{newCount}</span> Neu
+          </div>
+          <div className="pill">
+            <span className="pill-dot" style={{ background: 'var(--orange)' }} />
+            <span style={{ color: 'var(--orange)' }}>{parkedCount}</span> Geparkt
           </div>
           <div className="pill">
             <span className="pill-dot" style={{ background: 'var(--green)' }} />
-            <span style={{ color: 'var(--green)' }}>2</span> Ready
+            <span style={{ color: 'var(--green)' }}>{totalCount}</span> Total
           </div>
         </div>
       </div>

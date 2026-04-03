@@ -1,8 +1,14 @@
+import { AGENTS as AGENT_DATA } from '../../lib/data'
+
+/* ── Derive KANI metrics from agent data ── */
+const kaniAgent = AGENT_DATA.find(a => a.n.includes('KANI')) || AGENT_DATA[0]
+const totalCost = AGENT_DATA.reduce((s, a) => s + parseFloat(a.cost.replace(/[^\d.]/g, '') || '0'), 0)
+
 const METRICS = [
-  { value: '1.2M', label: 'Tokens', color: 'var(--cyan)' },
-  { value: '23', label: 'Convos', color: 'var(--purple)' },
-  { value: '340ms', label: 'Latency', color: 'var(--green)' },
-  { value: '\u20ac4.42', label: 'Cost', color: 'var(--orange)' },
+  { value: kaniAgent?.tkn || '0K', label: 'Tokens', color: 'var(--cyan)' },
+  { value: `${AGENT_DATA.length}`, label: 'Agents', color: 'var(--purple)' },
+  { value: `${AGENT_DATA.filter(a => a.st === 'active').length}`, label: 'Active', color: 'var(--green)' },
+  { value: `\u20ac${totalCost.toFixed(2)}`, label: 'Cost', color: 'var(--orange)' },
 ]
 
 const CIRCUMFERENCE = 2 * Math.PI * 25 // ~157
@@ -95,7 +101,7 @@ export default function SystemKaniCard() {
           {/* Info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>KANI</span>
-            <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>claude-4.5-sonnet</span>
+            <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{kaniAgent?.mdl || 'claude'}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
                 width: 6, height: 6, borderRadius: '50%', background: 'var(--green)',

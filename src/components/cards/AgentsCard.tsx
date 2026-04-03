@@ -1,73 +1,47 @@
+import { AGENTS as AGENT_DATA } from '../../lib/data'
+
+/* ── Icon assignment by agent name keyword ── */
+type IconType = 'search' | 'code' | 'pen' | 'smile'
+function pickIcon(name: string): IconType {
+  const n = name.toLowerCase()
+  if (n.includes('research') || n.includes('strategy')) return 'search'
+  if (n.includes('build') || n.includes('ops') || n.includes('launch')) return 'code'
+  if (n.includes('sales') || n.includes('content') || n.includes('mockup')) return 'pen'
+  return 'smile'
+}
+
+/* ── Extract RGB from bg field like "rgba(0,200,232,0.15)" ── */
+function extractRgb(bg: string): string {
+  const m = bg.match(/rgba?\((\d+),(\d+),(\d+)/)
+  return m ? `${m[1]},${m[2]},${m[3]}` : '255,255,255'
+}
+
 interface AgentData {
   name: string
   type: string
   color: string
   colorRgb: string
   status: 'active' | 'idle'
-  icon: 'search' | 'code' | 'pen' | 'smile'
+  icon: IconType
   kpis: { value: string; label: string }[]
   task: string
   pct: number
 }
 
-const AGENTS: AgentData[] = [
-  {
-    name: 'research-agent',
-    type: 'Specialist',
-    color: 'var(--purple)',
-    colorRgb: '167,139,250',
-    status: 'active',
-    icon: 'search',
-    kpis: [
-      { value: '847', label: 'Tasks' },
-      { value: '94%', label: 'Success' },
-    ],
-    task: 'Analyzing competitor data...',
-    pct: 72,
-  },
-  {
-    name: 'code-agent',
-    type: 'Core',
-    color: 'var(--cyan)',
-    colorRgb: '45,212,191',
-    status: 'active',
-    icon: 'code',
-    kpis: [
-      { value: '1.2k', label: 'Commits' },
-      { value: '98%', label: 'Pass Rate' },
-    ],
-    task: 'Building dashboard grid...',
-    pct: 85,
-  },
-  {
-    name: 'content-agent',
-    type: 'Specialist',
-    color: 'var(--green)',
-    colorRgb: '52,211,153',
-    status: 'active',
-    icon: 'pen',
-    kpis: [
-      { value: '234', label: 'Pages' },
-      { value: '4.8', label: 'Rating' },
-    ],
-    task: 'Writing documentation...',
-    pct: 58,
-  },
-  {
-    name: 'design-agent',
-    type: 'Specialist',
-    color: 'var(--orange)',
-    colorRgb: '251,191,36',
-    status: 'idle',
-    icon: 'smile',
-    kpis: [
-      { value: '156', label: 'Designs' },
-      { value: '4.9', label: 'Rating' },
-    ],
-    task: 'Waiting...',
-    pct: 0,
-  },
-]
+const AGENTS: AgentData[] = AGENT_DATA.map(a => ({
+  name: a.n,
+  type: a.typ,
+  color: a.col,
+  colorRgb: extractRgb(a.bg),
+  status: (a.st === 'active' ? 'active' : 'idle') as 'active' | 'idle',
+  icon: pickIcon(a.n),
+  kpis: [
+    { value: a.tkn, label: 'Tokens' },
+    { value: a.suc > 0 ? `${a.suc}%` : a.mdl, label: a.suc > 0 ? 'Success' : 'Model' },
+  ],
+  task: a.act || (a.st === 'active' ? 'Processing...' : 'Waiting...'),
+  pct: a.st === 'active' ? (a.pr > 0 ? a.pr : 50) : 0,
+}))
 
 function AgentIcon({ icon, color }: { icon: AgentData['icon']; color: string }) {
   const props = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -101,15 +75,15 @@ export default function AgentsCard() {
         position: 'relative', zIndex: 1,
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>8</span>
+          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--purple)' }}>{AGENTS.length}</span>
           <span style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--green)' }}>5</span>
+          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--green)' }}>{AGENTS.filter(a => a.status === 'active').length}</span>
           <span style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--orange)' }}>3</span>
+          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--orange)' }}>{AGENTS.filter(a => a.status === 'idle').length}</span>
           <span style={{ fontSize: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Idle</span>
         </div>
       </div>

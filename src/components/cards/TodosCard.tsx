@@ -1,23 +1,58 @@
 import { useState } from 'react'
+import { PROJ, TODOS } from '../../lib/data'
 
-const TODOS_TODAY = [
-  { text: 'Auth-Flow finalisieren', proj: 'MC', projColor: 'purple', time: '45m', tag: 'high' },
-  { text: 'Kalender-API integrieren', proj: 'HB', projColor: 'green', time: '30m', tag: 'agent' },
-  { text: 'Deploy Preview testen', proj: 'TC', projColor: 'orange', time: '15m' },
-  { text: 'Dashboard Grid finalisieren', proj: 'MC', projColor: 'purple', time: '60m' },
-  { text: 'Analytics-Report reviewen', proj: 'FM', projColor: 'cyan', time: '20m' },
-]
+/* ── Color mapping for project abbreviations ── */
+const COL_TO_CSS: Record<string, string> = {
+  'var(--p)': 'purple', 'var(--g)': 'green', 'var(--o)': 'orange',
+  'var(--c)': 'cyan', 'var(--bl)': 'blue', 'var(--a)': 'amber',
+  'var(--t3)': 'gray',
+}
 
-const TODOS_DONE = [
-  { text: 'Analytics Review', proj: 'FM', projColor: 'cyan' },
-  { text: 'Projekt-Card Design', proj: 'MC', projColor: 'purple' },
-]
+function projColor(projId: string): string {
+  const p = PROJ.find(pr => pr.id === projId || pr.n.startsWith(projId))
+  return p ? (COL_TO_CSS[p.col] || 'cyan') : 'gray'
+}
 
-const TOP_PROJECTS = [
-  { rank: 1, name: 'Mission Control', count: 4, pct: 80, color: 'purple' },
-  { rank: 2, name: 'Hebammenbuero', count: 3, pct: 60, color: 'green' },
-  { rank: 3, name: 'TennisCoach', count: 2, pct: 40, color: 'orange' },
-]
+function projAbbrev(projId: string): string {
+  const p = PROJ.find(pr => pr.id === projId || pr.n.startsWith(projId))
+  return p ? p.n.slice(0, 2).toUpperCase() : projId.slice(0, 2).toUpperCase() || 'GEN'
+}
+
+/* ── Derive todo lists from real data ── */
+const TODOS_TODAY = TODOS
+  .filter(t => !t.done)
+  .slice(0, 8)
+  .map(t => ({
+    text: t.txt,
+    proj: projAbbrev(t.proj),
+    projColor: projColor(t.proj),
+    time: undefined as string | undefined,
+    tag: t.prio === 'h' ? 'high' : t.ov ? 'overdue' : undefined as string | undefined,
+  }))
+
+const TODOS_DONE = TODOS
+  .filter(t => t.done)
+  .slice(0, 5)
+  .map(t => ({
+    text: t.txt,
+    proj: projAbbrev(t.proj),
+    projColor: projColor(t.proj),
+  }))
+
+/* ── Derive top projects by todo count ── */
+const projTodoCounts = PROJ
+  .filter(p => p.todos > 0)
+  .sort((a, b) => b.todos - a.todos)
+  .slice(0, 3)
+const maxTodos = projTodoCounts[0]?.todos || 1
+
+const TOP_PROJECTS = projTodoCounts.map((p, i) => ({
+  rank: i + 1,
+  name: p.n,
+  count: p.todos,
+  pct: Math.round((p.todos / maxTodos) * 100),
+  color: COL_TO_CSS[p.col] || 'cyan',
+}))
 
 export default function TodosCard() {
   const [checked, setChecked] = useState<Record<number, boolean>>({})
@@ -27,9 +62,9 @@ export default function TodosCard() {
       <div className="card-header">
         <div className="card-header-left"><span className="card-icon green" /><span className="card-title">Todos</span></div>
         <div className="pills">
-          <div className="pill"><span className="pill-dot" style={{ background: 'var(--red)' }} /><span style={{ color: 'var(--red)' }}>1</span> Overdue</div>
-          <div className="pill"><span className="pill-dot" style={{ background: 'var(--cyan)' }} /><span style={{ color: 'var(--cyan)' }}>8</span> Today</div>
-          <div className="pill"><span className="pill-dot" style={{ background: 'var(--green)' }} /><span style={{ color: 'var(--green)' }}>2</span> Done</div>
+          <div className="pill"><span className="pill-dot" style={{ background: 'var(--red)' }} /><span style={{ color: 'var(--red)' }}>{TODOS.filter(t => t.ov).length}</span> Overdue</div>
+          <div className="pill"><span className="pill-dot" style={{ background: 'var(--cyan)' }} /><span style={{ color: 'var(--cyan)' }}>{TODOS.filter(t => !t.done).length}</span> Open</div>
+          <div className="pill"><span className="pill-dot" style={{ background: 'var(--green)' }} /><span style={{ color: 'var(--green)' }}>{TODOS.filter(t => t.done).length}</span> Done</div>
         </div>
         <div className="btns">
           <button className="btn"><svg viewBox="0 0 24 24" width={10} height={10} stroke="currentColor" strokeWidth={2} fill="none"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>Kanban</button>
@@ -46,16 +81,23 @@ export default function TodosCard() {
                 <svg viewBox="0 0 24 24" width={9} height={9} stroke="currentColor" strokeWidth={2} fill="none"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               </div>
               <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: 1 }}>{'\u00dc'}berf{'\u00e4'}llig</span>
-              <span style={{ fontSize: 7, padding: '2px 6px', background: 'rgba(239,68,68,0.12)', color: 'var(--red)', borderRadius: 8, marginLeft: 'auto' }}>1</span>
+              <span style={{ fontSize: 7, padding: '2px 6px', background: 'rgba(239,68,68,0.12)', color: 'var(--red)', borderRadius: 8, marginLeft: 'auto' }}>{TODOS.filter(t => t.ov).length || 0}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.08)', cursor: 'pointer' }}>
-              <div style={{ width: 14, height: 14, border: '2px solid var(--red)', borderRadius: 4 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--red)' }}>API Credentials eintragen</div>
-                <div style={{ fontSize: 7, color: 'var(--text-muted)', marginTop: 2 }}>Stillprobleme {'\u00b7'} 2d {'\u00fc'}berf{'\u00e4'}llig</div>
+            {TODOS.filter(t => t.ov && !t.done).slice(0, 2).map(t => (
+              <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.08)', cursor: 'pointer', marginBottom: 4 }}>
+                <div style={{ width: 14, height: 14, border: '2px solid var(--red)', borderRadius: 4 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--red)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.txt}</div>
+                  <div style={{ fontSize: 7, color: 'var(--text-muted)', marginTop: 2 }}>{projAbbrev(t.proj)} {'\u00b7'} {'\u00fc'}berf{'\u00e4'}llig</div>
+                </div>
+                <span style={{ fontSize: 7, color: 'var(--red)', background: 'rgba(239,68,68,0.12)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>{t.prio === 'h' ? 'high' : 'overdue'}</span>
               </div>
-              <span style={{ fontSize: 7, color: 'var(--red)', background: 'rgba(239,68,68,0.12)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>blocked</span>
-            </div>
+            ))}
+            {TODOS.filter(t => t.ov && !t.done).length === 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.08)' }}>
+                <div style={{ flex: 1, fontSize: 9, color: 'var(--text-muted)' }}>Keine {'\u00fc'}berf{'\u00e4'}lligen Todos</div>
+              </div>
+            )}
           </div>
 
           <div style={{ background: 'linear-gradient(145deg, rgba(139,92,246,0.06) 0%, transparent 100%)', borderRadius: 14, padding: 12, border: '1px solid rgba(139,92,246,0.1)', flex: 1 }}>
@@ -77,11 +119,14 @@ export default function TodosCard() {
               ))}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-              {[['FindeMeine', 'cyan', 2], ['Stillprobleme', 'red', 1], ['MCKAY Mobile', 'violet', 2]].map(([n, c, count]) => (
-                <div key={n as string} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 7, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: `var(--${c})` }} />{n} ({count})
-                </div>
-              ))}
+              {PROJ.filter(p => p.todos > 0).sort((a, b) => b.todos - a.todos).slice(3, 6).map(p => {
+                const c = COL_TO_CSS[p.col] || 'cyan'
+                return (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 7, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: `var(--${c})` }} />{p.n} ({p.todos})
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -93,7 +138,7 @@ export default function TodosCard() {
               <svg viewBox="0 0 24 24" width={9} height={9} stroke="currentColor" strokeWidth={2} fill="none"><circle cx="12" cy="12" r="10" /></svg>
             </div>
             <span style={{ fontSize: 8, fontWeight: 600, color: 'var(--cyan)', textTransform: 'uppercase', letterSpacing: 1 }}>Heute</span>
-            <span style={{ fontSize: 7, padding: '2px 6px', background: 'rgba(0,212,200,0.12)', color: 'var(--cyan)', borderRadius: 8, marginLeft: 'auto' }}>8</span>
+            <span style={{ fontSize: 7, padding: '2px 6px', background: 'rgba(0,212,200,0.12)', color: 'var(--cyan)', borderRadius: 8, marginLeft: 'auto' }}>{TODOS_TODAY.length}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, overflowY: 'auto' }}>
             {TODOS_TODAY.map((t, i) => (
@@ -114,7 +159,9 @@ export default function TodosCard() {
               </div>
             ))}
           </div>
-          <div style={{ textAlign: 'center', padding: 6, fontSize: 7, color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer', marginTop: 6 }}>{'\u2193'} 2 weitere Todos</div>
+          {TODOS.filter(t => !t.done).length > TODOS_TODAY.length && (
+            <div style={{ textAlign: 'center', padding: 6, fontSize: 7, color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8, cursor: 'pointer', marginTop: 6 }}>{'\u2193'} {TODOS.filter(t => !t.done).length - TODOS_TODAY.length} weitere Todos</div>
+          )}
         </div>
 
         {/* Right: Focus + Perf + Milestones */}
@@ -123,9 +170,9 @@ export default function TodosCard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 8, fontWeight: 600, color: 'var(--cyan)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, position: 'relative' }}>
               <span style={{ width: 6, height: 6, background: 'var(--cyan)', borderRadius: '50%', boxShadow: '0 0 15px var(--cyan-glow)', animation: 'dotPulse 1.5s ease-in-out infinite' }} />Focus Mode
             </div>
-            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, position: 'relative' }}>Auth-Flow finalisieren</div>
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, position: 'relative', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{TODOS_TODAY[0]?.text || 'Kein Todo'}</div>
             <div style={{ fontSize: 8, color: 'var(--text-muted)', display: 'flex', gap: 18, marginBottom: 12, position: 'relative' }}>
-              <span style={{ color: 'var(--purple)' }}>{'\u25cf'} MC</span>
+              <span style={{ color: `var(--${TODOS_TODAY[0]?.projColor || 'cyan'})` }}>{'\u25cf'} {TODOS_TODAY[0]?.proj || '—'}</span>
               <span style={{ color: 'var(--cyan)' }}>{'\u23f1'} ~45 min</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 12, position: 'relative' }}>
@@ -146,7 +193,7 @@ export default function TodosCard() {
           <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
             <div style={{ fontSize: 7, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Performance</div>
             <div style={{ display: 'flex', gap: 18, marginBottom: 10 }}>
-              <div><div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--green)' }}>67%</div><div style={{ fontSize: 6, color: 'var(--text-muted)' }}>Completion</div></div>
+              <div><div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--green)' }}>{TODOS.length > 0 ? Math.round((TODOS.filter(t => t.done).length / TODOS.length) * 100) : 0}%</div><div style={{ fontSize: 6, color: 'var(--text-muted)' }}>Completion</div></div>
               <div><div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--cyan)' }}>4.2h</div><div style={{ fontSize: 6, color: 'var(--text-muted)' }}>Focus/Tag</div></div>
             </div>
             <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 32 }}>
@@ -158,7 +205,7 @@ export default function TodosCard() {
 
           <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)', flex: 1 }}>
             <div style={{ fontSize: 7, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Milestones</div>
-            {[['MC MVP', 'purple', '2d'], ['Tennis Launch', 'orange', '3d']].map(([n, c, d]) => (
+            {PROJ.filter(p => p.days > 0).sort((a, b) => a.days - b.days).slice(0, 2).map(p => [p.n, COL_TO_CSS[p.col] || 'cyan', `${p.days}d`] as [string, string, string]).map(([n, c, d]) => (
               <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 9, marginBottom: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: `var(--${c})` }} />
                 <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{n}</span>

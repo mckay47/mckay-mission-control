@@ -1,11 +1,17 @@
 import { useClock } from '../../hooks/useTimer'
+import { CAL } from '../../lib/data'
 
-const EVENTS = [
-  { time: '09:42', title: 'Team Standup', meta: 'Zoom · Alle', color: 'var(--purple)', duration: '15m', now: false },
-  { time: '11:00', title: 'KANI Session: Dashboard', meta: 'Mission Control · build-agent', color: 'var(--green)', duration: '2h', now: true },
-  { time: '14:00', title: 'Hebammenbuero Review', meta: 'Google Meet · Sarah', color: 'var(--cyan)', duration: '1h', now: false },
-  { time: '16:30', title: 'Arzt Termin', meta: 'Dr. Weber · Ulm', color: 'var(--orange)', duration: '45m', now: false },
-]
+/* ── Color palette for calendar events ── */
+const CAL_COLORS = ['var(--purple)', 'var(--green)', 'var(--cyan)', 'var(--orange)', 'var(--pink)', 'var(--blue)']
+
+const EVENTS = CAL.map((entry, i) => ({
+  time: entry.t,
+  title: entry.n,
+  meta: entry.s,
+  color: CAL_COLORS[i % CAL_COLORS.length],
+  duration: '',
+  now: entry.today && i === 0,
+}))
 
 export default function KalenderCard() {
   const { timeStr, dateStr } = useClock()
@@ -57,13 +63,13 @@ export default function KalenderCard() {
             <div style={{ fontSize: 7, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
               {'\u25b6'} N{'\u00e4'}chster Termin
             </div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>Team Standup</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{EVENTS[0]?.title || '—'}</div>
             <div style={{
               fontSize: 9,
               fontFamily: 'var(--font-mono)',
               color: 'var(--blue)',
               marginTop: 2,
-            }}>09:42 · 15m</div>
+            }}>{EVENTS[0]?.time || '—'}</div>
           </div>
         </div>
 

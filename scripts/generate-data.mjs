@@ -150,40 +150,56 @@ function parseProjects() {
     const statusMatch = status.match(/(Phase \d\+?|LIVE|PLANNING|PIPELINE|IDEE|PAUSED)/)
     if (statusMatch) displayStatus = statusMatch[1]
 
-    // Count project todos if TODOS.md exists
+    // Count project todos (open + done)
     const todosContent = readFile(join(projDir, 'TODOS.md'))
-    const todoCount = (todosContent.match(/- \[ \]/g) || []).length
+    const todoOpen = (todosContent.match(/- \[ \]/g) || []).length
+    const todoDone = (todosContent.match(/- \[x\]/g) || []).length
 
-    // Count project ideas if IDEAS.md exists
+    // Count project ideas
     const ideasContent = readFile(join(projDir, 'IDEAS.md'))
-    const ideaCount = (ideasContent.match(/###\s/g) || []).length
+    const ideaCount = (ideasContent.match(/###\s/g) || []).length || (ideasContent.match(/- \[/g) || []).length
+
+    // Count decisions
+    const decisionsContent = readFile(join(projDir, 'DECISIONS.md'))
+    const decisionCount = (decisionsContent.match(/### D-\d+/g) || []).length || (decisionsContent.match(/###\s/g) || []).length
+
+    // Last session date from SESSIONS.md
+    const sessionsContent = readFile(join(projDir, 'SESSIONS.md'))
+    const lastSessionMatch = sessionsContent.match(/### (\d{4}-\d{2}-\d{2})/)
+    const lastSessionDate = lastSessionMatch ? lastSessionMatch[1] : ''
+    const daysSinceSession = lastSessionDate ? daysAgo(lastSessionDate) : 0
 
     const meta = PROJECT_META[id] || { e: '\u{1F4C1}', col: 'var(--t3)', cr: '120,120,140', sid: id.slice(0, 3), dom: '' }
     const pct = PHASE_PCT[displayStatus] ?? 15
 
-    // Extract last/next from MEMORY.md mentions or CLAUDE.md
+    // Extract last/next from MEMORY.md
     let last = '', next = ''
     const memContent = readFile(join(MCKAY, 'MEMORY.md'))
-    // Find project in memory
     const memSection = memContent.split('###').find(s => s.toLowerCase().includes(id.toLowerCase().replace(/-/g, ' ').slice(0, 8)))
     if (memSection) {
+      const statusMatch2 = memSection.match(/\*\*Status:\*\*\s*(.+)/)
+      if (statusMatch2) last = statusMatch2[1].trim()
       const phaseMatch = memSection.match(/\*\*Phase:\*\*\s*(.+)/)
       if (phaseMatch) next = phaseMatch[1].trim()
     }
+
+    // Determine health based on blockers and activity
+    let health = healthFromStatus(displayStatus)
+    if (todosContent.includes('blocked') || todosContent.includes('Waiting on')) health = 'Attention'
 
     projects.push({
       id: meta.sid || id.slice(0, 3),
       n: row['Name'] || id,
       e: meta.e,
-      pct,
+      pct: todoDone > 0 ? Math.min(Math.round((todoDone / (todoOpen + todoDone)) * 100), pct + 20) : pct,
       phN: PHASE_NUM[displayStatus] ?? 0,
       phase: displayStatus,
-      health: healthFromStatus(displayStatus),
+      health,
       col: meta.col,
       cr: meta.cr,
       tkn: 0,
       cost: 0,
-      days: 0,
+      days: daysSinceSession,
       term: termFromStatus(displayStatus),
       dom: meta.dom || domain || '',
       stack,
@@ -191,7 +207,7 @@ function parseProjects() {
       prompts: 0,
       last: last || status,
       next: next || '',
-      todos: todoCount,
+      todos: todoOpen,
       ideas: ideaCount,
       rev: 0,
       mkt: '',
