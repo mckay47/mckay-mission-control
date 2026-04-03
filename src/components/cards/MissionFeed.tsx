@@ -1,4 +1,5 @@
 import type React from 'react'
+import { NOTIFS } from '../../lib/data'
 
 interface FeedEntry {
   iconClass: string
@@ -10,62 +11,47 @@ interface FeedEntry {
   tagClass: string
 }
 
-const FEED_ITEMS: FeedEntry[] = [
-  {
-    iconClass: 'warning',
-    iconPath: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
-    title: 'Stillprobleme blocked',
-    desc: 'Waiting for API credentials',
-    time: '2d',
-    tag: 'Action',
-    tagClass: 'warn',
-  },
-  {
-    iconClass: 'success',
-    iconPath: 'M22 11.08V12a10 10 0 1 1-5.93-9.14',
-    title: 'TennisCoach deploy ready',
-    desc: '47 tests passing',
-    time: '1h',
-    tag: 'Review',
-    tagClass: 'success',
-  },
-  {
-    iconClass: 'info',
-    iconPath: 'M22 12h-4l-3 9L9 3l-3 9H2',
-    title: 'KANI processing',
-    desc: 'Dashboard Grid task',
-    time: 'now',
-    tag: 'Active',
-    tagClass: 'active',
-  },
-  {
-    iconClass: 'calendar',
-    iconPath: 'M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z',
-    title: 'Team Standup',
-    desc: 'Daily sync',
-    time: '18min',
-    tag: 'Soon',
-    tagClass: 'soon',
-  },
-  {
-    iconClass: 'email',
-    iconPath: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z',
-    title: 'Support Anfrage',
-    desc: 'Terminbuchung issue',
-    time: '10m',
-    tag: 'Urgent',
-    tagClass: 'warn',
-  },
-  {
-    iconClass: 'success',
-    iconPath: 'M22 11.08V12a10 10 0 1 1-5.93-9.14',
-    title: 'FindeMeine Report',
-    desc: '+23% traffic this week',
-    time: '2h',
-    tag: 'Done',
-    tagClass: 'success',
-  },
-]
+/* ── Map notification typ to icon/tag styling ── */
+function mapNotif(n: typeof NOTIFS[number]): FeedEntry {
+  const map: Record<string, { iconClass: string; iconPath: string; tag: string; tagClass: string }> = {
+    wichtig: {
+      iconClass: 'warning',
+      iconPath: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
+      tag: 'Action',
+      tagClass: 'warn',
+    },
+    sofort: {
+      iconClass: 'info',
+      iconPath: 'M22 12h-4l-3 9L9 3l-3 9H2',
+      tag: 'Active',
+      tagClass: 'active',
+    },
+    info: {
+      iconClass: 'success',
+      iconPath: 'M22 11.08V12a10 10 0 1 1-5.93-9.14',
+      tag: 'Done',
+      tagClass: 'success',
+    },
+    review: {
+      iconClass: 'calendar',
+      iconPath: 'M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z',
+      tag: 'Review',
+      tagClass: 'soon',
+    },
+  }
+  const m = map[n.typ] || map.info
+  return {
+    iconClass: m.iconClass,
+    iconPath: m.iconPath,
+    title: n.tit,
+    desc: n.sub,
+    time: n.t,
+    tag: m.tag,
+    tagClass: m.tagClass,
+  }
+}
+
+const FEED_ITEMS: FeedEntry[] = NOTIFS.map(mapNotif)
 
 // Duplicate for seamless loop
 const DUPLICATED = [...FEED_ITEMS, ...FEED_ITEMS]
@@ -88,6 +74,24 @@ function FeedIcon({ iconClass, iconPath }: { iconClass: string; iconPath: string
 }
 
 export default function MissionFeed() {
+  if (FEED_ITEMS.length === 0) {
+    return (
+      <div className="mission-feed">
+        <div className="feed-header">
+          <div className="feed-live">
+            <span className="feed-live-dot" />
+            <span className="feed-live-text">LIVE</span>
+          </div>
+          <span className="feed-title">MISSION CONTROL</span>
+          <span className="feed-count">0 events</span>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Keine Events</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mission-feed">
       {/* Header */}

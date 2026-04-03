@@ -19,28 +19,21 @@ function extractRgb(bg: string): string {
 interface AgentData {
   name: string
   type: string
+  model: string
   color: string
   colorRgb: string
   status: 'active' | 'idle'
   icon: IconType
-  kpis: { value: string; label: string }[]
-  task: string
-  pct: number
 }
 
 const AGENTS: AgentData[] = AGENT_DATA.map(a => ({
   name: a.n,
   type: a.typ,
+  model: a.mdl,
   color: a.col,
   colorRgb: extractRgb(a.bg),
   status: (a.st === 'active' ? 'active' : 'idle') as 'active' | 'idle',
   icon: pickIcon(a.n),
-  kpis: [
-    { value: a.tkn, label: 'Tokens' },
-    { value: a.suc > 0 ? `${a.suc}%` : a.mdl, label: a.suc > 0 ? 'Success' : 'Model' },
-  ],
-  task: a.act || (a.st === 'active' ? 'Processing...' : 'Waiting...'),
-  pct: a.st === 'active' ? (a.pr > 0 ? a.pr : 50) : 0,
 }))
 
 function AgentIcon({ icon, color }: { icon: AgentData['icon']; color: string }) {
@@ -124,39 +117,22 @@ export default function AgentsCard() {
               </div>
             </div>
 
-            {/* KPIs */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              {agent.kpis.map(kpi => (
-                <div key={kpi.label} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-mono)', color: agent.color }}>{kpi.value}</span>
-                  <span style={{ fontSize: 7, color: 'var(--text-muted)' }}>{kpi.label}</span>
-                </div>
-              ))}
+            {/* Model */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-mono)', color: agent.color }}>{agent.model}</span>
+              <span style={{ fontSize: 7, color: 'var(--text-muted)' }}>Model</span>
             </div>
 
-            {/* Current Task */}
+            {/* Status */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
                 width: 5, height: 5, borderRadius: '50%',
                 background: agent.status === 'active' ? agent.color : 'var(--text-muted)',
                 animation: agent.status === 'active' ? 'indicatorPulse 1.5s ease-in-out infinite' : 'none',
               }} />
-              <span style={{ fontSize: 8, color: 'var(--text-secondary)' }}>{agent.task}</span>
-            </div>
-
-            {/* Progress Bar */}
-            <div style={{
-              height: 3, borderRadius: 2,
-              background: 'rgba(255,255,255,0.04)',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%', width: `${agent.pct}%`,
-                borderRadius: 2,
-                background: agent.color,
-                boxShadow: agent.pct > 0 ? `0 0 12px ${agent.color}` : 'none',
-                transition: 'width 1s ease-out',
-              }} />
+              <span style={{ fontSize: 8, color: 'var(--text-secondary)' }}>
+                {agent.status === 'active' ? 'Active' : 'Idle'}
+              </span>
             </div>
           </div>
         ))}

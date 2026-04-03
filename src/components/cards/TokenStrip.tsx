@@ -1,7 +1,13 @@
+import { PROJ, AGENTS } from '../../lib/data'
+
+const totalCost = PROJ.reduce((s, p) => s + p.cost, 0)
+const totalAgents = AGENTS.length
+const activeAgents = AGENTS.filter(a => a.st === 'active').length
+
 const KPIS = [
   {
-    value: '\u20ac4.4k',
-    label: 'Cost/W',
+    value: `\u20ac${(totalCost / 1000).toFixed(1)}k`,
+    label: 'Cost/W (est.)',
     colorClass: 'orange',
     icon: (
       <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -11,7 +17,7 @@ const KPIS = [
     ),
   },
   {
-    value: '1.2M',
+    value: '\u2014',
     label: 'Tokens',
     colorClass: 'pink',
     icon: (
@@ -23,7 +29,7 @@ const KPIS = [
     ),
   },
   {
-    value: '340ms',
+    value: '\u2014',
     label: 'Latency',
     colorClass: 'cyan',
     icon: (
@@ -34,18 +40,21 @@ const KPIS = [
     ),
   },
   {
-    value: '23',
-    label: 'Convos',
+    value: `${totalAgents}`,
+    label: 'Agents',
     colorClass: 'purple',
     icon: (
       <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
   },
   {
-    value: '89%',
-    label: 'Success',
+    value: `${activeAgents}`,
+    label: 'Active',
     colorClass: 'green',
     icon: (
       <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

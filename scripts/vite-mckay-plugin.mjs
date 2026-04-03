@@ -13,6 +13,21 @@ import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync, watch 
 import { join } from 'path'
 import { homedir } from 'os'
 import { execSync } from 'child_process'
+
+// Load .env.local into process.env (Vite doesn't do this for server plugins)
+const envPath = join(import.meta.dirname, '..', '.env.local')
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eqIdx = trimmed.indexOf('=')
+    if (eqIdx === -1) continue
+    const key = trimmed.slice(0, eqIdx).trim()
+    const val = trimmed.slice(eqIdx + 1).trim()
+    if (!process.env[key]) process.env[key] = val
+  }
+  console.log('[mckay] Loaded .env.local')
+}
 import { processIdea } from './idea-processor.mjs'
 
 const MCKAY = join(homedir(), 'mckay-os')

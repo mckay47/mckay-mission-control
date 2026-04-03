@@ -26,17 +26,6 @@ const ATTENTION = PROJ
   })
 
 /* ── Derive PROJECTS list from active (non-PIPELINE, non-IDEE) projects ── */
-function makeSparkline(pct: number): string {
-  const pts = 8
-  const w = 65
-  const h = 22
-  const step = w / (pts - 1)
-  return Array.from({ length: pts }, (_, i) => {
-    const y = h - (pct / 100) * h * (0.3 + 0.7 * (i / (pts - 1))) + Math.sin(i * 1.2) * 3
-    return `${i === 0 ? 'M' : 'L'}${Math.round(i * step)},${Math.round(Math.max(2, Math.min(h - 1, y)))}`
-  }).join(' ')
-}
-
 const COL_TO_CSS: Record<string, string> = {
   'var(--p)': 'purple', 'var(--g)': 'green', 'var(--o)': 'orange',
   'var(--c)': 'cyan', 'var(--bl)': 'blue', 'var(--a)': 'amber',
@@ -57,7 +46,6 @@ const PROJECTS = activeProjects.map((p, i) => {
     trend: isBlocked ? '\u23f8' : p.pct >= 50 ? '\u2191' : '\u2192',
     agents: p.term === 'Active' ? '\u2022\u2022' : '\u25cb',
     cost: `\u20ac${(p.cost / 1000).toFixed(1)}k`,
-    spark: makeSparkline(p.pct),
     live: isLive,
     blocked: isBlocked,
   }
@@ -82,7 +70,7 @@ function projectRowStyle(color: string, blocked?: boolean): React.CSSProperties 
   const rgb = COLOR_RGB[color] || '239,68,68'
   return {
     display: 'grid',
-    gridTemplateColumns: '20px 8px 1fr 55px 65px 30px 20px 35px',
+    gridTemplateColumns: '20px 8px 1fr 55px 30px 20px 35px',
     gap: 18,
     alignItems: 'center',
     padding: '10px 12px',
@@ -177,7 +165,6 @@ export default function ProjekteCard() {
                   </div>
                   <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 2 }}>{p.sub}</div>
                 </div>
-                <svg width={65} height={22} viewBox="0 0 65 22" style={{ filter: `drop-shadow(0 0 4px var(--${p.color}))` }}><path d={p.spark} fill="none" stroke={`var(--${p.color})`} strokeWidth={2} /></svg>
                 <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.04)', overflow: 'hidden', position: 'relative' }}><div style={{ height: '100%', width: `${p.pct}%`, borderRadius: 3, background: 'currentColor', boxShadow: '0 0 12px currentColor', position: 'relative', overflow: 'hidden' }}><div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent)', animation: 'shimmer 2s ease-in-out infinite' }} /></div></div>
                 <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', textAlign: 'right', textShadow: '0 0 8px currentColor' }}>{p.pct}</span>
                 <span style={{ fontSize: 11, textAlign: 'center', color: p.trend === '\u2191' ? 'var(--green)' : 'inherit' }}>{p.trend}</span>
