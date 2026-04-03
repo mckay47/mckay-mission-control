@@ -1,180 +1,74 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppShell from '../shared/AppShell'
 import Notifications from '../shared/Notifications'
 import QuickAccess from '../shared/QuickAccess'
+import { IDEAS } from '../../lib/data'
+import type { Idea } from '../../lib/types'
 
-/* ── Dummy Data ─────────────────────────────────────────── */
+/* ── Helpers ──────────────────────────────────────────── */
 
-interface ThinktankIdea {
-  id: string
-  title: string
-  desc: string
-  score: number
-  scoreColor: string
-  phase: string
-  phaseBg: string
-  phaseColor: string
-  tags: { label: string; bg: string; color: string }[]
-  date: string
-  glowColor: string
-  hoverColor: string
-  done?: boolean
+/** Map idea status to display phase + colors */
+function phaseStyle(st: string): { label: string; bg: string; color: string } {
+  switch (st) {
+    case 'Bereit':
+      return { label: 'Bereit', bg: 'var(--gc)', color: 'var(--g)' }
+    case 'Research':
+      return { label: 'Research', bg: 'var(--blc)', color: 'var(--bl)' }
+    case 'Geparkt':
+      return { label: 'Geparkt', bg: 'rgba(0,0,0,.04)', color: 'var(--tx3)' }
+    case 'Projekt':
+      return { label: 'Projekt', bg: 'var(--tc)', color: 'var(--t)' }
+    default: // "Neu" and anything else
+      return { label: st || 'Neu', bg: 'var(--blc)', color: 'var(--bl)' }
+  }
 }
 
-const ideas: ThinktankIdea[] = [
-  {
-    id: 'ai-steuerberater',
-    title: 'AI Steuerberater SaaS',
-    desc: 'KI-basierte Steueroptimierung fuer Freelancer. Belegerkennung, ELSTER-Abgabe.',
-    score: 92,
-    scoreColor: 'var(--r)',
-    phase: 'Research',
-    phaseBg: 'var(--blc)',
-    phaseColor: 'var(--bl)',
-    tags: [
-      { label: 'SaaS', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' },
-      { label: 'FinTech', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' },
-    ],
-    date: 'vor 3d',
-    glowColor: 'var(--rg)',
-    hoverColor: 'var(--rg)',
-  },
-  {
-    id: 'whatsapp-termin-bot',
-    title: 'WhatsApp Termin-Bot',
-    desc: 'Automatische Terminverwaltung ueber WhatsApp Business API fuer Hebammen.',
-    score: 87,
-    scoreColor: 'var(--r)',
-    phase: 'Bereit',
-    phaseBg: 'var(--gc)',
-    phaseColor: 'var(--g)',
-    tags: [{ label: 'Health', bg: 'var(--gc)', color: 'var(--g)' }],
-    date: 'vor 5d',
-    glowColor: 'var(--gg)',
-    hoverColor: 'var(--gg)',
-  },
-  {
-    id: 'gastro-suite',
-    title: 'Gastro Suite Lieferservice',
-    desc: 'White-Label Bestellsystem. Eigene App statt Lieferando.',
-    score: 74,
-    scoreColor: 'var(--bl)',
-    phase: 'Research',
-    phaseBg: 'var(--blc)',
-    phaseColor: 'var(--bl)',
-    tags: [{ label: 'Service', bg: 'var(--ac)', color: 'var(--a)' }],
-    date: 'vor 7d',
-    glowColor: 'var(--blg)',
-    hoverColor: 'var(--blg)',
-  },
-  {
-    id: 'smarthome-dashboard',
-    title: 'SmartHome Dashboard',
-    desc: 'Universelles Dashboard fuer Smart-Home-Geraete. Herstelleruebergreifend.',
-    score: 68,
-    scoreColor: 'var(--bl)',
-    phase: 'Research',
-    phaseBg: 'var(--blc)',
-    phaseColor: 'var(--bl)',
-    tags: [{ label: 'Smart', bg: 'var(--ac)', color: 'var(--a)' }],
-    date: 'vor 10d',
-    glowColor: 'var(--blg)',
-    hoverColor: 'var(--blg)',
-  },
-  {
-    id: 'fitness-tracker',
-    title: 'Fitness Tracker App',
-    desc: 'Personalisierte Trainingsplaene mit AI-Coach.',
-    score: 45,
-    scoreColor: 'var(--tx3)',
-    phase: 'Geparkt',
-    phaseBg: 'rgba(0,0,0,.04)',
-    phaseColor: 'var(--tx3)',
-    tags: [{ label: 'Health', bg: 'var(--gc)', color: 'var(--g)' }],
-    date: 'vor 14d',
-    glowColor: 'rgba(0,0,0,.03)',
-    hoverColor: 'rgba(0,0,0,.04)',
-  },
-  {
-    id: 'immobilien-preisvergleich',
-    title: 'Immobilien Preisvergleich',
-    desc: 'AI-Immobilienbewertung. Marktdaten, Preisprognosen.',
-    score: 38,
-    scoreColor: 'var(--tx3)',
-    phase: 'Geparkt',
-    phaseBg: 'rgba(0,0,0,.04)',
-    phaseColor: 'var(--tx3)',
-    tags: [{ label: 'SaaS', bg: 'var(--blc)', color: 'var(--bl)' }],
-    date: 'vor 21d',
-    glowColor: 'rgba(0,0,0,.03)',
-    hoverColor: 'rgba(0,0,0,.04)',
-  },
-  {
-    id: 'tenniscoach-pro',
-    title: 'TennisCoach Pro',
-    desc: 'AI Tennis-Trainer. Videoanalyse, Trainingsplan.',
-    score: -1,
-    scoreColor: 'var(--t)',
-    phase: 'Projekt',
-    phaseBg: 'var(--tc)',
-    phaseColor: 'var(--t)',
-    tags: [{ label: 'Health', bg: 'var(--gc)', color: 'var(--g)' }],
-    date: 'ueberfuehrt 14.03',
-    glowColor: 'transparent',
-    hoverColor: 'transparent',
-    done: true,
-  },
-]
-
-interface TagNav {
-  icon: string
-  name: string
-  count: number
-  colorVar: string
-  glowVar: string
+/** Compute a score from idea feedback, or return null */
+function ideaScore(idea: Idea): number | null {
+  if (idea.feedback && idea.feedback.innovation) {
+    return idea.feedback.innovation * 20
+  }
+  return null
 }
 
-const tagNavItems: TagNav[] = [
-  { icon: '\u25CF', name: 'Alle', count: 7, colorVar: 'var(--p)', glowVar: 'var(--pg)' },
-  { icon: '\u2764', name: 'Health', count: 3, colorVar: 'var(--g)', glowVar: 'var(--gg)' },
-  { icon: '\uD83D\uDCBB', name: 'SaaS', count: 2, colorVar: 'var(--bl)', glowVar: 'var(--blg)' },
-  { icon: '\uD83C\uDFE0', name: 'Smart', count: 1, colorVar: 'var(--o)', glowVar: 'var(--og)' },
-  { icon: '\uD83E\uDD1D', name: 'Service', count: 1, colorVar: 'var(--a)', glowVar: 'var(--ag)' },
-]
-
-interface ScoreItem {
-  label: string
-  value: number
-  max: number
-  color: string
+/** Score color based on value */
+function scoreColor(score: number | null): string {
+  if (score === null) return 'var(--tx3)'
+  if (score >= 80) return 'var(--r)'
+  if (score >= 60) return 'var(--bl)'
+  return 'var(--tx3)'
 }
 
-const detailScores: ScoreItem[] = [
-  { label: 'Markt', value: 9, max: 10, color: 'var(--g)' },
-  { label: 'Machbar', value: 7, max: 10, color: 'var(--bl)' },
-  { label: 'Unique', value: 8, max: 10, color: 'var(--p)' },
-  { label: 'Revenue', value: 6, max: 10, color: 'var(--a)' },
-  { label: 'Risiko', value: 5, max: 10, color: 'var(--r)' },
-]
-
-const filters = ['Alle', 'Research', 'Bereit', 'Geparkt'] as const
-const filterCounts: Record<string, number> = { Alle: 7, Research: 3, Bereit: 1, Geparkt: 2 }
-
-interface TickerItem {
-  agent: string
-  color: string
-  text: string
+/** Glow color from idea.col or fallback */
+function glowFromCol(col: string): string {
+  const map: Record<string, string> = {
+    'var(--r)': 'var(--rg)',
+    'var(--g)': 'var(--gg)',
+    'var(--bl)': 'var(--blg)',
+    'var(--p)': 'var(--pg)',
+    'var(--a)': 'var(--ag)',
+    'var(--t)': 'var(--tg)',
+    'var(--o)': 'var(--og)',
+    'var(--c)': 'var(--blg)',
+    'var(--t3)': 'rgba(0,0,0,.03)',
+  }
+  return map[col] || 'var(--blg)'
 }
 
-const tickerItems: TickerItem[] = [
-  { agent: 'kani', color: 'var(--p)', text: 'Steuerberater Score aktualisiert: 92/100' },
-  { agent: 'research', color: 'var(--bl)', text: 'Marktanalyse 4.2M Freelancer abgeschlossen' },
-  { agent: 'kani', color: 'var(--g)', text: 'WhatsApp Bot als "Bereit" markiert' },
-  { agent: 'system', color: 'var(--t)', text: 'TennisCoach Pro in Projekt ueberfuehrt' },
-  { agent: 'kani', color: 'var(--a)', text: 'Gastro Suite: 12 Wettbewerber analysiert' },
-  { agent: 'kani', color: 'var(--p)', text: 'SmartHome: Tech-Stack Empfehlung generiert' },
-]
+/** Category to tag color */
+function catStyle(cat: string): { bg: string; color: string } {
+  const lower = cat.toLowerCase()
+  if (lower.includes('projekt')) return { bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }
+  if (lower.includes('feature')) return { bg: 'var(--gc)', color: 'var(--g)' }
+  if (lower.includes('tool')) return { bg: 'var(--ac)', color: 'var(--a)' }
+  if (lower.includes('investment')) return { bg: 'var(--tc)', color: 'var(--t)' }
+  return { bg: 'var(--blc)', color: 'var(--bl)' }
+}
+
+/* ── Filters ─────────────────────────────────────────── */
+
+const PHASE_FILTERS = ['Alle', 'Neu', 'Research', 'Bereit', 'Geparkt'] as const
 
 /* ── Component ─────────────────────────────────────────── */
 
@@ -182,19 +76,116 @@ export default function Thinktank() {
   const navigate = useNavigate()
   const [activeFilter, setActiveFilter] = useState<string>('Alle')
   const [activeTag, setActiveTag] = useState(0)
-  const [selectedIdea, setSelectedIdea] = useState(0)
+  const [selectedIdx, setSelectedIdx] = useState(0)
   const [pipelineOpen, setPipelineOpen] = useState(false)
 
-  const selected = ideas[selectedIdea]
+  /* ── Derived data ─────────────────────────────────── */
 
-  const filteredIdeas = activeFilter === 'Alle'
-    ? ideas
-    : ideas.filter((i) => {
-        if (activeFilter === 'Research') return i.phase === 'Research'
-        if (activeFilter === 'Bereit') return i.phase === 'Bereit'
-        if (activeFilter === 'Geparkt') return i.phase === 'Geparkt'
-        return true
-      })
+  const totalCount = IDEAS.length
+  const neuCount = IDEAS.filter((i) => i.st === 'Neu').length
+  const researchCount = IDEAS.filter((i) => i.st === 'Research').length
+  const bereitCount = IDEAS.filter((i) => i.st === 'Bereit').length
+  const geparktCount = IDEAS.filter((i) => i.st === 'Geparkt').length
+  // const projektCount = IDEAS.filter((i) => i.st === 'Projekt').length
+
+  const hotCount = IDEAS.filter((i) => {
+    const s = ideaScore(i)
+    return s !== null && s >= 80
+  }).length
+
+  const filterCounts: Record<string, number> = {
+    Alle: totalCount,
+    Neu: neuCount,
+    Research: researchCount,
+    Bereit: bereitCount,
+    Geparkt: geparktCount,
+  }
+
+  // Build unique category tags from IDEAS
+  const tagNavItems = useMemo(() => {
+    const catMap = new Map<string, number>()
+    IDEAS.forEach((idea) => {
+      const cat = idea.cat || 'Sonstige'
+      catMap.set(cat, (catMap.get(cat) || 0) + 1)
+    })
+    const items: { icon: string; name: string; count: number; colorVar: string; glowVar: string }[] = [
+      { icon: '\u25CF', name: 'Alle', count: totalCount, colorVar: 'var(--p)', glowVar: 'var(--pg)' },
+    ]
+    const catColors: Record<string, { color: string; glow: string; icon: string }> = {
+      'Projekt-Idee': { color: 'var(--bl)', glow: 'var(--blg)', icon: '\uD83D\uDCBB' },
+      'Feature': { color: 'var(--g)', glow: 'var(--gg)', icon: '\u2764' },
+      'Tool': { color: 'var(--a)', glow: 'var(--ag)', icon: '\uD83D\uDEE0' },
+      'investment-thesis': { color: 'var(--t)', glow: 'var(--tg)', icon: '\uD83D\uDCB0' },
+    }
+    catMap.forEach((count, cat) => {
+      const cc = catColors[cat] || { color: 'var(--tx2)', glow: 'rgba(0,0,0,.04)', icon: '\u25CF' }
+      items.push({ icon: cc.icon, name: cat, count, colorVar: cc.color, glowVar: cc.glow })
+    })
+    return items
+  }, [totalCount])
+
+  // Filter ideas by phase
+  const phaseFiltered = activeFilter === 'Alle'
+    ? IDEAS
+    : IDEAS.filter((i) => i.st === activeFilter)
+
+  // Further filter by category tag
+  const filteredIdeas = activeTag === 0
+    ? phaseFiltered
+    : phaseFiltered.filter((i) => i.cat === tagNavItems[activeTag]?.name)
+
+  // Selected idea (clamp index)
+  const clampedIdx = filteredIdeas.length > 0 ? Math.min(selectedIdx, filteredIdeas.length - 1) : -1
+  const selected = clampedIdx >= 0 ? filteredIdeas[clampedIdx] : null
+
+  // Pipeline phase groups
+  const pipelinePhases = useMemo(() => {
+    const phases: { name: string; color: string; glow: string; titleColor: string; ideas: Idea[] }[] = [
+      { name: 'Geparkt', color: 'var(--tx3)', glow: '', titleColor: 'var(--tx3)', ideas: [] },
+      { name: 'Neu', color: 'var(--bl)', glow: 'var(--blg)', titleColor: 'var(--bl)', ideas: [] },
+      { name: 'Research', color: 'var(--p)', glow: 'var(--pg)', titleColor: 'var(--p)', ideas: [] },
+      { name: 'Bereit', color: 'var(--g)', glow: 'var(--gg)', titleColor: 'var(--g)', ideas: [] },
+      { name: 'Projekt', color: 'var(--t)', glow: 'var(--tg)', titleColor: 'var(--t)', ideas: [] },
+    ]
+    IDEAS.forEach((idea) => {
+      const ph = phases.find((p) => p.name === idea.st) || phases[1] // default to Neu
+      ph.ideas.push(idea)
+    })
+    return phases.filter((p) => p.ideas.length > 0)
+  }, [])
+
+  // Detail scores from idea fields
+  const detailScores = selected
+    ? [
+        { label: 'Fit', value: selected.f, max: 5, color: 'var(--g)' },
+        { label: 'Potenzial', value: selected.pot, max: 5, color: 'var(--bl)' },
+        { label: 'Komplexitaet', value: selected.c, max: 5, color: 'var(--p)' },
+        { label: 'Speed', value: selected.spd, max: 5, color: 'var(--a)' },
+        { label: 'Risiko', value: selected.r, max: 5, color: 'var(--r)' },
+      ]
+    : []
+
+  // Ticker items from IDEAS
+  const tickerItems = IDEAS.slice(0, 6).map((idea) => ({
+    agent: 'kani',
+    color: idea.col || 'var(--p)',
+    text: `${idea.n} — ${idea.st}`,
+  }))
+
+  /* ── Empty state ──────────────────────────────────── */
+
+  if (IDEAS.length === 0) {
+    return (
+      <AppShell title="Thinktank" ledColor="p">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--tx3)', fontSize: 14 }}>
+          Keine Ideen — erste Idee im Capture Input erfassen
+        </div>
+      </AppShell>
+    )
+  }
+
+  const selectedScore = selected ? ideaScore(selected) : null
+  const selectedPhase = selected ? phaseStyle(selected.st) : null
 
   return (
     <AppShell title="Thinktank" ledColor="p">
@@ -207,7 +198,7 @@ export default function Thinktank() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--p)' }}>7</div>
+            <div className="kv" style={{ color: 'var(--p)' }}>{totalCount}</div>
             <div className="kl">Ideen gesamt</div>
           </div>
         </div>
@@ -218,7 +209,7 @@ export default function Thinktank() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--r)' }}>2</div>
+            <div className="kv" style={{ color: 'var(--r)' }}>{hotCount}</div>
             <div className="kl">Hot</div>
           </div>
         </div>
@@ -230,7 +221,7 @@ export default function Thinktank() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--bl)' }}>3</div>
+            <div className="kv" style={{ color: 'var(--bl)' }}>{researchCount + neuCount}</div>
             <div className="kl">Research</div>
           </div>
         </div>
@@ -242,7 +233,7 @@ export default function Thinktank() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--g)' }}>1</div>
+            <div className="kv" style={{ color: 'var(--g)' }}>{bereitCount}</div>
             <div className="kl">Bereit</div>
           </div>
         </div>
@@ -263,13 +254,14 @@ export default function Thinktank() {
           <div className="pl-bar" onClick={() => setPipelineOpen((p) => !p)}>
             <span className="st" style={{ whiteSpace: 'nowrap' }}>Pipeline</span>
             <div className="pl-track in">
-              <div className="pl-seg" style={{ flex: 2, background: 'var(--tx3)' }}>2</div>
-              <div className="pl-seg" style={{ flex: 3, background: 'var(--bl)' }}>3</div>
-              <div className="pl-seg" style={{ flex: 1, background: 'var(--g)' }}>1</div>
-              <div className="pl-seg" style={{ flex: 1, background: 'var(--t)' }}>1</div>
+              {pipelinePhases.map((ph) => (
+                <div key={ph.name} className="pl-seg" style={{ flex: ph.ideas.length, background: ph.color }}>
+                  {ph.ideas.length}
+                </div>
+              ))}
             </div>
             <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: 'var(--p)', whiteSpace: 'nowrap' }}>
-              7 Ideen
+              {totalCount} Ideen
             </span>
             <span style={{ fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>
               {pipelineOpen ? '\u25B2' : '\u25BC'}
@@ -277,45 +269,33 @@ export default function Thinktank() {
           </div>
           {pipelineOpen && (
             <div className="pl-detail open">
-              <div className="pl-phase">
-                <div className="pl-phase-dot" style={{ background: 'var(--tx3)' }} />
-                <div className="pl-phase-info">
-                  <div className="pl-phase-title">Geparkt</div>
-                  <div className="pl-phase-count" style={{ color: 'var(--tx3)' }}>2 Ideen</div>
-                  <div className="pl-phase-items">
-                    {'\u25CF'} Fitness Tracker App<br />
-                    {'\u25CF'} Immobilien Preisvergleich
+              {pipelinePhases.map((ph) => (
+                <div key={ph.name} className="pl-phase">
+                  <div
+                    className="pl-phase-dot"
+                    style={{
+                      background: ph.color,
+                      boxShadow: ph.glow ? `0 0 8px ${ph.glow}` : undefined,
+                    }}
+                  />
+                  <div className="pl-phase-info">
+                    <div className="pl-phase-title" style={{ color: ph.titleColor }}>
+                      {ph.name === 'Projekt' ? '\u2192 Projekt' : ph.name}
+                    </div>
+                    <div className="pl-phase-count" style={{ color: ph.titleColor }}>
+                      {ph.ideas.length} {ph.ideas.length === 1 ? 'Idee' : 'Ideen'}
+                    </div>
+                    <div className="pl-phase-items">
+                      {ph.ideas.map((idea, i) => (
+                        <span key={idea.id}>
+                          {'\u25CF'} {idea.n}
+                          {i < ph.ideas.length - 1 && <br />}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="pl-phase">
-                <div className="pl-phase-dot" style={{ background: 'var(--bl)', boxShadow: '0 0 8px var(--blg)' }} />
-                <div className="pl-phase-info">
-                  <div className="pl-phase-title" style={{ color: 'var(--bl)' }}>In Research</div>
-                  <div className="pl-phase-count" style={{ color: 'var(--bl)' }}>3 Ideen</div>
-                  <div className="pl-phase-items">
-                    {'\u25CF'} AI Steuerberater SaaS<br />
-                    {'\u25CF'} Gastro Suite Lieferservice<br />
-                    {'\u25CF'} SmartHome Dashboard
-                  </div>
-                </div>
-              </div>
-              <div className="pl-phase">
-                <div className="pl-phase-dot" style={{ background: 'var(--g)', boxShadow: '0 0 8px var(--gg)' }} />
-                <div className="pl-phase-info">
-                  <div className="pl-phase-title" style={{ color: 'var(--g)' }}>Bereit</div>
-                  <div className="pl-phase-count" style={{ color: 'var(--g)' }}>1 Idee</div>
-                  <div className="pl-phase-items">{'\u25CF'} WhatsApp Termin-Bot</div>
-                </div>
-              </div>
-              <div className="pl-phase">
-                <div className="pl-phase-dot" style={{ background: 'var(--t)', boxShadow: '0 0 8px var(--tg)' }} />
-                <div className="pl-phase-info">
-                  <div className="pl-phase-title" style={{ color: 'var(--t)' }}>{'\u2192'} Projekt</div>
-                  <div className="pl-phase-count" style={{ color: 'var(--t)' }}>1 ueberfuehrt</div>
-                  <div className="pl-phase-items">{'\u25CF'} TennisCoach Pro</div>
-                </div>
-              </div>
+              ))}
             </div>
           )}
         </div>
@@ -326,13 +306,13 @@ export default function Thinktank() {
         <span className="st">Filter</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span className="st" style={{ marginRight: 12 }}>Ideen</span>
-          {filters.map((f) => (
+          {PHASE_FILTERS.map((f) => (
             <button
               key={f}
               className={`fb${activeFilter === f ? ' active' : ''}`}
-              onClick={() => setActiveFilter(f)}
+              onClick={() => { setActiveFilter(f); setSelectedIdx(0) }}
             >
-              {f} <span className="fc">{filterCounts[f]}</span>
+              {f} <span className="fc">{filterCounts[f] ?? 0}</span>
             </button>
           ))}
         </div>
@@ -348,7 +328,7 @@ export default function Thinktank() {
               key={tag.name}
               className={`ni cf${activeTag === i ? ' active' : ''}`}
               style={{ '--nc': tag.glowVar, boxShadow: activeTag === i ? 'inset 2px 2px 5px rgba(0,0,0,.07), inset -2px -2px 5px rgba(255,255,255,.5)' : undefined } as React.CSSProperties}
-              onClick={() => setActiveTag(i)}
+              onClick={() => { setActiveTag(i); setSelectedIdx(0) }}
             >
               <span className="ni-l" style={{ color: tag.colorVar, fontSize: i === 0 ? 14 : 12 }}>{tag.icon}</span>
               <span className="ni-n">{tag.name}</span>
@@ -360,40 +340,45 @@ export default function Thinktank() {
         {/* Center: Idea Grid */}
         <div className="center" style={{ overflowY: 'auto' }}>
           <div className="igrid">
-            {filteredIdeas.map((idea, _idx) => (
-              <div
-                key={idea.id}
-                className="cgw"
-                style={{ '--gc2': idea.glowColor } as React.CSSProperties}
-                onClick={() => setSelectedIdea(ideas.indexOf(idea))}
-              >
+            {filteredIdeas.map((idea, idx) => {
+              const sc = ideaScore(idea)
+              const ps = phaseStyle(idea.st)
+              const glow = glowFromCol(idea.col)
+              const cs = catStyle(idea.cat)
+              const isDone = idea.st === 'Projekt'
+              return (
                 <div
-                  className={`ic cf${idea.done ? ' done' : ''}`}
-                  style={{ '--hc': idea.hoverColor, opacity: idea.done ? 0.3 : undefined } as React.CSSProperties}
-                  onDoubleClick={() => navigate(`/thinktank/${idea.id}`)}
+                  key={idea.id}
+                  className="cgw"
+                  style={{ '--gc2': glow } as React.CSSProperties}
+                  onClick={() => setSelectedIdx(idx)}
                 >
-                  <div className="ic-top">
-                    <div className="ic-score in" style={{ color: idea.scoreColor }}>
-                      {idea.score === -1 ? '\u2713' : idea.score}
+                  <div
+                    className={`ic cf${isDone ? ' done' : ''}`}
+                    style={{ '--hc': glow, opacity: isDone ? 0.3 : undefined } as React.CSSProperties}
+                    onDoubleClick={() => navigate(`/thinktank/${idea.id}`)}
+                  >
+                    <div className="ic-top">
+                      <div className="ic-score in" style={{ color: scoreColor(sc) }}>
+                        {isDone ? '\u2713' : sc !== null ? sc : '\u2014'}
+                      </div>
+                      <span className="ic-phase" style={{ background: ps.bg, color: ps.color }}>
+                        {idea.st === 'Projekt' ? '\u2192 Projekt' : `\u25CF ${ps.label}`}
+                      </span>
                     </div>
-                    <span className="ic-phase" style={{ background: idea.phaseBg, color: idea.phaseColor }}>
-                      {idea.phase === 'Projekt' ? '\u2192 Projekt' : `\u25CF ${idea.phase}`}
-                    </span>
-                  </div>
-                  <div className="ic-title">{idea.title}</div>
-                  <div className="ic-desc">{idea.desc}</div>
-                  <div className="ic-tags">
-                    {idea.tags.map((t) => (
-                      <span key={t.label} className="ic-tag" style={{ background: t.bg, color: t.color }}>{t.label}</span>
-                    ))}
-                  </div>
-                  <div className="ic-foot">
-                    <span className="ic-date">{idea.date}</span>
-                    <span className="ic-arrow" onClick={(e) => { e.stopPropagation(); navigate(`/thinktank/${idea.id}`) }}>{'\u2192'}</span>
+                    <div className="ic-title">{idea.n}</div>
+                    <div className="ic-desc">{idea.txt}</div>
+                    <div className="ic-tags">
+                      <span className="ic-tag" style={{ background: cs.bg, color: cs.color }}>{idea.cat}</span>
+                    </div>
+                    <div className="ic-foot">
+                      <span className="ic-date">{idea.date || '\u2014'}</span>
+                      <span className="ic-arrow" onClick={(e) => { e.stopPropagation(); navigate(`/thinktank/${idea.id}`) }}>{'\u2192'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {/* Add new idea placeholder */}
             <div
               className="ic cf"
@@ -406,86 +391,75 @@ export default function Thinktank() {
 
         {/* Right: Detail + KANI */}
         <div className="right" style={{ gap: 14 }}>
-          <div className="det cf">
-            <div className="det-hdr">
-              <div className="det-title">{selected.title}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 8, fontWeight: 700, padding: '3px 8px', borderRadius: 5, background: selected.phaseBg, color: selected.phaseColor }}>
-                  {'\u25CF'} {selected.phase}
-                </span>
-                <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: selected.scoreColor }}>
-                  {selected.score === -1 ? '\u2713' : selected.score}
-                </span>
+          {selected && selectedPhase ? (
+            <div className="det cf">
+              <div className="det-hdr">
+                <div className="det-title">{selected.n}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, padding: '3px 8px', borderRadius: 5, background: selectedPhase.bg, color: selectedPhase.color }}>
+                    {'\u25CF'} {selectedPhase.label}
+                  </span>
+                  <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: scoreColor(selectedScore) }}>
+                    {selected.st === 'Projekt' ? '\u2713' : selectedScore !== null ? selectedScore : '\u2014'}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="det-body">
-              <div>
-                <div className="det-label">Beschreibung</div>
-                <div className="det-text">{selected.desc}</div>
-              </div>
-              <div>
-                <div className="det-label">AI Bewertung</div>
-                <div className="det-score-row">
-                  {detailScores.map((s) => (
-                    <div key={s.label} className="det-score-item">
-                      <div className="det-score-bar in">
-                        <div className="det-score-fill" style={{ width: `${(s.value / s.max) * 100}%`, background: s.color }} />
+              <div className="det-body">
+                <div>
+                  <div className="det-label">Beschreibung</div>
+                  <div className="det-text">{selected.txt || '\u2014'}</div>
+                </div>
+                <div>
+                  <div className="det-label">AI Bewertung</div>
+                  <div className="det-score-row">
+                    {detailScores.map((s) => (
+                      <div key={s.label} className="det-score-item">
+                        <div className="det-score-bar in">
+                          <div className="det-score-fill" style={{ width: `${(s.value / s.max) * 100}%`, background: s.color }} />
+                        </div>
+                        <div className="det-score-label">{s.label}</div>
+                        <div className="det-score-val" style={{ color: s.color }}>{s.value}/{s.max}</div>
                       </div>
-                      <div className="det-score-label">{s.label}</div>
-                      <div className="det-score-val" style={{ color: s.color }}>{s.value}/{s.max}</div>
+                    ))}
+                  </div>
+                </div>
+                {selected.feedback && (
+                  <div>
+                    <div className="det-label">KANI Feedback</div>
+                    <div className="det-text">
+                      {selected.feedback.branche && <>{'\u25CF'} Branche: {selected.feedback.branche}<br /></>}
+                      {selected.feedback.markt && <>{'\u25CF'} Markt: {selected.feedback.markt}<br /></>}
+                      {selected.feedback.problem && <>{'\u25CF'} Problem: {selected.feedback.problem}<br /></>}
+                      {selected.feedback.nutzen && <>{'\u25CF'} Nutzen: {selected.feedback.nutzen}<br /></>}
+                      {selected.feedback.highlights && <>{'\u25CF'} Highlights: {selected.feedback.highlights}</>}
                     </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="det-label">Dokumente & Research</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <div className="det-link" style={{ background: 'var(--blc)', color: 'var(--bl)' }}>
-                    <svg viewBox="0 0 24 24" stroke="var(--bl)">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                    Marktanalyse.pdf
                   </div>
-                  <div className="det-link" style={{ background: 'var(--gc)', color: 'var(--g)' }}>
-                    <svg viewBox="0 0 24 24" stroke="var(--g)">
-                      <path d="M12 20V10" />
-                      <path d="M18 20V4" />
-                      <path d="M6 20v-4" />
-                    </svg>
-                    Wettbewerber.xlsx
-                  </div>
-                  <div className="det-link" style={{ background: 'rgba(124,77,255,.06)', color: 'var(--p)' }}>
-                    <svg viewBox="0 0 24 24" stroke="var(--p)">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    Tech-Stack Report
+                )}
+                <div>
+                  <div className="det-label">Status</div>
+                  <div className="det-text">
+                    {'\u25CF'} Research: {selected.res || '\u2014'}<br />
+                    {'\u25CF'} Empfehlung: {selected.rec || '\u2014'}
                   </div>
                 </div>
-              </div>
-              <div>
-                <div className="det-label">Notizen</div>
-                <div className="det-text">
-                  {'\u25CF'} Wettbewerber: Taxfix, Wiso, SteuerBot<br />
-                  {'\u25CF'} USP: Laufende Optimierung, nicht nur Jahresabschluss<br />
-                  {'\u25CF'} Zielgruppe: ~4.2M Freelancer in DE<br />
-                  {'\u25CF'} Tech: OCR + GPT fuer Belegerkennung
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="det-btn" style={{ background: 'var(--g)', color: '#fff', boxShadow: '0 3px 8px var(--gg)' }}>
+                    {'\u2192'} Projekt starten
+                  </button>
+                  <button className="det-btn" style={{ background: 'var(--bg)', color: 'var(--tx)', boxShadow: '2px 2px 6px var(--shdr), -2px -2px 6px var(--shl)' }}>
+                    Phase aendern
+                  </button>
+                  <button className="det-btn" style={{ background: 'var(--bg)', color: 'var(--tx3)', boxShadow: '2px 2px 6px var(--shdr), -2px -2px 6px var(--shl)' }}>
+                    Archivieren
+                  </button>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="det-btn" style={{ background: 'var(--g)', color: '#fff', boxShadow: '0 3px 8px var(--gg)' }}>
-                  {'\u2192'} Projekt starten
-                </button>
-                <button className="det-btn" style={{ background: 'var(--bg)', color: 'var(--tx)', boxShadow: '2px 2px 6px var(--shdr), -2px -2px 6px var(--shl)' }}>
-                  Phase aendern
-                </button>
-                <button className="det-btn" style={{ background: 'var(--bg)', color: 'var(--tx3)', boxShadow: '2px 2px 6px var(--shdr), -2px -2px 6px var(--shl)' }}>
-                  Archivieren
-                </button>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="det cf" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx3)', fontSize: 12 }}>
+              Keine Idee ausgewaehlt
+            </div>
+          )}
 
           {/* KANI inline chat */}
           <div className="kani cf">
@@ -495,20 +469,25 @@ export default function Thinktank() {
                   <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
                 </svg>
               </div>
-              <span className="kani-nm">KANI {'\u00B7'} {selected.title}</span>
+              <span className="kani-nm">KANI {'\u00B7'} {selected ? selected.n : 'Thinktank'}</span>
               <span style={{ fontSize: 7, color: 'var(--g)', marginLeft: 'auto' }}>Online</span>
             </div>
             <div className="kani-body">
-              <div className="km k in">
-                Score: 92/100. Staerkste Dimension: Marktpotenzial (4.2M Freelancer). Groesstes Risiko: regulatorische Huerden.
-              </div>
-              <div className="km u">Top 3 MVP Features?</div>
-              <div className="km k in">
-                1. Beleg-Scanner (Foto {'\u2192'} Kategorie)<br />
-                2. Steuer-Spar-Rechner (Echtzeit)<br />
-                3. ELSTER-Export<br /><br />
-                Geschaetzt: 6-8 Wochen.
-              </div>
+              {selected ? (
+                <>
+                  <div className="km k in">
+                    {selected.n}: Fit {selected.f}/5, Potenzial {selected.pot}/5, Risiko {selected.r}/5.{' '}
+                    {selected.rec ? `Empfehlung: ${selected.rec}` : ''}
+                  </div>
+                  <div className="km u">Details?</div>
+                  <div className="km k in">
+                    Status: {selected.st}. Research: {selected.res || 'nicht gestartet'}.
+                    {selected.feedback?.highlights ? ` Highlights: ${selected.feedback.highlights}` : ''}
+                  </div>
+                </>
+              ) : (
+                <div className="km k in">Waehle eine Idee aus um Details zu sehen.</div>
+              )}
             </div>
             <div className="kani-in">
               <input className="kani-inp in" placeholder="Frag KANI zu dieser Idee..." />

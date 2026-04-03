@@ -1,22 +1,20 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import AppShell from '../shared/AppShell'
+import { PROJ, TODOS, IDEAS, AGENTS } from '../../lib/data'
+import type { Project } from '../../lib/types'
 
-/* ── Types ────────────────────────────────────────────── */
+/* ── Helpers ────────────────────────────────────────────── */
 
-interface ProjectData {
-  name: string
-  status: string
-  statusBg: string
-  statusColor: string
-  ledColor: string
-  progress: number
-  openTodos: number
-  runtime: string
-  cost: string
-  activeAgents: number
-  prompt: string
+function statusOf(p: Project): { label: string; bg: string; color: string; ledColor: string } {
+  if (p.phase === 'LIVE') return { label: 'Live', bg: 'var(--blc)', color: 'var(--bl)', ledColor: 'b' }
+  if (p.term === 'Waiting' && p.health === 'Attention') return { label: 'Blocked', bg: 'var(--rc)', color: 'var(--r)', ledColor: 'r' }
+  if (p.term === 'Waiting') return { label: 'Pause', bg: 'var(--ac)', color: 'var(--a)', ledColor: 'a' }
+  if (p.term === 'Idle') return { label: 'Idle', bg: 'rgba(0,0,0,0.04)', color: 'var(--tx3)', ledColor: 'off' }
+  return { label: 'Aktiv', bg: 'var(--gc)', color: 'var(--g)', ledColor: 'g' }
 }
+
+/* ── Timeline types ────────────────────────────────────── */
 
 interface TimelinePhase {
   label: string
@@ -24,54 +22,11 @@ interface TimelinePhase {
   state: 'done' | 'current' | 'future'
 }
 
-interface Milestone {
-  title: string
-  date: string
-  details: string[]
-  done: boolean
-  current?: boolean
-  color: string
-  glow?: string
-}
-
-interface AgentItem {
-  id: string
-  name: string
-  status: 'active' | 'idle'
-  colorVar: string
-  glowVar: string
-  icon: React.ReactNode
-  statusLabel: string
-  isDividerBefore?: boolean
-}
-
 interface TerminalLine {
-  type: 'prompt' | 'output' | 'highlight' | 'warn' | 'err' | 'blank'
+  type: 'prompt' | 'output' | 'highlight' | 'warn' | 'blank'
   prompt?: string
   text: string
   richText?: React.ReactNode
-}
-
-interface TodoItem {
-  title: string
-  desc: string
-  tags: { label: string; bg: string; color: string }[]
-  date: string
-  dateColor?: string
-}
-
-interface IdeaItem {
-  text: string
-}
-
-interface NotifItem {
-  label: string
-  labelColor: string
-  colorVar: string
-  glowVar: string
-  detail: string
-  detailColor: string
-  icon: React.ReactNode
 }
 
 interface TickerItem {
@@ -80,392 +35,6 @@ interface TickerItem {
   text: string
 }
 
-/* ── Dummy Data ───────────────────────────────────────── */
-
-const projectsMap: Record<string, ProjectData> = {
-  heb: {
-    name: 'Hebammenbuero',
-    status: 'Aktiv',
-    statusBg: 'var(--gc)',
-    statusColor: 'var(--g)',
-    ledColor: 'g',
-    progress: 40,
-    openTodos: 12,
-    runtime: '14d',
-    cost: '\u20AC8.40',
-    activeAgents: 2,
-    prompt: 'kani@hebammenbuero ~$',
-  },
-  mc: {
-    name: 'Mission Control',
-    status: 'Aktiv',
-    statusBg: 'var(--gc)',
-    statusColor: 'var(--g)',
-    ledColor: 'g',
-    progress: 67,
-    openTodos: 8,
-    runtime: '21d',
-    cost: '\u20AC12.60',
-    activeAgents: 1,
-    prompt: 'kani@mission-control ~$',
-  },
-  tc: {
-    name: 'TennisCoach Pro',
-    status: 'Aktiv',
-    statusBg: 'var(--tc)',
-    statusColor: 'var(--t)',
-    ledColor: 't',
-    progress: 80,
-    openTodos: 3,
-    runtime: '42d',
-    cost: '\u20AC24.10',
-    activeAgents: 0,
-    prompt: 'kani@tenniscoach ~$',
-  },
-}
-
-const timelinePhases: TimelinePhase[] = [
-  { label: 'Konzept', flex: 2, state: 'done' },
-  { label: 'Mockup', flex: 3, state: 'current' },
-  { label: 'MVP', flex: 3, state: 'future' },
-  { label: 'Beta', flex: 2, state: 'future' },
-  { label: 'Launch', flex: 2, state: 'future' },
-]
-
-const milestones: Milestone[] = [
-  {
-    title: 'Konzept \u2713',
-    date: '20.03 \u2014 abgeschlossen',
-    details: ['Zielgruppe definiert', 'Wettbewerbs-Analyse', 'Feature-Liste priorisiert', 'Tech-Stack entschieden'],
-    done: true,
-    color: 'var(--g)',
-  },
-  {
-    title: 'Mockup \u2192 aktiv',
-    date: '21.03 \u2014 jetzt',
-    details: ['Wireframes erstellt \u2713', 'Extended Mockup (6 Pages) \u23F3', 'Validation mit Hebammen', 'Design System finalisieren'],
-    done: false,
-    current: true,
-    color: 'var(--g)',
-    glow: 'var(--gg)',
-  },
-  {
-    title: 'MVP',
-    date: 'geplant 15.04',
-    details: ['API Routes bauen', 'Auth + Onboarding', 'Kalender-Modul', 'Basis-Kursmanagement'],
-    done: false,
-    color: 'var(--tx3)',
-  },
-  {
-    title: 'Beta',
-    date: 'geplant 01.05',
-    details: ['5-10 Hebammen testen', 'Bug-Fixing', 'Performance-Optimierung', 'Stripe Payment Integration'],
-    done: false,
-    color: 'var(--tx3)',
-  },
-  {
-    title: 'Launch',
-    date: 'geplant 15.05',
-    details: ['Public Release', 'Marketing Landingpage', 'App Store Submission', 'Support-Kanal einrichten'],
-    done: false,
-    color: 'var(--tx3)',
-  },
-]
-
-const agentItems: AgentItem[] = [
-  {
-    id: 'build',
-    name: 'Build',
-    status: 'active',
-    colorVar: 'var(--g)',
-    glowVar: 'var(--gg)',
-    statusLabel: 'Aktiv',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--g)" strokeWidth="1.8" fill="none">
-        <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
-  },
-  {
-    id: 'research',
-    name: 'Research',
-    status: 'active',
-    colorVar: 'var(--p)',
-    glowVar: 'var(--pg)',
-    statusLabel: 'Aktiv',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--p)" strokeWidth="1.8" fill="none">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    ),
-  },
-  {
-    id: 'test',
-    name: 'Test',
-    status: 'idle',
-    colorVar: 'var(--t)',
-    glowVar: 'var(--tg)',
-    statusLabel: 'Idle',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--t)" strokeWidth="1.8" fill="none">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'divider',
-    name: '',
-    status: 'idle',
-    colorVar: '',
-    glowVar: '',
-    statusLabel: '',
-    isDividerBefore: true,
-    icon: null,
-  },
-  {
-    id: 'docs',
-    name: 'Docs',
-    status: 'idle',
-    colorVar: 'var(--bl)',
-    glowVar: 'var(--blg)',
-    statusLabel: '4 Files',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--bl)" strokeWidth="1.8" fill="none">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-      </svg>
-    ),
-  },
-  {
-    id: 'app',
-    name: 'App',
-    status: 'idle',
-    colorVar: 'var(--o)',
-    glowVar: 'var(--og)',
-    statusLabel: 'Preview',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--o)" strokeWidth="1.8" fill="none">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
-      </svg>
-    ),
-  },
-]
-
-const terminalLines: TerminalLine[] = [
-  { type: 'prompt', prompt: 'kani@hebammenbuero ~$', text: 'analyze mockup structure' },
-  { type: 'output', text: '\u2192 Scanning 6 workflow pages...' },
-  { type: 'output', text: '\u2192 Found: Onboarding, Konfigurator, Behandlungsplan, Kalender, Kurse, Settings' },
-  { type: 'highlight', text: '\u2713 All pages validated \u2014 structure complete' },
-  { type: 'blank', text: '\u00A0' },
-  { type: 'prompt', prompt: 'kani@hebammenbuero ~$', text: 'build api routes --from mockup' },
-  { type: 'output', text: '\u2192 Generating /api/appointments ... ', richText: <><span className="term-output">{'\u2192 Generating /api/appointments ... '}</span><span className="term-highlight">done</span></> },
-  { type: 'output', text: '\u2192 Generating /api/patients ... ', richText: <><span className="term-output">{'\u2192 Generating /api/patients ... '}</span><span className="term-highlight">done</span></> },
-  { type: 'output', text: '\u2192 Generating /api/courses ... ', richText: <><span className="term-output">{'\u2192 Generating /api/courses ... '}</span><span className="term-warn">in progress</span></> },
-  { type: 'blank', text: '\u00A0' },
-  { type: 'prompt', prompt: 'kani@hebammenbuero ~$', text: 'status' },
-  { type: 'output', text: 'Phase: Mockup (2/5) | Progress: 40%', richText: <><span className="term-output">{'Phase: '}</span><span className="term-highlight">Mockup</span><span className="term-output">{' (2/5) | Progress: '}</span><span className="term-highlight">40%</span></> },
-  { type: 'output', text: 'Agents: build-agent (running), research-agent (running)', richText: <><span className="term-output">{'Agents: '}</span><span className="term-highlight">build-agent</span><span className="term-output">{' (running), '}</span><span style={{ color: 'var(--p)' }}>research-agent</span><span className="term-output">{' (running)'}</span></> },
-  { type: 'output', text: 'Todos: 12 open, 1 overdue', richText: <><span className="term-output">{'Todos: 12 open, '}</span><span className="term-err">1 overdue</span></> },
-  { type: 'output', text: 'Cost: \u20AC8.40 | Runtime: 14 days', richText: <><span className="term-output">{'Cost: '}</span><span style={{ color: 'var(--p)' }}>{'\u20AC8.40'}</span><span className="term-output">{' | Runtime: 14 days'}</span></> },
-]
-
-const todoItems: TodoItem[] = [
-  {
-    title: 'Extended Mockup fertigstellen',
-    desc: '6 Deep-Workflow Pages',
-    tags: [
-      { label: 'Overdue', bg: 'var(--rc)', color: 'var(--r)' },
-      { label: 'P0', bg: 'var(--rc)', color: 'var(--r)' },
-    ],
-    date: '-3d',
-    dateColor: 'var(--r)',
-  },
-  {
-    title: 'Validate mit 2-3 Hebammen',
-    desc: 'Feedback sammeln, Features priorisieren',
-    tags: [
-      { label: '05.04', bg: 'var(--ac)', color: 'var(--a)' },
-      { label: 'P0', bg: 'var(--ac)', color: 'var(--a)' },
-    ],
-    date: '05.04',
-  },
-  {
-    title: 'Pricing Tiers definieren',
-    desc: 'Starter/Pro/Premium \u2014 Marktvergleich',
-    tags: [{ label: 'P1', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }],
-    date: 'P1',
-  },
-  {
-    title: 'Onboarding Flow testen',
-    desc: '3-Step Wizard f\u00FCr Erstregistrierung',
-    tags: [{ label: 'P1', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }],
-    date: 'P1',
-  },
-  {
-    title: 'Kalender-Sync pr\u00FCfen',
-    desc: 'Google/Apple Calendar Integration',
-    tags: [{ label: 'P2', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }],
-    date: 'P2',
-  },
-]
-
-const ideaItems: IdeaItem[] = [
-  { text: 'Automatische Terminerinnerung per WhatsApp' },
-  { text: 'Rezept-Generator aus Behandlungsplan' },
-  { text: 'Video-Call Integration f\u00FCr Fernberatung' },
-  { text: 'Multi-Sprach-Support (EN/TR/AR)' },
-  { text: 'Krankenkassen-Abrechnung direkt einreichen' },
-]
-
-const notifItems: NotifItem[] = [
-  {
-    label: 'Issues',
-    labelColor: 'var(--r)',
-    colorVar: 'var(--r)',
-    glowVar: 'var(--rg)',
-    detail: 'Mockup Overdue 3d',
-    detailColor: 'var(--r)',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--r)" strokeWidth="1.8" fill="none">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Attention',
-    labelColor: 'var(--o)',
-    colorVar: 'var(--o)',
-    glowVar: 'var(--og)',
-    detail: 'Validation Feedback sammeln',
-    detailColor: 'var(--o)',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--o)" strokeWidth="1.8" fill="none">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Freigabe',
-    labelColor: 'var(--g)',
-    colorVar: 'var(--g)',
-    glowVar: 'var(--gg)',
-    detail: 'Mockup Review steht aus',
-    detailColor: 'var(--g)',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--g)" strokeWidth="1.8" fill="none">
-        <path d="M9 12l2 2 4-4" />
-        <circle cx="12" cy="12" r="10" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Results',
-    labelColor: 'var(--bl)',
-    colorVar: 'var(--bl)',
-    glowVar: 'var(--blg)',
-    detail: 'SEO Audit fertig',
-    detailColor: 'var(--bl)',
-    icon: (
-      <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--bl)" strokeWidth="1.8" fill="none">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
-      </svg>
-    ),
-  },
-]
-
-const projectTickerItems: TickerItem[] = [
-  { agent: 'build-agent', color: 'var(--g)', text: 'kompiliert /api/appointments' },
-  { agent: 'build-agent', color: 'var(--g)', text: 'generiert /api/patients Route' },
-  { agent: 'research', color: 'var(--p)', text: 'SEO Audit abgeschlossen \u2014 23 Empfehlungen' },
-  { agent: 'build', color: 'var(--g)', text: 'TypeScript Check \u2014 0 errors, 2 warnings' },
-  { agent: 'kani', color: 'var(--a)', text: 'Mockup Validation Report wird erstellt' },
-  { agent: 'test', color: 'var(--t)', text: 'Onboarding Flow: 12/12 Tests bestanden' },
-]
-
-const qaItems = [
-  {
-    label: 'App \u00F6ffnen',
-    sublabel: 'Preview',
-    colorVar: 'var(--o)',
-    glowVar: 'var(--og)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--o)">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Dokumente',
-    sublabel: '4 Files',
-    colorVar: 'var(--bl)',
-    glowVar: 'var(--blg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--bl)">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Repository',
-    sublabel: 'GitHub',
-    colorVar: 'var(--p)',
-    glowVar: 'var(--pg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--p)">
-        <polyline points="16 18 22 12 16 6" />
-        <polyline points="8 6 2 12 8 18" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Analytics',
-    sublabel: 'Dashboard',
-    colorVar: 'var(--g)',
-    glowVar: 'var(--gg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--g)">
-        <path d="M12 20V10" />
-        <path d="M18 20V4" />
-        <path d="M6 20v-4" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Briefing',
-    sublabel: 'Heute',
-    colorVar: 'var(--t)',
-    glowVar: 'var(--tg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--t)">
-        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Private',
-    sublabel: 'Pers\u00F6nlich',
-    colorVar: 'var(--pk)',
-    glowVar: 'var(--pkg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--pk)">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
-]
-
 /* ── Component ────────────────────────────────────────── */
 
 export default function ProjectDetail() {
@@ -473,13 +42,229 @@ export default function ProjectDetail() {
   const [tlOpen, setTlOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('terminal')
 
-  const project = projectsMap[id ?? 'heb'] ?? projectsMap.heb
+  const project = PROJ.find(p => p.id === id)
+
+  if (!project) {
+    return (
+      <AppShell backLink={{ label: 'Cockpit', href: '/' }} title="Nicht gefunden" ledColor="off">
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--tx3)' }}>
+          <h2 style={{ fontSize: 24, marginBottom: 12 }}>Projekt nicht gefunden</h2>
+          <p>ID: {id}</p>
+        </div>
+      </AppShell>
+    )
+  }
+
+  const st = statusOf(project)
+
+  /* Todos for this project */
+  const projectTodos = useMemo(() =>
+    TODOS.filter(t => !t.done && (t.proj === project.n || t.proj === project.id || project.n.startsWith(t.proj) && t.proj.length > 0))
+      .sort((a, b) => {
+        const pMap: Record<string, number> = { h: 0, m: 1, l: 2 }
+        return (pMap[a.prio] ?? 1) - (pMap[b.prio] ?? 1)
+      })
+      .slice(0, 5),
+    [project]
+  )
+
+  /* Ideas: project-specific from IDEAS array */
+  const projectIdeas = useMemo(() =>
+    IDEAS.filter(idea => {
+      const idLower = idea.id.toLowerCase()
+      const nLower = project.n.toLowerCase()
+      return idLower.includes(nLower.slice(0, 4)) || nLower.includes(idLower.slice(0, 4))
+    }).slice(0, 5),
+    [project]
+  )
+
+  /* Agents relevant to this project */
+  const projectAgents = useMemo(() => {
+    const activeAgents = AGENTS.filter(a => a.st === 'active')
+    const idleAgents = AGENTS.filter(a => a.st !== 'active').slice(0, 3)
+    return [...activeAgents, ...idleAgents]
+  }, [])
+
+  /* Timeline phases */
+  const phaseTotal = 5
+  const phaseDone = Math.max(0, project.phN + 1)
+  const phaseLabels = ['Konzept', 'Mockup', 'MVP', 'Beta', 'Launch']
+  const timelinePhases: TimelinePhase[] = phaseLabels.map((label, i) => ({
+    label,
+    flex: label === 'Mockup' || label === 'MVP' ? 3 : 2,
+    state: i < phaseDone ? 'done' : i === phaseDone ? 'current' : 'future',
+  }))
+
+  /* Terminal lines (dummy but project-aware) */
+  const prompt = `kani@${project.n} ~$`
+  const terminalLines: TerminalLine[] = [
+    { type: 'prompt', prompt, text: 'status' },
+    { type: 'output', text: `Phase: ${project.phase} (${phaseDone}/${phaseTotal}) | Progress: ${project.pct}%`,
+      richText: <><span className="term-output">{'Phase: '}</span><span className="term-highlight">{project.phase}</span><span className="term-output">{` (${phaseDone}/${phaseTotal}) | Progress: `}</span><span className="term-highlight">{project.pct}%</span></> },
+    { type: 'output', text: `Todos: ${project.todos} open`,
+      richText: <><span className="term-output">{'Todos: '}</span><span className="term-highlight">{project.todos} open</span></> },
+    { type: 'output', text: `Stack: ${project.stack}`,
+      richText: <><span className="term-output">{'Stack: '}</span><span style={{ color: 'var(--p)' }}>{project.stack}</span></> },
+    { type: 'output', text: `Runtime: ${project.days}d | Cost: \u20AC${project.cost.toFixed(2)}`,
+      richText: <><span className="term-output">{'Runtime: '}</span><span style={{ color: 'var(--bl)' }}>{project.days}d</span><span className="term-output">{' | Cost: '}</span><span style={{ color: 'var(--p)' }}>{'\u20AC'}{project.cost.toFixed(2)}</span></> },
+    { type: 'blank', text: '\u00A0' },
+    ...(project.last ? [{ type: 'prompt' as const, prompt, text: 'last-update' },
+      { type: 'highlight' as const, text: project.last }] : []),
+    ...(project.next ? [{ type: 'prompt' as const, prompt, text: 'next' },
+      { type: 'output' as const, text: project.next }] : []),
+  ]
+
+  /* Project ticker items */
+  const projectTickerItems: TickerItem[] = [
+    { agent: 'kani', color: 'var(--a)', text: `${project.n} Status: ${st.label}` },
+    { agent: 'build-agent', color: 'var(--g)', text: `Phase ${project.phase} \u2014 ${project.pct}%` },
+    { agent: 'ops', color: 'var(--bl)', text: `${project.todos} offene Todos` },
+  ]
+
+  /* Quick Access items */
+  const qaItems = [
+    {
+      label: 'App \u00F6ffnen',
+      sublabel: 'Preview',
+      colorVar: 'var(--o)',
+      glowVar: 'var(--og)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--o)">
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Dokumente',
+      sublabel: `${projectTodos.length} Files`,
+      colorVar: 'var(--bl)',
+      glowVar: 'var(--blg)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--bl)">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Repository',
+      sublabel: 'GitHub',
+      colorVar: 'var(--p)',
+      glowVar: 'var(--pg)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--p)">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Analytics',
+      sublabel: 'Dashboard',
+      colorVar: 'var(--g)',
+      glowVar: 'var(--gg)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--g)">
+          <path d="M12 20V10" />
+          <path d="M18 20V4" />
+          <path d="M6 20v-4" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Briefing',
+      sublabel: 'Heute',
+      colorVar: 'var(--t)',
+      glowVar: 'var(--tg)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--t)">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Private',
+      sublabel: 'Pers\u00F6nlich',
+      colorVar: 'var(--pk)',
+      glowVar: 'var(--pkg)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--pk)">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+    },
+  ]
+
+  /* Notification items (project-scoped) */
+  const notifItems = [
+    {
+      label: 'Status',
+      labelColor: st.color,
+      colorVar: st.color,
+      glowVar: st.color,
+      detail: `${st.label} \u2014 ${project.phase}`,
+      detailColor: st.color,
+      icon: (
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke={st.color} strokeWidth="1.8" fill="none">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Todos',
+      labelColor: 'var(--a)',
+      colorVar: 'var(--a)',
+      glowVar: 'var(--ag)',
+      detail: `${project.todos} offen`,
+      detailColor: 'var(--a)',
+      icon: (
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--a)" strokeWidth="1.8" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Stack',
+      labelColor: 'var(--bl)',
+      colorVar: 'var(--bl)',
+      glowVar: 'var(--blg)',
+      detail: project.stack.length > 30 ? project.stack.slice(0, 30) + '...' : project.stack,
+      detailColor: 'var(--bl)',
+      icon: (
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--bl)" strokeWidth="1.8" fill="none">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Domain',
+      labelColor: 'var(--g)',
+      colorVar: 'var(--g)',
+      glowVar: 'var(--gg)',
+      detail: project.dom || 'Nicht konfiguriert',
+      detailColor: project.dom ? 'var(--g)' : 'var(--tx3)',
+      icon: (
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="var(--g)" strokeWidth="1.8" fill="none">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      ),
+    },
+  ]
 
   return (
     <AppShell
       backLink={{ label: 'Cockpit', href: '/' }}
-      title={project.name}
-      ledColor={project.ledColor}
+      title={project.n}
+      ledColor={st.ledColor}
     >
       {/* ── KPI ROW ─────────────────────────────────────── */}
       <div className="krow">
@@ -490,7 +275,7 @@ export default function ProjectDetail() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--g)' }}>{project.progress}%</div>
+            <div className="kv" style={{ color: 'var(--g)' }}>{project.pct}%</div>
             <div className="kl">Fortschritt</div>
           </div>
         </div>
@@ -503,7 +288,7 @@ export default function ProjectDetail() {
             </svg>
           </div>
           <div>
-            <div className="kv">{project.openTodos}</div>
+            <div className="kv">{project.todos}</div>
             <div className="kl">Offene Todos</div>
           </div>
         </div>
@@ -516,7 +301,7 @@ export default function ProjectDetail() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--bl)' }}>{project.runtime}</div>
+            <div className="kv" style={{ color: 'var(--bl)' }}>{project.days}d</div>
             <div className="kl">Laufzeit</div>
           </div>
         </div>
@@ -529,7 +314,7 @@ export default function ProjectDetail() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--p)' }}>{project.cost}</div>
+            <div className="kv" style={{ color: 'var(--p)' }}>{'\u20AC'}{project.cost.toFixed(2)}</div>
             <div className="kl">Kosten bisher</div>
           </div>
         </div>
@@ -541,7 +326,7 @@ export default function ProjectDetail() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--g)' }}>{project.activeAgents}</div>
+            <div className="kv" style={{ color: 'var(--g)' }}>{AGENTS.filter(a => a.st === 'active').length}</div>
             <div className="kl">Agents aktiv</div>
           </div>
         </div>
@@ -571,36 +356,34 @@ export default function ProjectDetail() {
                 </div>
               ))}
             </div>
-            <span className="tl-pct">Phase 2/5</span>
+            <span className="tl-pct">Phase {phaseDone}/{phaseTotal}</span>
             <span className="tl-expand">{tlOpen ? '\u25B2 Zuklappen' : '\u25BC Details'}</span>
           </div>
 
           <div className={`tl-milestone${tlOpen ? ' open' : ''}`}>
-            {milestones.map((ms) => (
-              <div key={ms.title} className="tl-ms">
-                <div
-                  className="tl-ms-dot"
-                  style={{
-                    background: ms.color,
-                    ...(ms.glow ? { boxShadow: `0 0 8px ${ms.glow}` } : {}),
-                  }}
-                />
-                <div className="tl-ms-info">
-                  <div className="tl-ms-title" style={ms.done || ms.current ? { color: ms.color } : undefined}>
-                    {ms.title}
-                  </div>
-                  <div className="tl-ms-date">{ms.date}</div>
-                  <div className="tl-ms-sub">
-                    {ms.details.map((d, i) => (
-                      <span key={i}>
-                        {'\u25CF'} {d}
-                        {i < ms.details.length - 1 && <br />}
-                      </span>
-                    ))}
+            {phaseLabels.map((label, i) => {
+              const isDone = i < phaseDone
+              const isCurrent = i === phaseDone
+              const color = isDone || isCurrent ? 'var(--g)' : 'var(--tx3)'
+              const glow = isCurrent ? 'var(--gg)' : undefined
+              return (
+                <div key={label} className="tl-ms">
+                  <div
+                    className="tl-ms-dot"
+                    style={{
+                      background: color,
+                      ...(glow ? { boxShadow: `0 0 8px ${glow}` } : {}),
+                    }}
+                  />
+                  <div className="tl-ms-info">
+                    <div className="tl-ms-title" style={isDone || isCurrent ? { color } : undefined}>
+                      {label}{isDone ? ' \u2713' : isCurrent ? ' \u2192 aktiv' : ''}
+                    </div>
+                    <div className="tl-ms-date">{isDone ? 'abgeschlossen' : isCurrent ? 'jetzt' : 'geplant'}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -616,48 +399,37 @@ export default function ProjectDetail() {
       <div className="pd-body">
         {/* LEFT: AGENTS */}
         <div className="lnav">
-          {agentItems.map((ag) => {
-            if (ag.isDividerBefore) {
-              return (
-                <div
-                  key={ag.id}
-                  style={{
-                    height: 1,
-                    margin: '4px 8px',
-                    background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent)',
-                  }}
-                />
-              )
-            }
+          {projectAgents.map((ag, idx) => {
+            const isActive = ag.st === 'active'
+            const agColor = ag.col || 'var(--tx3)'
+            // const agGlow = ag.bg || 'transparent'
             return (
               <div
-                key={ag.id}
+                key={ag.n + idx}
                 className="ag-item cf"
-                style={{ '--nc': ag.glowVar } as React.CSSProperties}
+                style={{ '--nc': agColor } as React.CSSProperties}
               >
                 <div
                   className="ag-icon btn3d"
-                  style={{ '--bc': ag.glowVar, width: 36, height: 36 } as React.CSSProperties}
+                  style={{ '--bc': agColor, width: 36, height: 36 } as React.CSSProperties}
                 >
-                  {ag.status === 'active' && (
+                  {isActive && (
                     <span
                       className="ag-dot sl"
                       style={{
                         width: 7,
                         height: 7,
-                        background: ag.colorVar,
-                        '--lc': ag.glowVar,
-                        ...(ag.status === 'active' && ag.colorVar === 'var(--g)'
-                          ? {}
-                          : { animation: 'none' }),
+                        background: agColor,
+                        '--lc': agColor,
+                        ...(agColor !== 'var(--g)' ? { animation: 'none' } : {}),
                       } as React.CSSProperties}
                     />
                   )}
-                  {ag.icon}
+                  <span style={{ fontSize: 14 }}>{ag.e}</span>
                 </div>
-                <span className="ag-name">{ag.name}</span>
-                <span className="ag-status" style={{ color: ag.status === 'active' ? ag.colorVar : 'var(--tx3)' }}>
-                  {ag.statusLabel}
+                <span className="ag-name">{ag.n.replace(' Agent', '').replace(' Master', '')}</span>
+                <span className="ag-status" style={{ color: isActive ? agColor : 'var(--tx3)' }}>
+                  {isActive ? 'Aktiv' : 'Idle'}
                 </span>
               </div>
             )
@@ -711,7 +483,7 @@ export default function ProjectDetail() {
             <div className="term-input-row">
               <input
                 className="term-input in"
-                placeholder={`${project.prompt} `}
+                placeholder={`${prompt} `}
                 readOnly
               />
               <button className="term-send">
@@ -731,29 +503,40 @@ export default function ProjectDetail() {
             <div className="r-hdr">
               <span className="st">Todos</span>
               <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 600, color: 'var(--tx3)' }}>
-                {project.openTodos} offen
+                {project.todos} offen
               </span>
             </div>
             <div className="pd-r-list">
-              {todoItems.map((todo, i) => (
-                <div key={i} className="pd-r-item">
-                  <div className="pd-r-chk in" />
-                  <div>
-                    <div className="r-title">{todo.title}</div>
-                    <div className="r-desc">{todo.desc}</div>
-                    <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                      {todo.tags.map((tag, j) => (
-                        <span key={j} className="r-tag" style={{ background: tag.bg, color: tag.color }}>
-                          {tag.label}
+              {projectTodos.map((todo) => {
+                const prioMap: Record<string, { label: string; bg: string; color: string }> = {
+                  h: { label: 'P0', bg: 'var(--rc)', color: 'var(--r)' },
+                  m: { label: 'P1', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' },
+                  l: { label: 'P2', bg: 'rgba(124,77,255,.06)', color: 'var(--tx3)' },
+                }
+                const prio = prioMap[todo.prio] || prioMap.m
+                return (
+                  <div key={todo.id} className="pd-r-item">
+                    <div className="pd-r-chk in" />
+                    <div>
+                      <div className="r-title">{todo.txt.length > 50 ? todo.txt.slice(0, 50) + '...' : todo.txt}</div>
+                      <div className="r-desc">{project.n}</div>
+                      <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                        <span className="r-tag" style={{ background: prio.bg, color: prio.color }}>
+                          {prio.label}
                         </span>
-                      ))}
+                        {todo.ov && (
+                          <span className="r-tag" style={{ background: 'var(--rc)', color: 'var(--r)' }}>
+                            Overdue
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <span className="pd-r-date" style={todo.ov ? { color: 'var(--r)' } : undefined}>
+                      {todo.due || ''}
+                    </span>
                   </div>
-                  <span className="pd-r-date" style={todo.dateColor ? { color: todo.dateColor } : undefined}>
-                    {todo.date}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -762,17 +545,22 @@ export default function ProjectDetail() {
             <div className="r-hdr">
               <span className="st">Ideas</span>
               <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 600, color: 'var(--tx3)' }}>
-                {ideaItems.length} Ideen
+                {project.ideas} Ideen
               </span>
             </div>
             <div className="pd-r-list">
-              {ideaItems.map((idea, i) => (
-                <div key={i} className="pd-idea-item">
+              {projectIdeas.length > 0 ? projectIdeas.map((idea) => (
+                <div key={idea.id} className="pd-idea-item">
                   <span style={{ color: 'var(--p)' }}>&#x1F4A1;</span>
-                  <span className="pd-idea-text">{idea.text}</span>
+                  <span className="pd-idea-text">{idea.n}</span>
                   <span className="pd-idea-del">&#x2715;</span>
                 </div>
-              ))}
+              )) : (
+                <div className="pd-idea-item" style={{ opacity: 0.4 }}>
+                  <span style={{ color: 'var(--p)' }}>&#x1F4A1;</span>
+                  <span className="pd-idea-text">Noch keine Ideen erfasst</span>
+                </div>
+              )}
             </div>
             <div className="pd-idea-input-row">
               <input className="pd-idea-input in" placeholder="Neue Idee hinzuf\u00FCgen..." readOnly />
@@ -786,7 +574,7 @@ export default function ProjectDetail() {
       <div className="pd-brow">
         <div />
         <div className="cf" style={{ padding: '16px 20px' }}>
-          <div className="st" style={{ marginBottom: 10 }}>Notifications &middot; {project.name}</div>
+          <div className="st" style={{ marginBottom: 10 }}>Notifications &middot; {project.n}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
             {notifItems.map((n, i) => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -801,7 +589,7 @@ export default function ProjectDetail() {
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--tx2)', lineHeight: 1.5, marginTop: 4 }}>
                   <span style={{ color: n.detailColor }}>{'\u25CF'}</span>{' '}
-                  <b>{project.name}:</b> {n.detail}
+                  <b>{project.n}:</b> {n.detail}
                 </div>
               </div>
             ))}
@@ -827,7 +615,7 @@ export default function ProjectDetail() {
       </div>
 
       {/* ── LIVE FEED (project-scoped) ──────────────────── */}
-      <ProjectLiveFeed projectName={project.name} items={projectTickerItems} />
+      <ProjectLiveFeed projectName={project.n} items={projectTickerItems} />
     </AppShell>
   )
 }

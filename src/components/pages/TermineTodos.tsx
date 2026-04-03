@@ -1,41 +1,50 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppShell from '../shared/AppShell'
+import { TODOS, CAL } from '../../lib/data'
 
-/* ── Dummy Data ─────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────────── */
 
-interface Termin {
-  time: string
-  title: string
-  desc: string
-  dotColor: string
-  tagLabel: string
-  tagBg: string
-  tagColor: string
+/** Priority to display badge */
+function prioBadge(prio: string): { label: string; bg: string; color: string } {
+  switch (prio) {
+    case 'h':
+      return { label: 'P0', bg: 'var(--rc)', color: 'var(--r)' }
+    case 'm':
+      return { label: 'P1', bg: 'var(--ac)', color: 'var(--a)' }
+    case 'l':
+      return { label: 'P2', bg: 'var(--blc)', color: 'var(--bl)' }
+    default:
+      return { label: prio || '\u2014', bg: 'rgba(0,0,0,.04)', color: 'var(--tx3)' }
+  }
 }
 
-const termine: Termin[] = [
-  { time: '09:00', title: 'Standup Team', desc: 'Kurzes Status-Update alle Projekte', dotColor: 'var(--bl)', tagLabel: 'Business', tagBg: 'var(--blc)', tagColor: 'var(--bl)' },
-  { time: '10:30', title: 'Hebammen-Interview', desc: 'Validierung Mockup mit Hebamme Sarah', dotColor: 'var(--g)', tagLabel: 'Hebammenbuero', tagBg: 'var(--gc)', tagColor: 'var(--g)' },
-  { time: '13:00', title: 'Investor Pitch Prep', desc: 'Deck finalisieren, Zahlen prüfen', dotColor: 'var(--p)', tagLabel: 'Business', tagBg: 'rgba(124,77,255,.06)', tagColor: 'var(--p)' },
-  { time: '16:00', title: 'Startup Meetup', desc: 'AI & SaaS Founders, Stuttgart', dotColor: 'var(--t)', tagLabel: 'Network', tagBg: 'var(--tc)', tagColor: 'var(--t)' },
-  { time: '19:30', title: 'Abendessen mit Familie', desc: 'Restaurant reserviert', dotColor: 'var(--pk)', tagLabel: 'Privat', tagBg: 'var(--rc)', tagColor: 'var(--pk)' },
-]
-
-interface Todo {
-  title: string
-  desc: string
-  tags: { label: string; bg: string; color: string }[]
-  overdue?: boolean
+/** Project name to a display color */
+function projColor(proj: string): { bg: string; color: string } {
+  if (!proj) return { bg: 'rgba(0,0,0,.04)', color: 'var(--tx3)' }
+  const lower = proj.toLowerCase()
+  if (lower.includes('heb')) return { bg: 'var(--gc)', color: 'var(--g)' }
+  if (lower.includes('still')) return { bg: 'var(--ac)', color: 'var(--a)' }
+  if (lower.includes('mission') || lower.includes('mis')) return { bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }
+  if (lower.includes('fin')) return { bg: 'var(--blc)', color: 'var(--bl)' }
+  if (lower.includes('tennis')) return { bg: 'var(--tc)', color: 'var(--t)' }
+  if (lower.includes('ai-') || lower.includes('ai ')) return { bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }
+  if (lower.includes('mck')) return { bg: 'var(--blc)', color: 'var(--bl)' }
+  return { bg: 'rgba(0,0,0,.04)', color: 'var(--tx3)' }
 }
 
-const todos: Todo[] = [
-  { title: 'Steuererklarung Q1 einreichen', desc: 'Backoffice \u00B7 Buchhaltung -- uberfällig', tags: [{ label: 'Overdue', bg: 'var(--rc)', color: 'var(--r)' }, { label: 'P0', bg: 'var(--rc)', color: 'var(--r)' }], overdue: true },
-  { title: 'Extended Mockup fertigstellen', desc: 'Hebammenbuero -- 6 Deep-Workflow Pages', tags: [{ label: 'Hebammenbuero', bg: 'var(--gc)', color: 'var(--g)' }, { label: 'P0', bg: 'var(--ac)', color: 'var(--a)' }] },
-  { title: 'Pitch Deck Zahlen aktualisieren', desc: 'Business \u00B7 Investor Meeting vorbereiten', tags: [{ label: 'P0', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }] },
-  { title: 'Freelancer-Vertrag prüfen', desc: 'Backoffice \u00B7 HR -- neuer Designer', tags: [{ label: 'P1', bg: 'var(--ac)', color: 'var(--a)' }] },
-  { title: 'LinkedIn Post schreiben', desc: 'Marketing \u00B7 AI-Trends Artikel', tags: [{ label: 'P1', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }] },
-]
+/** Calendar entry dot color */
+function calDotColor(s: string): string {
+  const lower = (s || '').toLowerCase()
+  if (lower.includes('hebamm')) return 'var(--g)'
+  if (lower.includes('tennis')) return 'var(--t)'
+  if (lower.includes('mission') || lower.includes('sprint')) return 'var(--p)'
+  if (lower.includes('steuer') || lower.includes('tax')) return 'var(--a)'
+  if (lower.includes('zoom')) return 'var(--bl)'
+  return 'var(--bl)'
+}
+
+/* ── Types for static display data ────────────────────── */
 
 interface WeekDay {
   label: string
@@ -45,36 +54,54 @@ interface WeekDay {
   today?: boolean
 }
 
-const weekDays: WeekDay[] = [
-  { label: 'Mo', info: '3 Termine \u00B7 5 Todos', color: 'var(--g)', done: true },
-  { label: 'Di', info: '2 Termine \u00B7 3 Todos', color: 'var(--g)', done: true },
-  { label: 'Mi', info: '4 Termine \u00B7 6 Todos', color: 'var(--g)', done: true },
-  { label: 'Do', info: '5 Termine \u00B7 8 Todos', color: 'var(--bl)', today: true },
-  { label: 'Fr', info: '2 Termine', color: 'var(--tx3)' },
-  { label: 'Sa', info: '1 privat', color: 'var(--pk)' },
-  { label: 'So', info: 'Familien-Brunch', color: 'var(--pk)' },
-]
-
 interface TickerItem {
   agent: string
   color: string
   text: string
 }
 
-const feedItems: TickerItem[] = [
-  { agent: '09:00', color: 'var(--bl)', text: 'Standup Team -- Status-Update' },
-  { agent: '10:30', color: 'var(--g)', text: 'Hebammen-Interview mit Sarah' },
-  { agent: '13:00', color: 'var(--p)', text: 'Investor Pitch Prep' },
-  { agent: '16:00', color: 'var(--t)', text: 'Startup Meetup Stuttgart' },
-  { agent: '19:30', color: 'var(--pk)', text: 'Abendessen Familie' },
-  { agent: 'overdue', color: 'var(--r)', text: 'Steuererklarung Q1 -- 5 Tage' },
-]
-
 /* ── Component ──────────────────────────────────────────── */
 
 export default function TermineTodos() {
   const [pipelineOpen, setPipelineOpen] = useState(false)
   const navigate = useNavigate()
+
+  /* ── Derived data ────────────────────────────────── */
+
+  const openTodos = TODOS.filter((t) => !t.done)
+  const overdueTodos = TODOS.filter((t) => t.ov && !t.done)
+  const doneTodos = TODOS.filter((t) => t.done)
+  const todayEntries = CAL.filter((c) => c.today)
+  const allCalEntries = CAL
+
+  // Week days - static for now (no real week data in parser)
+  const todayCount = todayEntries.length
+  const weekDays: WeekDay[] = [
+    { label: 'Mo', info: `${todayCount} Termine`, color: 'var(--g)', done: true },
+    { label: 'Di', info: `${openTodos.length} Todos`, color: 'var(--g)', done: true },
+    { label: 'Mi', info: `${allCalEntries.length} Termine`, color: 'var(--g)', done: true },
+    { label: 'Do', info: `${todayCount} Termine \u00B7 ${openTodos.length} Todos`, color: 'var(--bl)', today: true },
+    { label: 'Fr', info: `${allCalEntries.length - todayCount} Termine`, color: 'var(--tx3)' },
+    { label: 'Sa', info: '\u2014', color: 'var(--pk)' },
+    { label: 'So', info: '\u2014', color: 'var(--pk)' },
+  ]
+
+  // Ticker items from real data
+  const feedItems: TickerItem[] = [
+    ...todayEntries.map((c) => ({
+      agent: c.t,
+      color: calDotColor(c.s),
+      text: `${c.n} -- ${c.s}`,
+    })),
+    ...overdueTodos.slice(0, 3).map((t) => ({
+      agent: 'overdue',
+      color: 'var(--r)',
+      text: t.txt.substring(0, 50),
+    })),
+  ]
+
+  // High-priority open todos to show (limit to first 8)
+  const displayTodos = openTodos.slice(0, 8)
 
   return (
     <AppShell title="Termine & Todos" ledColor="bl">
@@ -90,7 +117,7 @@ export default function TermineTodos() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--bl)' }}>5</div>
+            <div className="kv" style={{ color: 'var(--bl)' }}>{todayCount}</div>
             <div className="kl">Termine heute</div>
           </div>
         </div>
@@ -102,10 +129,12 @@ export default function TermineTodos() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--a)' }}>42</div>
+            <div className="kv" style={{ color: 'var(--a)' }}>{openTodos.length}</div>
             <div className="kl">Offene Todos</div>
           </div>
-          <span className="kx" style={{ background: 'var(--rc)', color: 'var(--r)' }}>3 overdue</span>
+          {overdueTodos.length > 0 && (
+            <span className="kx" style={{ background: 'var(--rc)', color: 'var(--r)' }}>{overdueTodos.length} overdue</span>
+          )}
         </div>
         <div className="kpi cf" style={{ '--kc': 'var(--gg)' } as React.CSSProperties}>
           <div className="btn3d btn3d-sm" style={{ '--bc': 'var(--gg)' } as React.CSSProperties}>
@@ -115,8 +144,8 @@ export default function TermineTodos() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--g)' }}>8</div>
-            <div className="kl">Erledigt diese Woche</div>
+            <div className="kv" style={{ color: 'var(--g)' }}>{doneTodos.length}</div>
+            <div className="kl">Erledigt</div>
           </div>
         </div>
         <div className="kpi cf" style={{ '--kc': 'var(--pkg)' } as React.CSSProperties}>
@@ -127,8 +156,8 @@ export default function TermineTodos() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--pk)' }}>2</div>
-            <div className="kl">Private Termine</div>
+            <div className="kv" style={{ color: 'var(--pk)' }}>{allCalEntries.length}</div>
+            <div className="kl">Termine gesamt</div>
           </div>
         </div>
       </div>
@@ -150,7 +179,7 @@ export default function TermineTodos() {
               <div style={{ flex: 1, height: '100%', borderRadius: 4, background: 'var(--pk)', opacity: 0.3 }} />
               <div style={{ flex: 1, height: '100%', borderRadius: 4, background: 'var(--pk)', opacity: 0.15 }} />
             </div>
-            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: 'var(--bl)', whiteSpace: 'nowrap' }}>Do 3. April</span>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: 'var(--bl)', whiteSpace: 'nowrap' }}>Heute</span>
             <span style={{ fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>{pipelineOpen ? '\u25B2' : '\u25BC'}</span>
           </div>
           {pipelineOpen && (
@@ -193,21 +222,42 @@ export default function TermineTodos() {
                 />
                 Heute -- Termine
               </div>
-              <span className="tcard-count">5 Termine</span>
+              <span className="tcard-count">{todayCount} Termine</span>
             </div>
-            {termine.map((t, i) => (
-              <div key={i} className="tentry">
-                <span className="tentry-dot" style={{ background: t.dotColor }} />
-                <div className="tentry-time">{t.time}</div>
-                <div className="tentry-body">
-                  <div className="tentry-title">{t.title}</div>
-                  <div className="tentry-desc">{t.desc}</div>
-                  <div className="tentry-tags">
-                    <span className="tentry-tag" style={{ background: t.tagBg, color: t.tagColor }}>{t.tagLabel}</span>
+            {todayEntries.length > 0 ? (
+              todayEntries.map((cal, i) => (
+                <div key={i} className="tentry">
+                  <span className="tentry-dot" style={{ background: calDotColor(cal.s) }} />
+                  <div className="tentry-time">{cal.t}</div>
+                  <div className="tentry-body">
+                    <div className="tentry-title">{cal.n}</div>
+                    <div className="tentry-desc">{cal.s || '\u2014'}</div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div style={{ padding: '12px 16px', color: 'var(--tx3)', fontSize: 11 }}>
+                Keine Termine
               </div>
-            ))}
+            )}
+            {/* Upcoming (non-today) */}
+            {allCalEntries.filter((c) => !c.today).length > 0 && (
+              <>
+                <div style={{ padding: '8px 16px 4px', fontSize: 9, fontWeight: 600, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Kommende
+                </div>
+                {allCalEntries.filter((c) => !c.today).map((cal, i) => (
+                  <div key={`upcoming-${i}`} className="tentry" style={{ opacity: 0.6 }}>
+                    <span className="tentry-dot" style={{ background: calDotColor(cal.s) }} />
+                    <div className="tentry-time">{cal.t}</div>
+                    <div className="tentry-body">
+                      <div className="tentry-title">{cal.n}</div>
+                      <div className="tentry-desc">{cal.s || '\u2014'}</div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
 
           {/* Offene Todos */}
@@ -217,23 +267,53 @@ export default function TermineTodos() {
                 <div className="sl" style={{ width: 8, height: 8, background: 'var(--a)', '--lc': 'var(--ag)' } as React.CSSProperties} />
                 Offene Todos
               </div>
-              <span className="tcard-count">8 heute &middot; 42 gesamt</span>
+              <span className="tcard-count">{displayTodos.length} angezeigt &middot; {openTodos.length} gesamt</span>
             </div>
-            {todos.map((todo, i) => (
-              <div key={i} className="tentry">
-                <div className="todo-chk in" />
-                <div style={{ width: 0 }} />
-                <div className="tentry-body">
-                  <div className="tentry-title" style={todo.overdue ? { color: 'var(--r)' } : undefined}>{todo.title}</div>
-                  <div className="tentry-desc">{todo.desc}</div>
-                  <div className="tentry-tags">
-                    {todo.tags.map((tag, j) => (
-                      <span key={j} className="tentry-tag" style={{ background: tag.bg, color: tag.color }}>{tag.label}</span>
-                    ))}
+            {displayTodos.length > 0 ? (
+              displayTodos.map((todo) => {
+                const pb = prioBadge(todo.prio)
+                const pc = projColor(todo.proj)
+                return (
+                  <div key={todo.id} className="tentry">
+                    <div
+                      className="todo-chk in"
+                      style={todo.done ? { background: 'var(--g)', borderColor: 'var(--g)' } : undefined}
+                    />
+                    <div style={{ width: 0 }} />
+                    <div className="tentry-body">
+                      <div className="tentry-title" style={todo.ov ? { color: 'var(--r)' } : undefined}>
+                        {todo.txt}
+                      </div>
+                      <div className="tentry-desc">
+                        {todo.due || '\u2014'}{todo.proj ? ` \u00B7 ${todo.proj}` : ''}
+                      </div>
+                      <div className="tentry-tags">
+                        <span className="tentry-tag" style={{ background: pb.bg, color: pb.color }}>{pb.label}</span>
+                        {todo.proj && (
+                          <span
+                            className="tentry-tag"
+                            style={{ background: pc.bg, color: pc.color, cursor: 'pointer' }}
+                            onClick={() => {
+                              // Find matching project ID - use proj prefix
+                              navigate(`/projekte/${todo.proj}`)
+                            }}
+                          >
+                            {todo.proj}
+                          </span>
+                        )}
+                        {todo.ov && (
+                          <span className="tentry-tag" style={{ background: 'var(--rc)', color: 'var(--r)' }}>Overdue</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )
+              })
+            ) : (
+              <div style={{ padding: '12px 16px', color: 'var(--tx3)', fontSize: 11 }}>
+                Keine Todos
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -242,41 +322,51 @@ export default function TermineTodos() {
           <div className="tdet cf">
             <div className="tdet-hdr">
               <div className="tdet-title">Heute -- Ubersicht</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 700, color: 'var(--bl)' }}>Do 3. April</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 700, color: 'var(--bl)' }}>Heute</div>
             </div>
             <div className="tdet-body">
               <div>
                 <div className="tdet-label">Tagesplan</div>
                 <div className="tdet-text">
-                  <b style={{ color: 'var(--bl)' }}>09:00</b> Standup Team (30min)<br />
-                  <b style={{ color: 'var(--g)' }}>10:30</b> Hebammen-Interview (60min)<br />
-                  <b style={{ color: 'var(--p)' }}>13:00</b> Investor Pitch Prep (120min)<br />
-                  <b style={{ color: 'var(--t)' }}>16:00</b> Startup Meetup (90min)<br />
-                  <b style={{ color: 'var(--pk)' }}>19:30</b> Abendessen Familie
+                  {todayEntries.length > 0 ? (
+                    todayEntries.map((cal, i) => (
+                      <span key={i}>
+                        <b style={{ color: calDotColor(cal.s) }}>{cal.t}</b> {cal.n}
+                        {i < todayEntries.length - 1 && <br />}
+                      </span>
+                    ))
+                  ) : (
+                    'Keine Termine heute'
+                  )}
                 </div>
               </div>
               <div>
-                <div className="tdet-label">Prioritäten</div>
-                <div className="tdet-text" style={{ color: 'var(--r)' }}>
-                  Steuererklarung Q1 -- <b>uberfällig!</b>
-                </div>
+                <div className="tdet-label">Prioritaeten</div>
+                {overdueTodos.length > 0 && (
+                  <div className="tdet-text" style={{ color: 'var(--r)' }}>
+                    {overdueTodos.map((t, i) => (
+                      <span key={t.id}>
+                        {t.txt.substring(0, 60)} -- <b>ueberfaellig!</b>
+                        {i < overdueTodos.length - 1 && <br />}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="tdet-text">
-                  Mockup Hebammenbuero fertigstellen<br />
-                  Pitch Deck Zahlen aktualisieren
+                  {openTodos.filter((t) => t.prio === 'h').slice(0, 3).map((t, i) => (
+                    <span key={t.id}>
+                      {t.txt.substring(0, 60)}
+                      {i < 2 && <br />}
+                    </span>
+                  ))}
                 </div>
               </div>
               <div>
-                <div className="tdet-label">Morgen</div>
+                <div className="tdet-label">Statistik</div>
                 <div className="tdet-text">
-                  2 Business-Termine<br />
-                  Freitag ruhiger Tag
-                </div>
-              </div>
-              <div>
-                <div className="tdet-label">Wochenende</div>
-                <div className="tdet-text" style={{ color: 'var(--pk)' }}>
-                  Sa: Kindergeburtstag 14:00<br />
-                  So: Familien-Brunch 11:00
+                  {openTodos.length} offene Todos<br />
+                  {doneTodos.length} erledigt<br />
+                  {allCalEntries.length} Termine gesamt
                 </div>
               </div>
             </div>
@@ -294,11 +384,16 @@ export default function TermineTodos() {
             </div>
             <div className="tkani-body">
               <div className="tkm k in">
-                Guten Morgen! Heute hast du 5 Termine und 8 Todos. Die Steuererklarung Q1 ist 5 Tage uberfällig -- soll ich das priorisieren?
+                Heute hast du {todayCount} Termine und {openTodos.length} offene Todos.{' '}
+                {overdueTodos.length > 0
+                  ? `${overdueTodos.length} davon sind ueberfaellig.`
+                  : 'Alles im Zeitplan.'}
               </div>
-              <div className="tkm u">Ja, und block mir morgen 2h dafür</div>
+              <div className="tkm u">Was hat Prioritaet?</div>
               <div className="tkm k in">
-                Erledigt. Morgen 09:00-11:00 geblockt für &quot;Steuererklarung Q1&quot;. Erinnerung gesetzt. Soll ich auch die Belege vorbereiten lassen?
+                {openTodos.filter((t) => t.prio === 'h').length > 0
+                  ? `${openTodos.filter((t) => t.prio === 'h').length} High-Priority Todos. Empfehlung: Zuerst "${openTodos.filter((t) => t.prio === 'h')[0]?.txt.substring(0, 40)}" abschliessen.`
+                  : 'Keine High-Priority Todos offen. Freie Bahn fuer neue Aufgaben.'}
               </div>
             </div>
             <div className="tkani-in">
@@ -322,46 +417,65 @@ export default function TermineTodos() {
           <div className="notif-g">
             <div className="notif-cat">
               <div className="btn3d btn3d-lg" style={{ '--bc': 'var(--rg)' } as React.CSSProperties}>
-                <span className="notif-badge" style={{ background: 'var(--r)', boxShadow: '0 2px 8px var(--rg)' }}>3</span>
+                <span className="notif-badge" style={{ background: 'var(--r)', boxShadow: '0 2px 8px var(--rg)' }}>{overdueTodos.length}</span>
                 <svg viewBox="0 0 24 24" stroke="var(--r)"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               </div>
-              <div className="notif-label" style={{ color: 'var(--r)' }}>Issues</div>
+              <div className="notif-label" style={{ color: 'var(--r)' }}>Overdue</div>
               <div className="notif-detail">
-                <span style={{ color: 'var(--r)' }}>{'\u25CF'}</span> <b>Steuer Q1:</b> 5d uberfällig<br />
-                <span style={{ color: 'var(--r)' }}>{'\u25CF'}</span> <b>Mockup:</b> Deadline morgen<br />
-                <span style={{ color: 'var(--r)' }}>{'\u25CF'}</span> <b>E-Mail:</b> 48h ohne Antwort
+                {overdueTodos.slice(0, 3).map((t, i) => (
+                  <span key={t.id}>
+                    <span style={{ color: 'var(--r)' }}>{'\u25CF'}</span> {t.txt.substring(0, 40)}
+                    {i < Math.min(overdueTodos.length, 3) - 1 && <br />}
+                  </span>
+                ))}
+                {overdueTodos.length === 0 && <span style={{ color: 'var(--tx3)' }}>Keine</span>}
               </div>
             </div>
             <div className="notif-cat">
-              <div className="btn3d btn3d-lg" style={{ '--bc': 'var(--og)' } as React.CSSProperties}>
-                <span className="notif-badge" style={{ background: 'var(--o)', boxShadow: '0 2px 8px var(--og)' }}>2</span>
-                <svg viewBox="0 0 24 24" stroke="var(--o)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
+              <div className="btn3d btn3d-lg" style={{ '--bc': 'var(--ag)' } as React.CSSProperties}>
+                <span className="notif-badge" style={{ background: 'var(--a)', boxShadow: '0 2px 8px var(--ag)' }}>
+                  {openTodos.filter((t) => t.prio === 'h').length}
+                </span>
+                <svg viewBox="0 0 24 24" stroke="var(--a)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /></svg>
               </div>
-              <div className="notif-label" style={{ color: 'var(--o)' }}>Attention</div>
+              <div className="notif-label" style={{ color: 'var(--a)' }}>High Prio</div>
               <div className="notif-detail">
-                <span style={{ color: 'var(--o)' }}>{'\u25CF'}</span> <b>Pitch:</b> Zahlen aktualisieren<br />
-                <span style={{ color: 'var(--o)' }}>{'\u25CF'}</span> <b>HR:</b> Vertrag prüfen
+                {openTodos.filter((t) => t.prio === 'h').slice(0, 3).map((t, i) => (
+                  <span key={t.id}>
+                    <span style={{ color: 'var(--a)' }}>{'\u25CF'}</span> {t.txt.substring(0, 40)}
+                    {i < 2 && <br />}
+                  </span>
+                ))}
               </div>
             </div>
             <div className="notif-cat">
               <div className="btn3d btn3d-lg" style={{ '--bc': 'var(--gg)' } as React.CSSProperties}>
-                <span className="notif-badge" style={{ background: 'var(--g)', boxShadow: '0 2px 8px var(--gg)' }}>1</span>
+                <span className="notif-badge" style={{ background: 'var(--g)', boxShadow: '0 2px 8px var(--gg)' }}>{doneTodos.length}</span>
                 <svg viewBox="0 0 24 24" stroke="var(--g)"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
               </div>
-              <div className="notif-label" style={{ color: 'var(--g)' }}>Freigabe</div>
+              <div className="notif-label" style={{ color: 'var(--g)' }}>Erledigt</div>
               <div className="notif-detail">
-                <span style={{ color: 'var(--g)' }}>{'\u25CF'}</span> <b>Hebamme Sarah:</b> Interview bestätigt
+                {doneTodos.slice(0, 3).map((t, i) => (
+                  <span key={t.id}>
+                    <span style={{ color: 'var(--g)' }}>{'\u25CF'}</span> {t.txt.substring(0, 40)}
+                    {i < Math.min(doneTodos.length, 3) - 1 && <br />}
+                  </span>
+                ))}
               </div>
             </div>
             <div className="notif-cat">
               <div className="btn3d btn3d-lg" style={{ '--bc': 'var(--blg)' } as React.CSSProperties}>
-                <span className="notif-badge" style={{ background: 'var(--bl)', boxShadow: '0 2px 8px var(--blg)' }}>2</span>
+                <span className="notif-badge" style={{ background: 'var(--bl)', boxShadow: '0 2px 8px var(--blg)' }}>{todayCount}</span>
                 <svg viewBox="0 0 24 24" stroke="var(--bl)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
               </div>
-              <div className="notif-label" style={{ color: 'var(--bl)' }}>Results</div>
+              <div className="notif-label" style={{ color: 'var(--bl)' }}>Heute</div>
               <div className="notif-detail">
-                <span style={{ color: 'var(--bl)' }}>{'\u25CF'}</span> <b>Meetup:</b> Location bestätigt<br />
-                <span style={{ color: 'var(--bl)' }}>{'\u25CF'}</span> <b>8 Todos:</b> diese Woche erledigt
+                {todayEntries.slice(0, 3).map((c, i) => (
+                  <span key={i}>
+                    <span style={{ color: 'var(--bl)' }}>{'\u25CF'}</span> <b>{c.t}</b> {c.n}
+                    {i < Math.min(todayEntries.length, 3) - 1 && <br />}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -376,7 +490,7 @@ export default function TermineTodos() {
                 <svg viewBox="0 0 24 24" stroke="var(--p)"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
               </div>
               <span className="qa-lb">Thinktank</span>
-              <span className="qa-sb">7 Ideen</span>
+              <span className="qa-sb">{TODOS.length > 0 ? 'Ideen' : '\u2014'}</span>
             </div>
             <div className="qa-item" onClick={() => navigate('/briefing')}>
               <div className="btn3d" style={{ '--bc': 'var(--tg)' } as React.CSSProperties}>
@@ -390,7 +504,7 @@ export default function TermineTodos() {
                 <svg viewBox="0 0 24 24" stroke="var(--o)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
               </div>
               <span className="qa-lb">Agents</span>
-              <span className="qa-sb">3 aktiv</span>
+              <span className="qa-sb">{'\u2014'}</span>
             </div>
             <div className="qa-item" onClick={() => navigate('/backoffice')}>
               <div className="btn3d" style={{ '--bc': 'rgba(30,30,30,.06)' } as React.CSSProperties}>
@@ -411,7 +525,7 @@ export default function TermineTodos() {
                 <svg viewBox="0 0 24 24" stroke="var(--pk)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
               </div>
               <span className="qa-lb">Private</span>
-              <span className="qa-sb">Persönlich</span>
+              <span className="qa-sb">Persoenlich</span>
             </div>
           </div>
         </div>

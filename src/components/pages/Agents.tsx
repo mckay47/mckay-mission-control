@@ -2,165 +2,68 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppShell from '../shared/AppShell'
 import QuickAccess from '../shared/QuickAccess'
+import { AGENTS } from '../../lib/data'
+import type { Agent } from '../../lib/types'
+
+/* ── Helpers ─────────────────────────────────────────── */
+
+/** Glow variant from col */
+function glowFromCol(col: string): string {
+  const map: Record<string, string> = {
+    'var(--g)': 'var(--gg)',
+    'var(--bl)': 'var(--blg)',
+    'var(--p)': 'var(--pg)',
+    'var(--a)': 'var(--ag)',
+    'var(--t)': 'var(--tg)',
+    'var(--o)': 'var(--og)',
+    'var(--c)': 'var(--blg)',
+    'var(--r)': 'var(--rg)',
+    'var(--t3)': 'rgba(0,0,0,.04)',
+  }
+  return map[col] || 'var(--blg)'
+}
+
+/** Generate slug from agent name */
+function agentSlug(agent: Agent): string {
+  return agent.n.toLowerCase().replace(/\s+/g, '-')
+}
+
+/** Agent icon based on type/name */
+function agentIcon(agent: Agent): React.ReactNode {
+  const stroke = agent.col
+  // Map specific agent names to icons
+  const name = agent.n.toLowerCase()
+  if (name.includes('build'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+  if (name.includes('research'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+  if (name.includes('launch'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+  if (name.includes('ops'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+  if (name.includes('test'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
+  if (name.includes('sales'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+  if (name.includes('seo'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+  if (name.includes('strategy'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><circle cx="12" cy="12" r="10" /><path d="M16 12l-4-4-4 4" /><path d="M12 16V8" /></svg>
+  if (name.includes('life'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+  if (name.includes('mockup') || name.includes('brief'))
+    return <svg viewBox="0 0 24 24" stroke={stroke}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>
+  // Default: kani hexagon
+  return <svg viewBox="0 0 24 24" stroke={stroke}><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" /></svg>
+}
 
 /* ── Types ────────────────────────────────────────────── */
-
-interface AgentData {
-  id: string
-  name: string
-  status: 'active' | 'idle'
-  task: string
-  project: string
-  department: string
-  description: string
-  colorVar: string
-  glowVar: string
-  bgVar: string
-  tasks: number
-  success: string
-  runtime: string
-  cost: string
-  uptime: string
-  icon: React.ReactNode
-}
 
 interface TickerItem {
   agent: string
   color: string
   text: string
 }
-
-/* ── Dummy Data ───────────────────────────────────────── */
-
-const agents: AgentData[] = [
-  {
-    id: 'build-agent',
-    name: 'Build Agent',
-    status: 'active',
-    task: 'Kompiliert /api/courses für Hebammenbuero',
-    project: 'Hebammenbuero',
-    department: 'Engineering · Frontend & Backend',
-    description:
-      'Generiert Code, API Routes, Prisma Schemas und React Components. Kompiliert und testet automatisch. Hauptverantwortlich für den technischen Build-Prozess.',
-    colorVar: 'var(--g)',
-    glowVar: 'var(--gg)',
-    bgVar: 'var(--gc)',
-    tasks: 67,
-    success: '98%',
-    runtime: '18h',
-    cost: '€1.80',
-    uptime: 'Seit 14:23',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--g)">
-        <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
-  },
-  {
-    id: 'research-agent',
-    name: 'Research Agent',
-    status: 'active',
-    task: 'Analysiert Steuerberater SaaS — Marktdaten',
-    project: 'Thinktank · Steuerberater',
-    department: 'Strategy · Market Research',
-    description:
-      'Analysiert Märkte, Wettbewerber, und Zielgruppen. Erstellt Research Reports mit Daten aus mehreren Quellen. Basis für Strategie-Entscheidungen.',
-    colorVar: 'var(--p)',
-    glowVar: 'var(--pg)',
-    bgVar: 'rgba(124,77,255,.06)',
-    tasks: 38,
-    success: '95%',
-    runtime: '12h',
-    cost: '€2.40',
-    uptime: 'Seit 09:15',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--p)">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    ),
-  },
-  {
-    id: 'test-agent',
-    name: 'Test Agent',
-    status: 'active',
-    task: 'Führt 47 Tests für TennisCoach Pro aus',
-    project: 'TennisCoach Pro',
-    department: 'Quality · Testing',
-    description:
-      'Führt automatisierte Tests durch. Unit Tests, Integration Tests, E2E Tests. Validiert Builds und meldet Fehler sofort.',
-    colorVar: 'var(--t)',
-    glowVar: 'var(--tg)',
-    bgVar: 'var(--tc)',
-    tasks: 23,
-    success: '100%',
-    runtime: '8h',
-    cost: '€0.90',
-    uptime: 'Seit 11:40',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--t)">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'deploy-agent',
-    name: 'Deploy Agent',
-    status: 'idle',
-    task: 'Wartet auf nächsten Deploy-Auftrag',
-    project: 'Letzter: Mission Control v0.8',
-    department: 'DevOps · Deployment',
-    description:
-      'Deployed Projekte auf Vercel. Verwaltet Environments, Preview Deploys und Production Releases. Automatische Rollbacks bei Fehlern.',
-    colorVar: 'var(--bl)',
-    glowVar: 'var(--blg)',
-    bgVar: 'var(--blc)',
-    tasks: 14,
-    success: '100%',
-    runtime: '10h',
-    cost: '€0.60',
-    uptime: 'Idle seit 08:20',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--bl)">
-        <path d="M22 2L11 13" />
-        <path d="M22 2l-7 20-4-9-9-4 20-7z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'seo-agent',
-    name: 'SEO Agent',
-    status: 'idle',
-    task: 'Letzter Auftrag: SEO Audit Hebammenbuero',
-    project: 'Letzter: Hebammenbuero',
-    department: 'Marketing · SEO',
-    description:
-      'Führt SEO Audits durch, analysiert Rankings, generiert Meta Tags und Sitemaps. Überwacht Core Web Vitals und Lighthouse Scores.',
-    colorVar: 'var(--a)',
-    glowVar: 'var(--ag)',
-    bgVar: 'var(--ac)',
-    tasks: 8,
-    success: '88%',
-    runtime: '5h',
-    cost: '€0.40',
-    uptime: 'Idle seit gestern',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--a)">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-    ),
-  },
-]
-
-const tickerItems: TickerItem[] = [
-  { agent: 'build-agent', color: 'var(--g)', text: 'kompiliert /api/courses für Hebammenbuero' },
-  { agent: 'research', color: 'var(--p)', text: 'analysiert Steuerberater Markt — 23 Quellen' },
-  { agent: 'test', color: 'var(--t)', text: 'TennisCoach: 47/47 Tests bestanden' },
-  { agent: 'deploy', color: 'var(--bl)', text: 'Mission Control v0.8 deployed' },
-  { agent: 'seo', color: 'var(--a)', text: 'Hebammenbuero Audit abgeschlossen' },
-]
 
 /* ── Notification data for agents context ─────────────── */
 
@@ -173,88 +76,80 @@ interface AgentNotifCategory {
   items: { project: string; text: string }[]
 }
 
-const agentNotifCategories: AgentNotifCategory[] = [
-  {
-    label: 'Issues',
-    count: 1,
-    colorVar: 'var(--r)',
-    glowVar: 'var(--rg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--r)">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-    ),
-    items: [{ project: 'SEO Agent', text: 'Rate Limit bei API' }],
-  },
-  {
-    label: 'Attention',
-    count: 2,
-    colorVar: 'var(--o)',
-    glowVar: 'var(--og)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--o)">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      </svg>
-    ),
-    items: [
-      { project: 'Build', text: 'Queue voll (3 Tasks)' },
-      { project: 'Research', text: 'API Credits niedrig' },
-    ],
-  },
-  {
-    label: 'Freigabe',
-    count: 1,
-    colorVar: 'var(--g)',
-    glowVar: 'var(--gg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--g)">
-        <path d="M9 12l2 2 4-4" />
-        <circle cx="12" cy="12" r="10" />
-      </svg>
-    ),
-    items: [{ project: 'Deploy', text: 'MC v0.9 bereit' }],
-  },
-  {
-    label: 'Results',
-    count: 3,
-    colorVar: 'var(--bl)',
-    glowVar: 'var(--blg)',
-    icon: (
-      <svg viewBox="0 0 24 24" stroke="var(--bl)">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
-      </svg>
-    ),
-    items: [
-      { project: 'Test', text: '47/47 Tests passed' },
-      { project: 'Build', text: '3 Routes fertig' },
-      { project: 'Research', text: 'Marktanalyse done' },
-    ],
-  },
-]
-
 /* ── Component ────────────────────────────────────────── */
 
 export default function Agents() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'active' | 'idle'>('all')
-  const [selectedId, setSelectedId] = useState<string>('build-agent')
+  const [selectedId, setSelectedId] = useState<string>(AGENTS.length > 0 ? agentSlug(AGENTS[0]) : '')
   const [pipelineOpen, setPipelineOpen] = useState(false)
 
-  const activeCount = agents.filter((a) => a.status === 'active').length
-  const idleCount = agents.filter((a) => a.status === 'idle').length
-  const totalTasks = agents.reduce((sum, a) => sum + a.tasks, 0)
-  const errorCount = 1
-  const totalRuntime = '48h'
+  /* ── Empty state ──────────────────────────────────── */
+
+  if (AGENTS.length === 0) {
+    return (
+      <AppShell title="Agents" ledColor="g">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--tx3)', fontSize: 14 }}>
+          Keine Agents aktiv
+        </div>
+      </AppShell>
+    )
+  }
+
+  const activeCount = AGENTS.filter((a) => a.st === 'active').length
+  const idleCount = AGENTS.filter((a) => a.st === 'idle').length
+  const totalTasks = AGENTS.reduce((sum, a) => sum + a.pr, 0)
 
   const filtered =
     filter === 'all'
-      ? agents
-      : agents.filter((a) => a.status === filter)
+      ? AGENTS
+      : AGENTS.filter((a) => a.st === filter)
 
-  const selected = agents.find((a) => a.id === selectedId) ?? agents[0]
+  const selected = AGENTS.find((a) => agentSlug(a) === selectedId) ?? AGENTS[0]
+  // const _selectedGlow = glowFromCol(selected.col)
+
+  // Ticker items from real agents
+  const tickerItems: TickerItem[] = AGENTS.filter((a) => a.act).map((a) => ({
+    agent: agentSlug(a),
+    color: a.col,
+    text: a.act,
+  }))
+
+  // Notification categories derived from agent data
+  const agentNotifCategories: AgentNotifCategory[] = [
+    {
+      label: 'Aktiv',
+      count: activeCount,
+      colorVar: 'var(--g)',
+      glowVar: 'var(--gg)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--g)">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      ),
+      items: AGENTS.filter((a) => a.st === 'active').map((a) => ({
+        project: a.n,
+        text: a.act || 'Aktiv',
+      })),
+    },
+    {
+      label: 'Idle',
+      count: idleCount,
+      colorVar: 'var(--a)',
+      glowVar: 'var(--ag)',
+      icon: (
+        <svg viewBox="0 0 24 24" stroke="var(--a)">
+          <rect x="6" y="4" width="4" height="16" />
+          <rect x="14" y="4" width="4" height="16" />
+        </svg>
+      ),
+      items: AGENTS.filter((a) => a.st === 'idle').map((a) => ({
+        project: a.n,
+        text: a.proj === '\u2014' ? 'Kein Projekt' : a.proj,
+      })),
+    },
+  ]
 
   return (
     <AppShell title="Agents" ledColor="g">
@@ -295,29 +190,15 @@ export default function Agents() {
             <div className="kl">Tasks erledigt</div>
           </div>
         </div>
-        <div className="kpi cf" style={{ '--kc': 'var(--rg)' } as React.CSSProperties}>
-          <div className="btn3d btn3d-sm" style={{ '--bc': 'var(--rg)' } as React.CSSProperties}>
-            <svg viewBox="0 0 24 24" stroke="var(--r)">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </div>
-          <div>
-            <div className="kv" style={{ color: 'var(--r)' }}>{errorCount}</div>
-            <div className="kl">Fehler</div>
-          </div>
-        </div>
         <div className="kpi cf" style={{ '--kc': 'var(--pg)' } as React.CSSProperties}>
           <div className="btn3d btn3d-sm" style={{ '--bc': 'var(--pg)' } as React.CSSProperties}>
             <svg viewBox="0 0 24 24" stroke="var(--p)">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
+              <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--p)' }}>{totalRuntime}</div>
-            <div className="kl">Laufzeit ges.</div>
+            <div className="kv" style={{ color: 'var(--p)' }}>{AGENTS.length}</div>
+            <div className="kl">Total Agents</div>
           </div>
         </div>
       </div>
@@ -390,7 +271,7 @@ export default function Agents() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {agents.length} Agents
+              {AGENTS.length} Agents
             </span>
             <span style={{ fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>
               {pipelineOpen ? '\u25B2' : '\u25BC'}
@@ -424,12 +305,12 @@ export default function Agents() {
                     Aktiv ({activeCount})
                   </div>
                   <div style={{ fontSize: 9, color: 'var(--tx3)', lineHeight: 1.5 }}>
-                    {agents
-                      .filter((a) => a.status === 'active')
-                      .map((a, i) => (
-                        <span key={a.id}>
-                          {'\u25CF'} {a.name} → {a.project}
-                          {i < activeCount - 1 && <br />}
+                    {AGENTS
+                      .filter((a) => a.st === 'active')
+                      .map((a, i, arr) => (
+                        <span key={agentSlug(a)}>
+                          {'\u25CF'} {a.n} {'\u2192'} {a.proj}
+                          {i < arr.length - 1 && <br />}
                         </span>
                       ))}
                   </div>
@@ -451,12 +332,12 @@ export default function Agents() {
                     Idle ({idleCount})
                   </div>
                   <div style={{ fontSize: 9, color: 'var(--tx3)', lineHeight: 1.5 }}>
-                    {agents
-                      .filter((a) => a.status === 'idle')
-                      .map((a, i) => (
-                        <span key={a.id}>
-                          {'\u25CF'} {a.name} — {a.project.replace('Letzter: ', '')}
-                          {i < idleCount - 1 && <br />}
+                    {AGENTS
+                      .filter((a) => a.st === 'idle')
+                      .map((a, i, arr) => (
+                        <span key={agentSlug(a)}>
+                          {'\u25CF'} {a.n} — {a.proj === '\u2014' ? 'Kein Projekt' : a.proj}
+                          {i < arr.length - 1 && <br />}
                         </span>
                       ))}
                   </div>
@@ -474,7 +355,7 @@ export default function Agents() {
           className={`fb${filter === 'all' ? ' active' : ''}`}
           onClick={() => setFilter('all')}
         >
-          Alle <span className="fc">{agents.length}</span>
+          Alle <span className="fc">{AGENTS.length}</span>
         </button>
         <button
           className={`fb${filter === 'active' ? ' active' : ''}`}
@@ -494,105 +375,106 @@ export default function Agents() {
       <div className="abody">
         <div className="aleft">
           <div className="agrid">
-            {filtered.map((agent) => (
-              <div
-                key={agent.id}
-                className="cgw"
-                style={{ '--gc2': agent.glowVar } as React.CSSProperties}
-                onClick={() => setSelectedId(agent.id)}
-              >
+            {filtered.map((agent) => {
+              const slug = agentSlug(agent)
+              const glow = glowFromCol(agent.col)
+              const isActive = agent.st === 'active'
+              return (
                 <div
-                  className="ac cf"
-                  style={{ '--hc': agent.glowVar } as React.CSSProperties}
+                  key={slug}
+                  className="cgw"
+                  style={{ '--gc2': glow } as React.CSSProperties}
+                  onClick={() => setSelectedId(slug)}
                 >
-                  <div className="ac-top">
-                    <div
-                      className="ac-icon btn3d"
-                      style={{ '--bc': agent.glowVar } as React.CSSProperties}
-                    >
-                      {agent.status === 'active' && (
-                        <div
-                          className="sl"
-                          style={{
-                            position: 'absolute',
-                            top: -2,
-                            right: -2,
-                            width: 8,
-                            height: 8,
-                            background: agent.colorVar,
-                            '--lc': agent.glowVar,
-                            animation: 'lp 3s ease-in-out infinite',
-                          } as React.CSSProperties}
-                        />
-                      )}
-                      {agent.icon}
-                    </div>
-                    <span
-                      className="ac-badge"
-                      style={{
-                        background: agent.bgVar,
-                        color: agent.colorVar,
-                      }}
-                    >
-                      {agent.status === 'active' ? '\u25CF Aktiv' : '\u23F8 Idle'}
-                    </span>
-                  </div>
-                  <div className="ac-name">{agent.name}</div>
                   <div
-                    className="ac-task"
-                    style={agent.status === 'idle' ? { color: 'var(--tx3)' } : undefined}
+                    className="ac cf"
+                    style={{ '--hc': glow } as React.CSSProperties}
                   >
-                    {agent.task}
-                  </div>
-                  <div className="ac-project">
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background:
-                          agent.status === 'active' ? agent.colorVar : 'var(--tx3)',
-                        boxShadow:
-                          agent.status === 'active'
-                            ? `0 0 4px ${agent.glowVar}`
-                            : 'none',
-                      }}
-                    />
-                    <span style={{ color: 'var(--tx3)' }}>{agent.project}</span>
-                  </div>
-                  <div className="ac-stats">
-                    <div className="ac-stat">
-                      <span className="ac-stat-val" style={{ color: agent.colorVar }}>
-                        {agent.tasks}
+                    <div className="ac-top">
+                      <div
+                        className="ac-icon btn3d"
+                        style={{ '--bc': glow } as React.CSSProperties}
+                      >
+                        {isActive && (
+                          <div
+                            className="sl"
+                            style={{
+                              position: 'absolute',
+                              top: -2,
+                              right: -2,
+                              width: 8,
+                              height: 8,
+                              background: agent.col,
+                              '--lc': glow,
+                              animation: 'lp 3s ease-in-out infinite',
+                            } as React.CSSProperties}
+                          />
+                        )}
+                        {agentIcon(agent)}
+                      </div>
+                      <span
+                        className="ac-badge"
+                        style={{
+                          background: agent.bg,
+                          color: agent.col,
+                        }}
+                      >
+                        {isActive ? '\u25CF Aktiv' : '\u23F8 Idle'}
                       </span>
-                      <span className="ac-stat-label">Tasks</span>
                     </div>
-                    <div className="ac-stat">
-                      <span className="ac-stat-val" style={{ color: agent.colorVar }}>
-                        {agent.success}
-                      </span>
-                      <span className="ac-stat-label">Erfolg</span>
-                    </div>
-                    <div className="ac-stat">
-                      <span className="ac-stat-val">{agent.runtime}</span>
-                      <span className="ac-stat-label">Runtime</span>
-                    </div>
-                  </div>
-                  <div className="ac-foot">
-                    <span className="ac-uptime">{agent.uptime}</span>
-                    <span
-                      className="ac-arrow"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/agents/${agent.id}`)
-                      }}
+                    <div className="ac-name">{agent.n}</div>
+                    <div
+                      className="ac-task"
+                      style={!isActive ? { color: 'var(--tx3)' } : undefined}
                     >
-                      &rarr;
-                    </span>
+                      {agent.act || (isActive ? 'Arbeitet...' : 'Wartet auf Auftrag')}
+                    </div>
+                    <div className="ac-project">
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: isActive ? agent.col : 'var(--tx3)',
+                          boxShadow: isActive ? `0 0 4px ${glow}` : 'none',
+                        }}
+                      />
+                      <span style={{ color: 'var(--tx3)' }}>{agent.proj}</span>
+                    </div>
+                    <div className="ac-stats">
+                      <div className="ac-stat">
+                        <span className="ac-stat-val" style={{ color: agent.col }}>
+                          {agent.pr}
+                        </span>
+                        <span className="ac-stat-label">Tasks</span>
+                      </div>
+                      <div className="ac-stat">
+                        <span className="ac-stat-val" style={{ color: agent.col }}>
+                          {agent.suc}%
+                        </span>
+                        <span className="ac-stat-label">Erfolg</span>
+                      </div>
+                      <div className="ac-stat">
+                        <span className="ac-stat-val">{agent.mdl}</span>
+                        <span className="ac-stat-label">Modell</span>
+                      </div>
+                    </div>
+                    <div className="ac-foot">
+                      <span className="ac-uptime">{agent.typ}</span>
+                      <span
+                        className="ac-arrow"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/agents/${slug}`)
+                        }}
+                      >
+                        &rarr;
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {/* Add agent placeholder */}
             <div
               className="ac cf"
@@ -614,7 +496,7 @@ export default function Agents() {
         <div className="aright">
           <div className="adet cf">
             <div className="adet-hdr">
-              <div className="adet-title">{selected.name}</div>
+              <div className="adet-title">{selected.n}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span
                   style={{
@@ -622,48 +504,46 @@ export default function Agents() {
                     fontWeight: 700,
                     padding: '3px 8px',
                     borderRadius: 5,
-                    background: selected.bgVar,
-                    color: selected.colorVar,
+                    background: selected.bg,
+                    color: selected.col,
                   }}
                 >
-                  {selected.status === 'active' ? '\u25CF Aktiv' : '\u23F8 Idle'}
+                  {selected.st === 'active' ? '\u25CF Aktiv' : '\u23F8 Idle'}
                 </span>
               </div>
             </div>
             <div className="adet-body">
               <div>
-                <div className="adet-label">Beschreibung</div>
-                <div className="adet-text">{selected.description}</div>
+                <div className="adet-label">Typ & Modell</div>
+                <div className="adet-text">
+                  <span style={{ color: selected.col, fontWeight: 600 }}>{selected.typ}</span>
+                  {' \u00B7 '}{selected.mdl}
+                </div>
               </div>
               <div>
-                <div className="adet-label">Department</div>
-                <div
-                  className="adet-text"
-                  style={{ color: selected.colorVar, fontWeight: 600 }}
-                >
-                  {selected.department}
-                </div>
+                <div className="adet-label">Aktivitaet</div>
+                <div className="adet-text">{selected.act || '\u2014'}</div>
               </div>
               <div>
                 <div className="adet-label">Stats</div>
                 <div className="adet-stat">
                   <div className="adet-si in">
-                    <div className="adet-si-val" style={{ color: selected.colorVar }}>
-                      {selected.tasks}
+                    <div className="adet-si-val" style={{ color: selected.col }}>
+                      {selected.pr}
                     </div>
                     <div className="adet-si-label">Tasks</div>
                   </div>
                   <div className="adet-si in">
-                    <div className="adet-si-val" style={{ color: selected.colorVar }}>
-                      {selected.success}
+                    <div className="adet-si-val" style={{ color: selected.col }}>
+                      {selected.suc}%
                     </div>
                     <div className="adet-si-label">Erfolg</div>
                   </div>
                   <div className="adet-si in">
                     <div className="adet-si-val" style={{ color: 'var(--bl)' }}>
-                      {selected.runtime}
+                      {selected.tkn}
                     </div>
-                    <div className="adet-si-label">Runtime</div>
+                    <div className="adet-si-label">Tokens</div>
                   </div>
                   <div className="adet-si in">
                     <div className="adet-si-val" style={{ color: 'var(--p)' }}>
@@ -674,10 +554,9 @@ export default function Agents() {
                 </div>
               </div>
               <div>
-                <div className="adet-label">Aktueller Auftrag</div>
+                <div className="adet-label">Projekt</div>
                 <div className="adet-text">
-                  <b>{selected.project.replace('Letzter: ', '').replace('Thinktank · ', '')}</b>{' '}
-                  — {selected.task}
+                  <b>{selected.proj}</b>
                 </div>
               </div>
             </div>
@@ -687,30 +566,26 @@ export default function Agents() {
           <div className="akani cf">
             <div className="akani-hdr">
               <div className="akani-av">
-                <svg viewBox="0 0 24 24">
-                  <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                </svg>
+                {agentIcon(selected)}
               </div>
-              <span className="akani-nm">{selected.name} · Chat</span>
+              <span className="akani-nm">{selected.n} · Chat</span>
               <span style={{ fontSize: 7, color: 'var(--g)', marginLeft: 'auto' }}>
-                {selected.status === 'active' ? 'Running' : 'Idle'}
+                {selected.st === 'active' ? 'Running' : 'Idle'}
               </span>
             </div>
             <div className="akani-body">
               <div className="akm k in">
-                {selected.name} hier. Arbeite gerade an {selected.task}. 2 von 3 Sub-Tasks
-                erledigt.
+                {selected.n} hier. {selected.act ? `Arbeite gerade an: ${selected.act}` : 'Warte auf naechsten Auftrag.'}
               </div>
-              <div className="akm u">Wie lange noch?</div>
+              <div className="akm u">Status?</div>
               <div className="akm k in">
-                Geschätzt noch ~2 Min für aktuellen Task. Danach Queue abarbeiten. Gesamt: ~8
-                Min.
+                Typ: {selected.typ}. Modell: {selected.mdl}. Projekt: {selected.proj}. Kosten: {selected.cost}.
               </div>
             </div>
             <div className="akani-in">
               <input
                 className="akani-inp in"
-                placeholder={`Nachricht an ${selected.name}...`}
+                placeholder={`Nachricht an ${selected.n}...`}
                 readOnly
               />
               <button className="akani-send">

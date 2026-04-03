@@ -1,458 +1,58 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppShell from '../shared/AppShell'
 import Notifications from '../shared/Notifications'
 import QuickAccess from '../shared/QuickAccess'
 import LiveFeed from '../shared/LiveFeed'
+import { PROJ, TODOS, AGENTS } from '../../lib/data'
+import type { Project } from '../../lib/types'
 
-/* ── Dummy Data ─────────────────────────────────────────── */
+/* ── Helpers ─────────────────────────────────────────── */
 
-interface NavItem {
-  abbr: string
-  name: string
-  colorVar: string
-  glowVar: string
-  ledBg?: string
-  ledLc?: string
+function statusOf(p: Project): { label: string; status: string; bg: string; color: string; ledClass: string; ledStyle?: React.CSSProperties } {
+  if (p.phase === 'LIVE') return { label: '\u2605 Live', status: 'live', bg: 'var(--blc)', color: 'var(--bl)', ledClass: 'sl b' }
+  if (p.term === 'Waiting' && p.health === 'Attention') return { label: '\u26A0 Blocked', status: 'blocked', bg: 'var(--rc)', color: 'var(--r)', ledClass: 'sl r' }
+  if (p.term === 'Waiting') return { label: '\u23F8 Pause', status: 'pause', bg: 'var(--ac)', color: 'var(--a)', ledClass: 'sl a', ledStyle: { animation: 'none' } }
+  if (p.term === 'Idle') return { label: 'Idle', status: 'idle', bg: 'rgba(0,0,0,0.04)', color: 'var(--tx3)', ledClass: 'sl off', ledStyle: { width: 8, height: 8 } }
+  // Active
+  return { label: '\u25CF Aktiv', status: 'active', bg: 'var(--gc)', color: 'var(--g)', ledClass: 'sl g' }
 }
 
-const navItems: NavItem[] = [
-  { abbr: 'TA', name: 'Tax Arch.', colorVar: 'var(--ag)', glowVar: 'var(--ag)', ledBg: undefined, ledLc: undefined },
-  { abbr: 'GS', name: 'Gastro', colorVar: 'var(--pg)', glowVar: 'var(--pg)', ledBg: 'var(--p)', ledLc: 'var(--pg)' },
-  { abbr: 'SH', name: 'SmartH.', colorVar: 'var(--blg)', glowVar: 'var(--blg)', ledBg: 'var(--bl)', ledLc: 'var(--blg)' },
-  { abbr: 'MI', name: 'Inbox', colorVar: 'var(--ag)', glowVar: 'var(--ag)', ledBg: undefined, ledLc: undefined },
-  { abbr: 'PG', name: 'Playgr.', colorVar: 'var(--ag)', glowVar: 'var(--ag)', ledBg: undefined, ledLc: undefined },
-]
-
-interface ProjectCard {
-  id: string
-  name: string
-  status: string
-  statusLabel: string
-  statusBg: string
-  statusColor: string
-  ledClass: string
-  ledStyle?: React.CSSProperties
-  hoverColor: string
-  glowColor: string
-  agentIcon: React.ReactNode
-  agentLabel: string
-  agentColor?: string
-  phaseDone: number
-  phaseTotal: number
-  phaseColor: string
-  phaseGlow: string
-  pct: number
-  barColor: string
-  barGlow: string
-  footLabel: string
-  footValue: string
-  idle?: boolean
+function colToVar(col: string): { color: string; glow: string; hov: string; ultra: string } {
+  switch (col) {
+    case 'var(--bl)': return { color: 'var(--bl)', glow: 'var(--blg)', hov: 'var(--blg)', ultra: 'var(--blu)' }
+    case 'var(--g)': return { color: 'var(--g)', glow: 'var(--gg)', hov: 'var(--gg)', ultra: 'var(--gu)' }
+    case 'var(--a)': return { color: 'var(--a)', glow: 'var(--ag)', hov: 'var(--ag)', ultra: 'var(--au)' }
+    case 'var(--p)': return { color: 'var(--p)', glow: 'var(--pg)', hov: 'var(--pg)', ultra: 'var(--pu)' }
+    case 'var(--c)': return { color: 'var(--c)', glow: 'var(--cg)', hov: 'var(--cg)', ultra: 'var(--cu)' }
+    case 'var(--o)': return { color: 'var(--o)', glow: 'var(--og)', hov: 'var(--og)', ultra: 'var(--ou)' }
+    case 'var(--t)': return { color: 'var(--t)', glow: 'var(--tg)', hov: 'var(--tg)', ultra: 'var(--tu)' }
+    default: return { color: 'var(--g)', glow: 'var(--gg)', hov: 'var(--gg)', ultra: 'var(--gu)' }
+  }
 }
 
-const projects: ProjectCard[] = [
-  {
-    id: 'heb',
-    name: 'Hebammenbuero',
-    status: 'active',
-    statusLabel: '\u25CF Aktiv',
-    statusBg: 'var(--gc)',
-    statusColor: 'var(--g)',
-    ledClass: 'sl g',
-    hoverColor: 'var(--gg)',
-    glowColor: 'var(--gu)',
-    agentIcon: (
-      <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--g)" strokeWidth="2" fill="none" style={{ filter: 'drop-shadow(0 0 3px var(--gg))' }}>
-        <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
-    agentLabel: 'build-agent',
-    phaseDone: 1,
-    phaseTotal: 5,
-    phaseColor: 'var(--g)',
-    phaseGlow: 'var(--gg)',
-    pct: 40,
-    barColor: 'var(--g)',
-    barGlow: 'var(--gg)',
-    footLabel: 'Todos',
-    footValue: '12',
-  },
-  {
-    id: 'mc',
-    name: 'Mission Control',
-    status: 'active',
-    statusLabel: '\u25CF Aktiv',
-    statusBg: 'var(--gc)',
-    statusColor: 'var(--g)',
-    ledClass: 'sl g',
-    hoverColor: 'var(--gg)',
-    glowColor: 'var(--gu)',
-    agentIcon: (
-      <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--g)" strokeWidth="2" fill="none" style={{ filter: 'drop-shadow(0 0 3px var(--gg))' }}>
-        <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
-    agentLabel: 'build-agent',
-    phaseDone: 2,
-    phaseTotal: 3,
-    phaseColor: 'var(--g)',
-    phaseGlow: 'var(--gg)',
-    pct: 67,
-    barColor: 'var(--g)',
-    barGlow: 'var(--gg)',
-    footLabel: 'Todos',
-    footValue: '8',
-  },
-  {
-    id: 'tc',
-    name: 'TennisCoach Pro',
-    status: 'active',
-    statusLabel: '\u25CF Aktiv',
-    statusBg: 'var(--tc)',
-    statusColor: 'var(--t)',
-    ledClass: 'sl g',
-    ledStyle: { background: 'var(--t)', ['--lc' as string]: 'var(--tg)', animation: 'none' },
-    hoverColor: 'var(--tg)',
-    glowColor: 'var(--tu)',
-    agentIcon: (
-      <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--tx3)" strokeWidth="2" fill="none" opacity={0.4}>
-        <circle cx="12" cy="12" r="4" />
-      </svg>
-    ),
-    agentLabel: 'kein Agent',
-    phaseDone: 4,
-    phaseTotal: 5,
-    phaseColor: 'var(--t)',
-    phaseGlow: 'var(--tg)',
-    pct: 80,
-    barColor: 'var(--t)',
-    barGlow: 'var(--tg)',
-    footLabel: 'Todos',
-    footValue: '3',
-  },
-  {
-    id: 'stl',
-    name: 'Stillprobleme',
-    status: 'blocked',
-    statusLabel: '\u26A0 Blocked',
-    statusBg: 'var(--rc)',
-    statusColor: 'var(--r)',
-    ledClass: 'sl r',
-    hoverColor: 'var(--rg)',
-    glowColor: 'var(--ru)',
-    agentIcon: (
-      <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--r)" strokeWidth="2" fill="none">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-      </svg>
-    ),
-    agentLabel: 'Credentials',
-    agentColor: 'var(--r)',
-    phaseDone: 1,
-    phaseTotal: 5,
-    phaseColor: 'var(--r)',
-    phaseGlow: 'var(--rg)',
-    pct: 23,
-    barColor: 'var(--r)',
-    barGlow: 'var(--rg)',
-    footLabel: 'Todos',
-    footValue: '4',
-  },
-  {
-    id: 'fmh',
-    name: 'FindeMeineHebamme',
-    status: 'live',
-    statusLabel: '\u2605 Live',
-    statusBg: 'var(--blc)',
-    statusColor: 'var(--bl)',
-    ledClass: 'sl b',
-    hoverColor: 'var(--blg)',
-    glowColor: 'var(--blu)',
-    agentIcon: (
-      <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--bl)" strokeWidth="2" fill="none" style={{ filter: 'drop-shadow(0 0 3px var(--blg))' }}>
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-      </svg>
-    ),
-    agentLabel: '\u20AC340/mo',
-    phaseDone: 5,
-    phaseTotal: 5,
-    phaseColor: 'var(--bl)',
-    phaseGlow: 'var(--blg)',
-    pct: 100,
-    barColor: 'var(--bl)',
-    barGlow: 'var(--blg)',
-    footLabel: 'Verm.',
-    footValue: '~100',
-  },
-  {
-    id: 'fmh2',
-    name: 'FMH v2',
-    status: 'pause',
-    statusLabel: '\u23F8 Pause',
-    statusBg: 'var(--ac)',
-    statusColor: 'var(--a)',
-    ledClass: 'sl a',
-    ledStyle: { animation: 'none' },
-    hoverColor: 'var(--ag)',
-    glowColor: 'var(--au)',
-    agentIcon: (
-      <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--a)" strokeWidth="2" fill="none">
-        <rect x="6" y="4" width="4" height="16" />
-        <rect x="14" y="4" width="4" height="16" />
-      </svg>
-    ),
-    agentLabel: 'Feedback',
-    phaseDone: 1,
-    phaseTotal: 4,
-    phaseColor: 'var(--a)',
-    phaseGlow: 'var(--ag)',
-    pct: 15,
-    barColor: 'var(--a)',
-    barGlow: 'var(--ag)',
-    footLabel: 'Todos',
-    footValue: '2',
-  },
-  {
-    id: 'stb',
-    name: 'Steuerberater SaaS',
-    status: 'idle',
-    statusLabel: 'Idle',
-    statusBg: 'rgba(0,0,0,0.04)',
-    statusColor: 'var(--tx3)',
-    ledClass: 'sl off',
-    ledStyle: { width: 8, height: 8 },
-    hoverColor: 'transparent',
-    glowColor: 'transparent',
-    agentIcon: null,
-    agentLabel: 'Nicht gestartet',
-    phaseDone: 0,
-    phaseTotal: 3,
-    phaseColor: 'var(--bg)',
-    phaseGlow: 'transparent',
-    pct: 0,
-    barColor: 'transparent',
-    barGlow: 'transparent',
-    footLabel: 'Todos',
-    footValue: '0',
-    idle: true,
-  },
-  {
-    id: 'immo',
-    name: 'Immobilien App',
-    status: 'idle',
-    statusLabel: 'Idle',
-    statusBg: 'rgba(0,0,0,0.04)',
-    statusColor: 'var(--tx3)',
-    ledClass: 'sl off',
-    ledStyle: { width: 8, height: 8 },
-    hoverColor: 'transparent',
-    glowColor: 'transparent',
-    agentIcon: null,
-    agentLabel: 'Nicht gestartet',
-    phaseDone: 0,
-    phaseTotal: 4,
-    phaseColor: 'var(--bg)',
-    phaseGlow: 'transparent',
-    pct: 0,
-    barColor: 'transparent',
-    barGlow: 'transparent',
-    footLabel: 'Todos',
-    footValue: '0',
-    idle: true,
-  },
-  {
-    id: 'fit',
-    name: 'Fitness Tracker',
-    status: 'idle',
-    statusLabel: 'Idle',
-    statusBg: 'rgba(0,0,0,0.04)',
-    statusColor: 'var(--tx3)',
-    ledClass: 'sl off',
-    ledStyle: { width: 8, height: 8 },
-    hoverColor: 'transparent',
-    glowColor: 'transparent',
-    agentIcon: null,
-    agentLabel: 'Nicht gestartet',
-    phaseDone: 0,
-    phaseTotal: 5,
-    phaseColor: 'var(--bg)',
-    phaseGlow: 'transparent',
-    pct: 0,
-    barColor: 'transparent',
-    barGlow: 'transparent',
-    footLabel: 'Todos',
-    footValue: '0',
-    idle: true,
-  },
-]
-
-interface PipelineGroup {
-  color: string
-  glow: string
-  label: string
-  count: number
-  items: string[]
+function prioLabel(p: string): { label: string; bg: string; color: string } {
+  switch (p) {
+    case 'h': return { label: 'P0', bg: 'var(--rc)', color: 'var(--r)' }
+    case 'm': return { label: 'P1', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }
+    case 'l': return { label: 'P2', bg: 'rgba(124,77,255,.06)', color: 'var(--tx3)' }
+    default: return { label: 'P1', bg: 'rgba(124,77,255,.06)', color: 'var(--p)' }
+  }
 }
 
-const pipelineGroups: PipelineGroup[] = [
-  { color: 'var(--g)', glow: 'var(--gg)', label: 'Aktiv', count: 3, items: ['Hebammenbuero \u2014 40%', 'Mission Control \u2014 67%', 'TennisCoach Pro \u2014 80%'] },
-  { color: 'var(--r)', glow: 'var(--rg)', label: 'Blocked', count: 1, items: ['Stillprobleme \u2014 API Credentials'] },
-  { color: 'var(--bl)', glow: 'var(--blg)', label: 'Live', count: 1, items: ['FindeMeineHebamme \u2014 100%'] },
-  { color: 'var(--a)', glow: 'var(--ag)', label: 'Pause', count: 1, items: ['FMH v2 \u2014 Feedback'] },
-  { color: 'var(--tx3)', glow: 'transparent', label: 'Idle', count: 3, items: ['Steuerberater SaaS', 'Immobilien App', 'Fitness Tracker'] },
-]
-
-interface TodoFilter {
-  label: string
-  count: number
-  bgColor?: string
-  textColor?: string
+function projLabel(projId: string): { name: string; dotColor: string; dotGlow: string } {
+  const found = PROJ.find(p => p.n === projId || p.id === projId || p.n.startsWith(projId))
+  if (found) {
+    const cv = colToVar(found.col)
+    return { name: found.n.length > 12 ? found.n.slice(0, 12) : found.n, dotColor: cv.color, dotGlow: cv.glow }
+  }
+  return { name: projId || 'MCKAY OS', dotColor: 'var(--tx3)', dotGlow: 'transparent' }
 }
 
-const todoFilters: TodoFilter[] = [
-  { label: 'Alle', count: 42 },
-  { label: 'Hebammen', count: 12, bgColor: 'rgba(0,200,83,.1)', textColor: 'var(--g)' },
-  { label: 'MC', count: 8, bgColor: 'rgba(0,200,83,.1)', textColor: 'var(--g)' },
-  { label: 'Tennis', count: 3, bgColor: 'rgba(0,191,165,.1)', textColor: 'var(--t)' },
-  { label: 'Still', count: 4, bgColor: 'rgba(255,61,61,.1)', textColor: 'var(--r)' },
-]
+/* ── Main grid: first 9 projects sorted by activity ── */
 
-interface TodoItem {
-  title: string
-  titleColor?: string
-  desc: string
-  impactDots: { color: string }[]
-  impactLabel: string
-  impactLabelColor?: string
-  projectDotColor: string
-  projectDotGlow: string
-  projectLabel: string
-  projectLabelColor?: string
-  tag: string
-  tagBg: string
-  tagColor: string
-  date: string
-  dateColor?: string
-  prio: string
-  prioBg: string
-  prioColor: string
-}
-
-const todoItems: TodoItem[] = [
-  {
-    title: 'Extended Mockup fertigstellen',
-    desc: '6 Deep-Workflow Pages f\u00FCr Hebammenbuero',
-    impactDots: [
-      { color: 'var(--r)' }, { color: 'var(--r)' }, { color: 'var(--r)' }, { color: 'var(--r)' }, { color: 'var(--r)' },
-    ],
-    impactLabel: 'Blockiert Validation',
-    projectDotColor: 'var(--g)',
-    projectDotGlow: 'var(--gg)',
-    projectLabel: 'Hebammen',
-    tag: 'Overdue',
-    tagBg: 'var(--rc)',
-    tagColor: 'var(--r)',
-    date: '-3d',
-    dateColor: 'var(--r)',
-    prio: 'P0',
-    prioBg: 'var(--rc)',
-    prioColor: 'var(--r)',
-  },
-  {
-    title: 'Cockpit Layout redesignen',
-    desc: 'Neumorphic Design, Projekt-Kacheln, Todo-Sidebar',
-    impactDots: [
-      { color: 'var(--a)' }, { color: 'var(--a)' }, { color: 'var(--a)' }, { color: 'var(--a)' }, { color: 'var(--bg)' },
-    ],
-    impactLabel: 'T\u00E4glicher Workflow',
-    projectDotColor: 'var(--g)',
-    projectDotGlow: 'var(--gg)',
-    projectLabel: 'MC',
-    tag: 'Heute',
-    tagBg: 'var(--gc)',
-    tagColor: 'var(--g)',
-    date: 'Heute',
-    prio: 'P0',
-    prioBg: 'var(--gc)',
-    prioColor: 'var(--g)',
-  },
-  {
-    title: 'API-Daten statt Dummy',
-    desc: 'API Key einrichten, alle Fake-Inhalte entfernen',
-    impactDots: [
-      { color: 'var(--a)' }, { color: 'var(--a)' }, { color: 'var(--a)' }, { color: 'var(--a)' }, { color: 'var(--bg)' },
-    ],
-    impactLabel: 'System wird ehrlich',
-    projectDotColor: 'var(--g)',
-    projectDotGlow: 'var(--gg)',
-    projectLabel: 'MC',
-    tag: 'Heute',
-    tagBg: 'var(--gc)',
-    tagColor: 'var(--g)',
-    date: 'Heute',
-    prio: 'P0',
-    prioBg: 'var(--gc)',
-    prioColor: 'var(--g)',
-  },
-  {
-    title: 'Mockup mit Hebammen validieren',
-    desc: '2-3 Hebammen kontaktieren, Feedback sammeln',
-    impactDots: [
-      { color: 'var(--g)' }, { color: 'var(--g)' }, { color: 'var(--g)' }, { color: 'var(--bg)' }, { color: 'var(--bg)' },
-    ],
-    impactLabel: 'Produktrichtung',
-    projectDotColor: 'var(--g)',
-    projectDotGlow: 'var(--gg)',
-    projectLabel: 'Hebammen',
-    tag: '05.04',
-    tagBg: 'var(--ac)',
-    tagColor: 'var(--a)',
-    date: '05.04',
-    prio: 'P0',
-    prioBg: 'var(--ac)',
-    prioColor: 'var(--a)',
-  },
-  {
-    title: 'API Credentials beschaffen',
-    titleColor: 'var(--r)',
-    desc: 'Provider-Zugangsdaten fehlen \u2014 Projekt blockiert',
-    impactDots: [
-      { color: 'var(--r)' }, { color: 'var(--r)' }, { color: 'var(--r)' }, { color: 'var(--r)' }, { color: 'var(--r)' },
-    ],
-    impactLabel: 'Projekt blockiert',
-    impactLabelColor: 'var(--r)',
-    projectDotColor: 'var(--r)',
-    projectDotGlow: 'var(--rg)',
-    projectLabel: 'Stillprobleme',
-    projectLabelColor: 'var(--r)',
-    tag: 'Blocker',
-    tagBg: 'var(--rc)',
-    tagColor: 'var(--r)',
-    date: '-3d',
-    dateColor: 'var(--r)',
-    prio: 'P0',
-    prioBg: 'var(--rc)',
-    prioColor: 'var(--r)',
-  },
-  {
-    title: 'Stripe Payment aufsetzen',
-    desc: 'Subscription: Starter/Pro/Enterprise',
-    impactDots: [
-      { color: 'var(--p)' }, { color: 'var(--p)' }, { color: 'var(--p)' }, { color: 'var(--p)' }, { color: 'var(--bg)' },
-    ],
-    impactLabel: 'Monetarisierung',
-    projectDotColor: 'var(--t)',
-    projectDotGlow: 'var(--tg)',
-    projectLabel: 'TennisCoach',
-    tag: 'P1',
-    tagBg: 'rgba(124,77,255,.06)',
-    tagColor: 'var(--p)',
-    date: '10.04',
-    prio: 'P1',
-    prioBg: 'rgba(124,77,255,.06)',
-    prioColor: 'var(--p)',
-  },
-]
+const MAIN_PROJECTS = PROJ.slice(0, 9)
+const OVERFLOW_PROJECTS = PROJ.slice(9)
 
 /* ── Component ──────────────────────────────────────────── */
 
@@ -460,6 +60,79 @@ export default function Cockpit() {
   const navigate = useNavigate()
   const [pipelineOpen, setPipelineOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState(0)
+
+  /* KPIs computed from real data */
+  const openTodos = useMemo(() => TODOS.filter(t => !t.done), [])
+  const overdueTodos = useMemo(() => openTodos.filter(t => t.ov), [openTodos])
+  const activeProjects = useMemo(() => PROJ.filter(p => p.term === 'Active'), [])
+  const blockedProjects = useMemo(() => PROJ.filter(p => (p.term === 'Waiting' && p.health === 'Attention')), [])
+
+  /* Pipeline groups computed from PROJ */
+  const pipelineGroups = useMemo(() => {
+    const aktiv = PROJ.filter(p => p.term === 'Active')
+    const blocked = PROJ.filter(p => p.term === 'Waiting' && p.health === 'Attention')
+    const live = PROJ.filter(p => p.phase === 'LIVE')
+    const pause = PROJ.filter(p => p.term === 'Waiting' && p.health !== 'Attention')
+    const idle = PROJ.filter(p => p.term === 'Idle')
+    return [
+      { color: 'var(--g)', glow: 'var(--gg)', label: 'Aktiv', count: aktiv.length, items: aktiv.map(p => `${p.n} \u2014 ${p.pct}%`) },
+      { color: 'var(--r)', glow: 'var(--rg)', label: 'Blocked', count: blocked.length, items: blocked.map(p => `${p.n}`) },
+      { color: 'var(--bl)', glow: 'var(--blg)', label: 'Live', count: live.length, items: live.map(p => `${p.n} \u2014 ${p.pct}%`) },
+      { color: 'var(--a)', glow: 'var(--ag)', label: 'Pause', count: pause.length, items: pause.map(p => `${p.n}`) },
+      { color: 'var(--tx3)', glow: 'transparent', label: 'Idle', count: idle.length, items: idle.map(p => p.n) },
+    ].filter(g => g.count > 0)
+  }, [])
+
+  /* Todo filters computed from real data */
+  const todoFilters = useMemo(() => {
+    // Get unique project prefixes from open todos
+    const projCounts: Record<string, { count: number; proj: Project | undefined }> = {}
+    openTodos.forEach(t => {
+      const key = t.proj || '_global'
+      if (!projCounts[key]) {
+        projCounts[key] = { count: 0, proj: PROJ.find(p => p.n === t.proj || p.id === t.proj || p.n.startsWith(t.proj)) }
+      }
+      projCounts[key].count++
+    })
+    // Top 4 project filters by count
+    const sorted = Object.entries(projCounts)
+      .filter(([k]) => k !== '_global')
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 4)
+
+    const filters: { label: string; count: number; bgColor?: string; textColor?: string; projKey?: string }[] = [
+      { label: 'Alle', count: openTodos.length },
+    ]
+    sorted.forEach(([key, val]) => {
+      const cv = val.proj ? colToVar(val.proj.col) : { color: 'var(--tx3)', glow: 'transparent' }
+      const name = val.proj ? (val.proj.n.length > 8 ? val.proj.n.slice(0, 8) : val.proj.n) : key
+      filters.push({
+        label: name,
+        count: val.count,
+        bgColor: `rgba(${val.proj?.cr || '0,0,0'}, 0.1)`,
+        textColor: cv.color,
+        projKey: key,
+      })
+    })
+    return filters
+  }, [openTodos])
+
+  /* Filtered + sorted todos: high prio first, then overdue, max 6 displayed */
+  const filteredTodos = useMemo(() => {
+    let todos = openTodos
+    if (activeFilter > 0 && todoFilters[activeFilter]?.projKey) {
+      const key = todoFilters[activeFilter].projKey!
+      todos = todos.filter(t => t.proj === key || t.proj.startsWith(key))
+    }
+    return todos
+      .sort((a, b) => {
+        const pMap: Record<string, number> = { h: 0, m: 1, l: 2 }
+        return (pMap[a.prio] ?? 1) - (pMap[b.prio] ?? 1)
+      })
+      .slice(0, 6)
+  }, [openTodos, activeFilter, todoFilters])
+
+  const remainingTodos = openTodos.length - 6
 
   return (
     <AppShell>
@@ -474,7 +147,7 @@ export default function Cockpit() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--g)' }}>3</div>
+            <div className="kv" style={{ color: 'var(--g)' }}>{activeProjects.length}</div>
             <div className="kl">Aktiv</div>
           </div>
         </div>
@@ -489,7 +162,7 @@ export default function Cockpit() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--r)' }}>1</div>
+            <div className="kv" style={{ color: 'var(--r)' }}>{blockedProjects.length}</div>
             <div className="kl">Blocked</div>
           </div>
         </div>
@@ -503,10 +176,12 @@ export default function Cockpit() {
             </svg>
           </div>
           <div>
-            <div className="kv">42</div>
+            <div className="kv">{openTodos.length}</div>
             <div className="kl">Todos</div>
           </div>
-          <span className="kx" style={{ background: 'var(--rc)', color: 'var(--r)' }}>3 overdue</span>
+          {overdueTodos.length > 0 && (
+            <span className="kx" style={{ background: 'var(--rc)', color: 'var(--r)' }}>{overdueTodos.length} overdue</span>
+          )}
         </div>
 
         {/* Terminals */}
@@ -517,8 +192,8 @@ export default function Cockpit() {
             </svg>
           </div>
           <div>
-            <div className="kv" style={{ color: 'var(--bl)' }}>2</div>
-            <div className="kl">Terminals</div>
+            <div className="kv" style={{ color: 'var(--bl)' }}>{AGENTS.filter(a => a.st === 'active').length}</div>
+            <div className="kl">Agents</div>
           </div>
         </div>
 
@@ -544,13 +219,28 @@ export default function Cockpit() {
           >
             <span className="st" style={{ whiteSpace: 'nowrap' }}>Projekt Status</span>
             <div className="in" style={{ flex: 1, height: 10, borderRadius: 5, display: 'flex', gap: 3, overflow: 'hidden' }}>
-              <div style={{ flex: 3, height: '100%', borderRadius: 4, background: 'var(--g)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,.8)' }}>3</div>
-              <div style={{ flex: 1, height: '100%', borderRadius: 4, background: 'var(--r)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,.8)' }}>1</div>
-              <div style={{ flex: 1, height: '100%', borderRadius: 4, background: 'var(--bl)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,.8)' }}>1</div>
-              <div style={{ flex: 1, height: '100%', borderRadius: 4, background: 'var(--a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,.8)' }}>1</div>
-              <div style={{ flex: 3, height: '100%', borderRadius: 4, background: 'var(--tx3)', opacity: 0.3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,.6)' }}>3</div>
+              {pipelineGroups.map((g) => (
+                <div
+                  key={g.label}
+                  style={{
+                    flex: g.count,
+                    height: '100%',
+                    borderRadius: 4,
+                    background: g.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 7,
+                    fontWeight: 700,
+                    color: 'rgba(255,255,255,.8)',
+                    opacity: g.label === 'Idle' ? 0.3 : 1,
+                  }}
+                >
+                  {g.count}
+                </div>
+              ))}
             </div>
-            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: 'var(--g)', whiteSpace: 'nowrap' }}>9 Projekte</span>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 700, color: 'var(--g)', whiteSpace: 'nowrap' }}>{PROJ.length} Projekte</span>
             <span className="plx" style={{ fontSize: 10, color: 'var(--tx3)', cursor: 'pointer' }}>{pipelineOpen ? '\u25B2' : '\u25BC'}</span>
           </div>
 
@@ -597,19 +287,28 @@ export default function Cockpit() {
       <div className="mbody">
         {/* Left Nav */}
         <div className="lnav">
-          {navItems.map((item) => (
-            <div key={item.abbr} className="ni cf" style={{ '--nc': item.colorVar } as React.CSSProperties}>
-              <span
-                className={`ni-dot sl ${item.ledBg ? '' : 'a'}`}
-                style={{
-                  width: 8, height: 8, animation: 'none',
-                  ...(item.ledBg ? { background: item.ledBg, ['--lc' as string]: item.ledLc } : {}),
-                }}
-              />
-              <span className="ni-l">{item.abbr}</span>
-              <span className="ni-n">{item.name}</span>
-            </div>
-          ))}
+          {OVERFLOW_PROJECTS.map((p) => {
+            const cv = colToVar(p.col)
+            const st = statusOf(p)
+            return (
+              <div
+                key={p.id}
+                className="ni cf"
+                style={{ '--nc': cv.glow, cursor: 'pointer' } as React.CSSProperties}
+                onClick={() => navigate(`/projekte/${p.id}`)}
+              >
+                <span
+                  className={`ni-dot ${st.ledClass}`}
+                  style={{
+                    width: 8, height: 8, animation: 'none',
+                    ...(st.status === 'active' ? { background: cv.color, ['--lc' as string]: cv.glow } : {}),
+                  }}
+                />
+                <span className="ni-l">{p.id.toUpperCase().slice(0, 2)}</span>
+                <span className="ni-n">{p.n.length > 10 ? p.n.slice(0, 8) + '.' : p.n}</span>
+              </div>
+            )
+          })}
           {/* Divider */}
           <div style={{ height: 1, margin: '4px 12px', background: 'linear-gradient(90deg,transparent,rgba(0,0,0,.06),transparent)' }} />
           {/* More */}
@@ -627,8 +326,13 @@ export default function Cockpit() {
         {/* Project Grid 3x3 */}
         <div className="center">
           <div className="pgrid">
-            {projects.map((p) => {
-              if (p.idle) {
+            {MAIN_PROJECTS.map((p) => {
+              const st = statusOf(p)
+              const cv = colToVar(p.col)
+              const phaseTotal = 5
+              const phaseDone = Math.max(0, p.phN + 1)
+
+              if (st.status === 'idle') {
                 return (
                   <div
                     key={p.id}
@@ -637,19 +341,19 @@ export default function Cockpit() {
                     onClick={() => navigate(`/projekte/${p.id}`)}
                   >
                     <div className="pt-top">
-                      <div className={p.ledClass} style={p.ledStyle} />
-                      <span className="pt-bdg" style={{ background: p.statusBg, color: p.statusColor }}>{p.statusLabel}</span>
+                      <div className={st.ledClass} style={st.ledStyle} />
+                      <span className="pt-bdg" style={{ background: st.bg, color: st.color }}>{st.label}</span>
                     </div>
-                    <div className="pt-nm" style={{ color: 'var(--tx3)' }}>{p.name}</div>
-                    <div className="pt-ag" style={{ opacity: 0.5 }}>{p.agentLabel}</div>
+                    <div className="pt-nm" style={{ color: 'var(--tx3)' }}>{p.n}</div>
+                    <div className="pt-ag" style={{ opacity: 0.5 }}>Nicht gestartet</div>
                     <div className="phr">
                       <span className="phl">Phase</span>
                       <div className="phd">
-                        {Array.from({ length: p.phaseTotal }).map((_, i) => (
+                        {Array.from({ length: phaseTotal }).map((_, i) => (
                           <div key={i} className="pd in" style={{ background: 'var(--bg)' }} />
                         ))}
                       </div>
-                      <span className="phl">{p.phaseDone}/{p.phaseTotal}</span>
+                      <span className="phl">0/{phaseTotal}</span>
                     </div>
                     <div className="pt-pr">
                       <div className="pt-b in">
@@ -658,45 +362,73 @@ export default function Cockpit() {
                       <span className="pt-pc" style={{ color: 'var(--tx3)' }}>0%</span>
                     </div>
                     <div className="pt-ft">
-                      <span className="pt-td"><strong>{p.footValue}</strong> {p.footLabel}</span>
+                      <span className="pt-td"><strong>{p.todos}</strong> Todos</span>
                       <span className="pt-ar">{'\u2192'}</span>
                     </div>
                   </div>
                 )
               }
 
+              // Status-dependent colors for the card
+              const cardColor = st.status === 'blocked' ? 'var(--r)' : st.status === 'live' ? 'var(--bl)' : st.status === 'pause' ? 'var(--a)' : cv.color
+              const cardGlow = st.status === 'blocked' ? 'var(--rg)' : st.status === 'live' ? 'var(--blg)' : st.status === 'pause' ? 'var(--ag)' : cv.glow
+              const cardUltra = st.status === 'blocked' ? 'var(--ru)' : st.status === 'live' ? 'var(--blu)' : st.status === 'pause' ? 'var(--au)' : cv.ultra
+
+              // Agent icon
+              const agentIcon = st.status === 'active' ? (
+                <svg viewBox="0 0 24 24" width="10" height="10" stroke={cardColor} strokeWidth="2" fill="none" style={{ filter: `drop-shadow(0 0 3px ${cardGlow})` }}>
+                  <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              ) : st.status === 'blocked' ? (
+                <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--r)" strokeWidth="2" fill="none">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </svg>
+              ) : st.status === 'live' ? (
+                <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--bl)" strokeWidth="2" fill="none" style={{ filter: 'drop-shadow(0 0 3px var(--blg))' }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              ) : st.status === 'pause' ? (
+                <svg viewBox="0 0 24 24" width="10" height="10" stroke="var(--a)" strokeWidth="2" fill="none">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+              ) : null
+
+              const agentLabel = st.status === 'active' ? 'build-agent' : st.status === 'blocked' ? p.health : st.status === 'live' ? `\u20AC${p.rev || 0}/mo` : st.status === 'pause' ? 'Feedback' : 'kein Agent'
+
               return (
                 <div
                   key={p.id}
                   className="cgw"
-                  style={{ '--gc2': p.glowColor } as React.CSSProperties}
+                  style={{ '--gc2': cardUltra } as React.CSSProperties}
                   onClick={() => navigate(`/projekte/${p.id}`)}
                 >
-                  <div className="pt cf" style={{ '--hc': p.hoverColor } as React.CSSProperties}>
+                  <div className="pt cf" style={{ '--hc': cardGlow } as React.CSSProperties}>
                     <div className="pt-top">
-                      <div className={p.ledClass} style={p.ledStyle} />
-                      <span className="pt-bdg" style={{ background: p.statusBg, color: p.statusColor }}>{p.statusLabel}</span>
+                      <div className={st.ledClass} style={st.ledStyle} />
+                      <span className="pt-bdg" style={{ background: st.bg, color: st.color }}>{st.label}</span>
                     </div>
-                    <div className="pt-nm">{p.name}</div>
-                    <div className="pt-ag" style={p.agentColor ? { color: p.agentColor } : undefined}>
-                      {p.agentIcon}
-                      {p.agentLabel}
+                    <div className="pt-nm">{p.n}</div>
+                    <div className="pt-ag" style={st.status === 'blocked' ? { color: 'var(--r)' } : undefined}>
+                      {agentIcon}
+                      {agentLabel}
                     </div>
                     <div className="phr">
                       <span className="phl">Phase</span>
                       <div className="phd">
-                        {Array.from({ length: p.phaseTotal }).map((_, i) => (
+                        {Array.from({ length: phaseTotal }).map((_, i) => (
                           <div
                             key={i}
-                            className={`pd in${i < p.phaseDone ? ' done' : ''}`}
+                            className={`pd in${i < phaseDone ? ' done' : ''}`}
                             style={{
-                              background: i < p.phaseDone ? p.phaseColor : 'var(--bg)',
-                              ['--pc' as string]: i < p.phaseDone ? p.phaseGlow : undefined,
+                              background: i < phaseDone ? cardColor : 'var(--bg)',
+                              ['--pc' as string]: i < phaseDone ? cardGlow : undefined,
                             }}
                           />
                         ))}
                       </div>
-                      <span className="phl" style={{ color: 'var(--tx2)' }}>{p.phaseDone}/{p.phaseTotal}</span>
+                      <span className="phl" style={{ color: 'var(--tx2)' }}>{phaseDone}/{phaseTotal}</span>
                     </div>
                     <div className="pt-pr">
                       <div className="pt-b in">
@@ -704,15 +436,15 @@ export default function Cockpit() {
                           className="pt-f"
                           style={{
                             width: `${p.pct}%`,
-                            background: p.barColor,
-                            ['--b2' as string]: p.barGlow,
+                            background: cardColor,
+                            ['--b2' as string]: cardGlow,
                           }}
                         />
                       </div>
-                      <span className="pt-pc" style={{ color: p.statusColor }}>{p.pct}%</span>
+                      <span className="pt-pc" style={{ color: st.color }}>{p.pct}%</span>
                     </div>
                     <div className="pt-ft">
-                      <span className="pt-td"><strong>{p.footValue}</strong> {p.footLabel}</span>
+                      <span className="pt-td"><strong>{p.todos}</strong> Todos</span>
                       <span className="pt-ar">{'\u2192'}</span>
                     </div>
                   </div>
@@ -726,7 +458,7 @@ export default function Cockpit() {
         <div className="right">
           <div className="todos cf">
             <div className="t-hdr">
-              <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>42 offen</span>
+              <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>{openTodos.length} offen</span>
             </div>
             <div className="t-flt">
               {todoFilters.map((f, i) => (
@@ -746,38 +478,45 @@ export default function Cockpit() {
               ))}
             </div>
             <div className="t-list">
-              {todoItems.map((todo, i) => (
-                <div key={i} className="tc">
-                  <div className="tck in" />
-                  <div className="tb">
-                    <div className="tt" style={todo.titleColor ? { color: todo.titleColor } : undefined}>{todo.title}</div>
-                    <div className="td2">{todo.desc}</div>
-                    <div className="ti">
-                      Impact:
-                      <div className="ti-b">
-                        {todo.impactDots.map((dot, di) => (
-                          <div key={di} className="ti-d" style={{ background: dot.color }} />
-                        ))}
+              {filteredTodos.map((todo) => {
+                const prio = prioLabel(todo.prio)
+                const pl = projLabel(todo.proj)
+                const isOverdue = todo.ov
+                const dateStr = todo.due || (todo.prio === 'h' ? 'Heute' : '')
+                return (
+                  <div key={todo.id} className="tc">
+                    <div className="tck in" />
+                    <div className="tb">
+                      <div className="tt" style={isOverdue ? { color: 'var(--r)' } : undefined}>{todo.txt.length > 40 ? todo.txt.slice(0, 40) + '...' : todo.txt}</div>
+                      <div className="td2">{todo.proj || 'MCKAY OS'}</div>
+                      <div className="ti">
+                        Impact:
+                        <div className="ti-b">
+                          {Array.from({ length: 5 }).map((_, di) => (
+                            <div key={di} className="ti-d" style={{ background: di < (todo.prio === 'h' ? 5 : todo.prio === 'm' ? 3 : 1) ? prio.color : 'var(--bg)' }} />
+                          ))}
+                        </div>
                       </div>
-                      <span style={todo.impactLabelColor ? { color: todo.impactLabelColor } : undefined}>{todo.impactLabel}</span>
+                      <div className="ttg">
+                        <span className="tpd" style={{ background: pl.dotColor, boxShadow: `0 0 4px ${pl.dotGlow}` }} />
+                        <span style={{ fontSize: 8, color: 'var(--tx3)' }}>{pl.name}</span>
+                        {isOverdue && <span className="tg" style={{ background: 'var(--rc)', color: 'var(--r)' }}>Overdue</span>}
+                      </div>
                     </div>
-                    <div className="ttg">
-                      <span className="tpd" style={{ background: todo.projectDotColor, boxShadow: `0 0 4px ${todo.projectDotGlow}` }} />
-                      <span style={{ fontSize: 8, color: todo.projectLabelColor || 'var(--tx3)' }}>{todo.projectLabel}</span>
-                      <span className="tg" style={{ background: todo.tagBg, color: todo.tagColor }}>{todo.tag}</span>
+                    <div className="tr">
+                      <span className="tdt" style={isOverdue ? { color: 'var(--r)' } : undefined}>{dateStr}</span>
+                      <span className="tpb" style={{ background: prio.bg, color: prio.color }}>{prio.label}</span>
                     </div>
                   </div>
-                  <div className="tr">
-                    <span className="tdt" style={todo.dateColor ? { color: todo.dateColor } : undefined}>{todo.date}</span>
-                    <span className="tpb" style={{ background: todo.prioBg, color: todo.prioColor }}>{todo.prio}</span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             {/* Bottom fade + "more" link */}
             <div style={{ padding: '8px 16px 14px', textAlign: 'center', position: 'relative' }}>
               <div style={{ position: 'absolute', top: -30, left: 0, right: 0, height: 30, background: 'linear-gradient(transparent,var(--sf))', pointerEvents: 'none' }} />
-              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--p)', cursor: 'pointer' }}>+ 36 weitere Todos anzeigen</span>
+              {remainingTodos > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--p)', cursor: 'pointer' }}>+ {remainingTodos} weitere Todos anzeigen</span>
+              )}
             </div>
           </div>
         </div>
