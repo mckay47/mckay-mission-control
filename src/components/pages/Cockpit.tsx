@@ -60,6 +60,26 @@ export default function Cockpit() {
   const navigate = useNavigate()
   const [pipelineOpen, setPipelineOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState(0)
+  const [captureText, setCaptureText] = useState('')
+  const [capturing, setCapturing] = useState(false)
+
+  async function handleCapture() {
+    const text = captureText.trim()
+    if (!text) return
+    setCapturing(true)
+    try {
+      const res = await fetch('/api/idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: text.split(/[.\n]/)[0].slice(0, 80), description: text, category: 'projekt', priority: 'medium' }),
+      })
+      if (res.ok) {
+        setCaptureText('')
+        navigate('/thinktank')
+      }
+    } catch { /* silently fail */ }
+    finally { setCapturing(false) }
+  }
 
   /* KPIs computed from real data */
   const openTodos = useMemo(() => TODOS.filter(t => !t.done), [])
@@ -204,8 +224,8 @@ export default function Cockpit() {
               <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
-          <input className="in" placeholder="Schnelle Idee festhalten..." />
-          <button>Capture</button>
+          <input className="in" placeholder="Schnelle Idee festhalten..." value={captureText} onChange={e => setCaptureText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && captureText.trim()) handleCapture() }} />
+          <button onClick={handleCapture} disabled={capturing}>{capturing ? '...' : 'Capture'}</button>
         </div>
       </div>
 
