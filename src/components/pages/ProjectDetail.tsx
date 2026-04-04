@@ -6,6 +6,15 @@ import type { Project } from '../../lib/types'
 
 /* ── Helpers ────────────────────────────────────────────── */
 
+function renderBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    return part
+  })
+}
+
 function statusOf(p: Project): { label: string; bg: string; color: string; ledColor: string } {
   if (p.phase === 'LIVE') return { label: 'Live', bg: 'var(--blc)', color: 'var(--bl)', ledColor: 'b' }
   if (p.term === 'Waiting' && p.health === 'Attention') return { label: 'Blocked', bg: 'var(--rc)', color: 'var(--r)', ledColor: 'r' }
@@ -519,7 +528,7 @@ export default function ProjectDetail() {
                   <div key={todo.id} className="pd-r-item">
                     <div className="pd-r-chk in" />
                     <div>
-                      <div className="r-title">{todo.txt.length > 50 ? todo.txt.slice(0, 50) + '...' : todo.txt}</div>
+                      <div className="r-title">{renderBold(todo.txt.length > 50 ? todo.txt.slice(0, 50) + '...' : todo.txt)}</div>
                       <div className="r-desc">{project.n}</div>
                       <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
                         <span className="r-tag" style={{ background: prio.bg, color: prio.color }}>

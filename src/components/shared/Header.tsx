@@ -18,6 +18,8 @@ export default function Header({ backLink, title, ledColor }: HeaderProps) {
 
   function toggleDarkMode() {
     document.body.classList.toggle('dark')
+    const isDark = document.body.classList.contains('dark')
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
   }
 
   return (

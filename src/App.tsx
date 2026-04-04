@@ -13,9 +13,9 @@ import Private from './components/pages/Private'
 import Briefing from './components/pages/Briefing'
 
 export default function App() {
-  const [booted, setBooted] = useState(false)
+  const [booted, setBooted] = useState(() => sessionStorage.getItem('mckay-booted') === '1')
 
-  if (!booted) return <Boot onComplete={() => setBooted(true)} />
+  if (!booted) return <Boot onComplete={() => { sessionStorage.setItem('mckay-booted', '1'); setBooted(true) }} />
 
   return (
     <BrowserRouter>
