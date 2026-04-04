@@ -46,7 +46,7 @@ export default function ProjectDetail() {
 
   if (!project) {
     return (
-      <AppShell backLink={{ label: 'Cockpit', href: '/' }} title="Nicht gefunden" ledColor="off">
+      <AppShell backLink={{ label: 'Cockpit', href: '/' }} title="Nicht gefunden" ledColor="off" kaniContext={`projekt:${id}`}>
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--tx3)' }}>
           <h2 style={{ fontSize: 24, marginBottom: 12 }}>Projekt nicht gefunden</h2>
           <p>ID: {id}</p>
@@ -265,6 +265,7 @@ export default function ProjectDetail() {
       backLink={{ label: 'Cockpit', href: '/' }}
       title={project.n}
       ledColor={st.ledColor}
+      kaniContext={`projekt:${id}`}
     >
       {/* ── KPI ROW ─────────────────────────────────────── */}
       <div className="krow">

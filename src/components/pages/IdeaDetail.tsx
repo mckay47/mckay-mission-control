@@ -15,7 +15,7 @@ export default function IdeaDetail() {
 
   if (!idea) {
     return (
-      <AppShell backLink={{ label: 'Thinktank', href: '/thinktank' }} title="Idee nicht gefunden" ledColor="r">
+      <AppShell backLink={{ label: 'Thinktank', href: '/thinktank' }} title="Idee nicht gefunden" ledColor="r" kaniContext={`idee:${id}`}>
         <div style={{ padding: '60px 40px', textAlign: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--r)', marginBottom: 8 }}>Idee nicht gefunden</div>
           <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Die Idee mit ID &quot;{id}&quot; existiert nicht.</div>
@@ -40,6 +40,7 @@ export default function IdeaDetail() {
       backLink={{ label: 'Thinktank', href: '/thinktank' }}
       title={idea.n}
       ledColor="bl"
+      kaniContext={`idee:${id}`}
     >
       {/* KPIs */}
       <div className="krow">

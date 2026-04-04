@@ -23,7 +23,7 @@ export default function AgentDetail() {
   const bgVar = agent?.bg ?? 'rgba(0,0,0,.04)'
 
   return (
-    <AppShell backLink={{ label: 'Agents', href: '/agents' }}>
+    <AppShell backLink={{ label: 'Agents', href: '/agents' }} kaniContext={`agent:${id}`}>
       {/* Inline header with agent name and status */}
       <div
         style={{

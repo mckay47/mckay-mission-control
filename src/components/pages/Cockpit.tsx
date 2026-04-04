@@ -4,6 +4,7 @@ import AppShell from '../shared/AppShell'
 import Notifications from '../shared/Notifications'
 import QuickAccess from '../shared/QuickAccess'
 import LiveFeed from '../shared/LiveFeed'
+import NewProjectDialog from '../shared/NewProjectDialog'
 import { PROJ, TODOS, AGENTS } from '../../lib/data'
 import type { Project } from '../../lib/types'
 
@@ -62,6 +63,7 @@ export default function Cockpit() {
   const [activeFilter, setActiveFilter] = useState(0)
   const [captureText, setCaptureText] = useState('')
   const [capturing, setCapturing] = useState(false)
+  const [showNewProject, setShowNewProject] = useState(false)
 
   async function handleCapture() {
     const text = captureText.trim()
@@ -155,7 +157,7 @@ export default function Cockpit() {
   const remainingTodos = openTodos.length - 6
 
   return (
-    <AppShell>
+    <AppShell kaniContext="cockpit">
       {/* ── KPI ROW ── */}
       <div className="krow">
         {/* Aktiv */}
@@ -337,7 +339,7 @@ export default function Cockpit() {
             <span className="ni-n">Mehr</span>
           </div>
           {/* Neu */}
-          <div className="ni cf" style={{ opacity: 0.6 }}>
+          <div className="ni cf" style={{ opacity: 0.6, cursor: 'pointer' }} onClick={() => setShowNewProject(true)}>
             <span className="ni-l" style={{ fontSize: 20, color: 'var(--tx3)' }}>+</span>
             <span className="ni-n">Neu</span>
           </div>
@@ -551,6 +553,8 @@ export default function Cockpit() {
 
       {/* ── LIVE FEED ── */}
       <LiveFeed />
+
+      <NewProjectDialog open={showNewProject} onClose={() => setShowNewProject(false)} />
     </AppShell>
   )
 }

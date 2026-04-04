@@ -88,7 +88,7 @@ export default function Agents() {
 
   if (AGENTS.length === 0) {
     return (
-      <AppShell title="Agents" ledColor="g">
+      <AppShell title="Agents" ledColor="g" kaniContext="agents">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--tx3)', fontSize: 14 }}>
           Keine Agents aktiv
         </div>
@@ -152,7 +152,7 @@ export default function Agents() {
   ]
 
   return (
-    <AppShell title="Agents" ledColor="g">
+    <AppShell title="Agents" ledColor="g" kaniContext="agents">
       {/* KPI Row */}
       <div className="krow">
         <div className="kpi cf" style={{ '--kc': 'var(--gg)' } as React.CSSProperties}>

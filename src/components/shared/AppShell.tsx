@@ -7,9 +7,10 @@ interface AppShellProps {
   backLink?: { label: string; href: string }
   title?: string
   ledColor?: string
+  kaniContext?: string
 }
 
-export default function AppShell({ children, backLink, title, ledColor }: AppShellProps) {
+export default function AppShell({ children, backLink, title, ledColor, kaniContext = 'cockpit' }: AppShellProps) {
   const [kaniOpen, setKaniOpen] = useState(false)
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function AppShell({ children, backLink, title, ledColor }: AppShe
         </div>
         <span className="kf-l">KANI</span>
       </div>
-      <KaniChat open={kaniOpen} onClose={() => setKaniOpen(false)} />
+      <KaniChat open={kaniOpen} onClose={() => setKaniOpen(false)} context={kaniContext} />
     </div>
   )
 }

@@ -29,6 +29,7 @@ if (existsSync(envPath)) {
   console.log('[mckay] Loaded .env.local')
 }
 import { processIdea } from './idea-processor.mjs'
+import { chatWithKani, researchIdea } from './kani-chat.mjs'
 
 const MCKAY = join(homedir(), 'mckay-os')
 const SCRIPT = join(import.meta.dirname, 'generate-data.mjs')
@@ -361,6 +362,175 @@ ${ideaContent.split('## Description')[1]?.split('##')[0]?.trim() || meta.title |
           console.log(`[mckay] Idea ${id} → project created at ${projDir}`)
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: true, id, project: projName, path: projDir }))
+          return
+        }
+
+        // POST /api/idea/:id/research — REAL Research via Claude API
+        if (req.method === 'POST' && req.url?.match(/^\/api\/idea\/([^/]+)\/research$/)) {
+          const id = req.url.match(/^\/api\/idea\/([^/]+)\/research$/)[1]
+          const filePath = join(MCKAY, 'ideas', `${id}.md`)
+          if (!existsSync(filePath)) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Idea not found' }))
+            return
+          }
+          // Set status to researching immediately
+          const content = readFileSync(filePath, 'utf-8')
+          const updated = content.replace(/status: \w+/, 'status: researching')
+          writeFileSync(filePath, updated, 'utf-8')
+          updateIdeaIndex()
+          regenerate()
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, id, status: 'researching' }))
+
+          // Run research async
+          const meta = parseFM(content)
+          const bodyMatch = content.match(/## (?:Original|Description)\n\n([\s\S]*?)(?=\n## |$)/)
+          const desc = bodyMatch ? bodyMatch[1].trim() : meta.title || id
+
+          researchIdea(meta.title || id, desc).then(result => {
+            const current = readFileSync(filePath, 'utf-8')
+            const now = new Date().toISOString().slice(0, 10)
+            let enriched = current.replace(/status: \w+/, 'status: new')
+            // Append research results
+            if (!enriched.includes('## Research')) {
+              enriched += `\n## Research\n\n${result.result}\n\n*Analysiert am ${now} — Kosten: $${result.cost.toFixed(4)}*\n`
+            }
+            enriched = enriched.replace(/updated: .+/, `updated: "${now}"`)
+            writeFileSync(filePath, enriched, 'utf-8')
+            updateIdeaIndex()
+            regenerate()
+            console.log(`[mckay] Research done for "${meta.title}" — $${result.cost.toFixed(4)}`)
+          }).catch(err => {
+            console.error(`[mckay] Research failed:`, err.message)
+          })
+          return
+        }
+
+        // POST /api/chat — KANI Chat
+        if (req.method === 'POST' && req.url === '/api/chat') {
+          parseBody(req).then(async (data) => {
+            const { message, context = 'cockpit', history = [] } = data
+            if (!message) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'message required' }))
+              return
+            }
+            console.log(`[mckay] KANI Chat: "${message.slice(0, 50)}..." (${context})`)
+            const result = await chatWithKani(message, context, history)
+            console.log(`[mckay] KANI → ${result.model} — $${result.cost.toFixed(4)}`)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify(result))
+          }).catch(err => {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+          })
+          return
+        }
+
+        // POST /api/todo/:id/done — Toggle todo status
+        if (req.method === 'POST' && req.url?.match(/^\/api\/todo\/([^/]+)\/done$/)) {
+          const id = req.url.match(/^\/api\/todo\/([^/]+)\/done$/)[1]
+          const filePath = join(MCKAY, 'todos', `${id}.md`)
+          if (existsSync(filePath)) {
+            const content = readFileSync(filePath, 'utf-8')
+            const isDone = content.includes('status: done')
+            const updated = isDone
+              ? content.replace(/status: done/, 'status: open')
+              : content.replace(/status: \w+/, 'status: done')
+            writeFileSync(filePath, updated, 'utf-8')
+            updateTodoIndex()
+            regenerate()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true, id, done: !isDone }))
+          } else {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Todo not found' }))
+          }
+          return
+        }
+
+        // POST /api/project — Create new project
+        if (req.method === 'POST' && req.url === '/api/project') {
+          parseBody(req).then(data => {
+            const { name, description = '' } = data
+            if (!name) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'name required' }))
+              return
+            }
+            const id = slugify(name)
+            const projDir = join(MCKAY, 'projects', id)
+            const now = new Date().toISOString().slice(0, 10)
+
+            if (!existsSync(projDir)) mkdirSync(projDir, { recursive: true })
+
+            // Create CLAUDE.md
+            writeFileSync(join(projDir, 'CLAUDE.md'), `# ${name} — Project CLAUDE.md\n> MCKAY OS Project | Owner: Mehti Kaymaz | Created: ${now}\n\n## Overview\n\n${description || name}\n\n## Tech Stack\n\n| Layer | Technology |\n|---|---|\n| Frontend | React + Vite + TailwindCSS |\n| Database | Supabase |\n| Hosting | Vercel |\n\n## Status\n\nPhase 0 — Setup\n`, 'utf-8')
+
+            // Create standard project files
+            for (const file of ['CONTEXT.md', 'DECISIONS.md', 'TODOS.md', 'IDEAS.md', 'SESSIONS.md', 'MEMORY.md']) {
+              const type = file.replace('.md', '').toLowerCase()
+              writeFileSync(join(projDir, file), `---\ntype: project-${type}\nproject: "${id}"\nupdated: "${now}"\n---\n\n## ${file.replace('.md', '')}\n\n`, 'utf-8')
+            }
+
+            // Add to REGISTRY.md
+            const regPath = join(MCKAY, 'REGISTRY.md')
+            const reg = readFileSync(regPath, 'utf-8')
+            const newRow = `| ${id} | \`projects/${id}\` | Phase 0 (new) | TBD | React+Vite, Supabase, Vercel |`
+            const updatedReg = reg.replace(
+              /(## PROJECTS\n\n\|.*\n\|.*\n)([\s\S]*?)(\n---)/,
+              `$1$2${newRow}\n$3`
+            )
+            writeFileSync(regPath, updatedReg, 'utf-8')
+
+            regenerate()
+            console.log(`[mckay] New project created: ${id}`)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true, id, path: projDir }))
+          }).catch(err => {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+          })
+          return
+        }
+
+        // POST /api/termin — Create new appointment
+        if (req.method === 'POST' && req.url === '/api/termin') {
+          parseBody(req).then(data => {
+            const { title, date, time, duration, type = 'business' } = data
+            if (!title || !date || !time) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'title, date, time required' }))
+              return
+            }
+            const calPath = join(MCKAY, 'office', 'CALENDAR_CACHE.md')
+            const cal = readFileSync(calPath, 'utf-8')
+            const newRow = `| ${date} | ${time} | ${title} | ${type} | ${duration || ''} |`
+            const updated = cal.replace(/(.*\|.*\|.*\|.*\|.*\|)\n/, `$1\n${newRow}\n`)
+            writeFileSync(calPath, updated, 'utf-8')
+            regenerate()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true, title }))
+          }).catch(err => {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+          })
+          return
+        }
+
+        // GET /api/spending — Get current month spending
+        if (req.method === 'GET' && req.url === '/api/spending') {
+          const spendFile = join(MCKAY, 'finance', 'TOKEN_USAGE.md')
+          let spent = 0
+          try {
+            const content = readFileSync(spendFile, 'utf-8')
+            const match = content.match(/Cost: \$(\d+\.?\d*)/)
+            if (match) spent = parseFloat(match[1])
+          } catch {}
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ spent, limit: 22, remaining: Math.max(0, 22 - spent), currency: 'USD' }))
           return
         }
 

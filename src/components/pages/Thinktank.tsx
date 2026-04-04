@@ -194,7 +194,7 @@ export default function Thinktank() {
 
   if (IDEAS.length === 0) {
     return (
-      <AppShell title="Thinktank" ledColor="p">
+      <AppShell title="Thinktank" ledColor="p" kaniContext="thinktank">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--tx3)', fontSize: 14 }}>
           Keine Ideen — erste Idee im Capture Input erfassen
         </div>
@@ -206,7 +206,7 @@ export default function Thinktank() {
   const selectedPhase = selected ? phaseStyle(selected.st) : null
 
   return (
-    <AppShell title="Thinktank" ledColor="p">
+    <AppShell title="Thinktank" ledColor="p" kaniContext="thinktank">
       {/* KPIs + Capture */}
       <div className="krow">
         <div className="kpi cf" style={{ '--kc': 'var(--pg)' } as React.CSSProperties}>
