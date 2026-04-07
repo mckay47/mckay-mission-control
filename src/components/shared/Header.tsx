@@ -1,26 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Power } from 'lucide-react'
+import { StampButton } from './StampButton.tsx'
 
 interface HeaderProps {
   backLink?: { label: string; href: string }
-  title?: string
   ledColor?: string
+  title?: string
+  toggleTheme?: () => void
 }
 
-export function Header({ backLink, title, ledColor }: HeaderProps) {
+export function Header({ backLink }: HeaderProps) {
   const navigate = useNavigate()
-  const [time, setTime] = useState(() => formatTime())
+  const [datetime, setDatetime] = useState(() => formatDatetime())
 
   useEffect(() => {
-    const id = setInterval(() => setTime(formatTime()), 60_000)
+    const id = setInterval(() => setDatetime(formatDatetime()), 30_000)
     return () => clearInterval(id)
   }, [])
-
-  function toggleDarkMode() {
-    document.body.classList.toggle('dark')
-    const isDark = document.body.classList.contains('dark')
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
-  }
 
   return (
     <div className="hdr">
@@ -32,90 +29,77 @@ export function Header({ backLink, title, ledColor }: HeaderProps) {
               background: 'none',
               border: 'none',
               color: 'var(--tx3)',
-              fontSize: 12,
-              fontWeight: 600,
+              fontSize: 11,
+              fontWeight: 700,
               cursor: 'pointer',
               fontFamily: 'inherit',
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 6,
+              letterSpacing: 2,
+              textTransform: 'uppercase',
             }}
           >
-            &larr; {backLink.label}
+            ↑ {backLink.label}
           </button>
-        )}
-        <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          M
-        </div>
-        <span className="logo-t">MCKAY</span>
-        <span className="logo-s">
-          {title ?? 'Mission Control'}
-        </span>
-        {ledColor && (
-          <span
-            className="sl"
-            style={{
-              background: `var(--${ledColor})`,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              '--lc': `var(--${ledColor}g)`,
-              animation: 'lp 3s ease-in-out infinite',
-            } as React.CSSProperties}
-          />
         )}
       </div>
 
       <div className="hdr-r">
-        <div className="hdr-time cf" style={{ padding: '10px 20px', borderRadius: 14 }}>
-          {time}
+        <StampButton />
+
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--tx3)',
+            letterSpacing: 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {datetime}
         </div>
 
-        {/* Dark mode toggle */}
+        {/* Clock ghost button */}
         <div
-          className="btn3d btn3d-sm"
-          style={{ '--bc': 'rgba(0,0,0,0.06)' } as React.CSSProperties}
-          onClick={toggleDarkMode}
-          title="Dark/Light Mode"
+          className="ghost-btn"
+          style={{ '--bc': 'rgba(255,255,255,0.04)', width: 38, height: 38 } as React.CSSProperties}
+          title="Clock"
         >
-          <svg viewBox="0 0 24 24" stroke="var(--tx3)" style={{ filter: 'none' }}>
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-          </svg>
-        </div>
-
-        {/* KANI button — handled by AppShell state, so we emit a custom event */}
-        <div
-          className="btn3d btn3d-sm"
-          style={{ '--bc': 'var(--pg)', position: 'relative' } as React.CSSProperties}
-          onClick={() => document.dispatchEvent(new CustomEvent('toggle-kani-chat'))}
-        >
-          <svg viewBox="0 0 24 24" stroke="var(--p)">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          <span
-            style={{
-              position: 'absolute',
-              top: -4,
-              right: -4,
-              fontSize: 7,
-              fontWeight: 700,
-              color: '#fff',
-              background: 'var(--g)',
-              padding: '2px 5px',
-              borderRadius: 6,
-              boxShadow: '0 2px 6px var(--gg)',
-            }}
+          <svg
+            viewBox="0 0 24 24"
+            stroke="var(--tx3)"
+            strokeWidth={1.8}
+            fill="none"
+            style={{ width: 17, height: 17 }}
           >
-            KANI
-          </span>
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
         </div>
 
-        {/* Avatar */}
-        <div className="hdr-av">MK</div>
+        {/* Power / Logoff ghost button */}
+        <div
+          className="ghost-btn"
+          style={{ '--bc': 'rgba(255,61,61,0.18)', width: 38, height: 38 } as React.CSSProperties}
+          onClick={() => document.dispatchEvent(new CustomEvent('open-shutdown'))}
+          title="System herunterfahren"
+        >
+          <Power size={17} stroke="var(--tx3)" strokeWidth={1.8} />
+        </div>
       </div>
     </div>
   )
 }
 
-function formatTime(): string {
+function formatDatetime(): string {
   const now = new Date()
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const days = ['SONNTAG', 'MONTAG', 'DIENSTAG', 'MITTWOCH', 'DONNERSTAG', 'FREITAG', 'SAMSTAG']
+  const day = days[now.getDay()]
+  const dd = String(now.getDate()).padStart(2, '0')
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const hh = String(now.getHours()).padStart(2, '0')
+  const min = String(now.getMinutes()).padStart(2, '0')
+  return `${day} ${dd}/${mm} ${hh}:${min}`
 }

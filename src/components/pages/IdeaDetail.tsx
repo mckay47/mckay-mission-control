@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Activity, Search, Rocket, Archive, FileText, Moon } from 'lucide-react'
-import { StampButton } from '../shared/StampButton.tsx'
-import { Clock } from '../shared/Clock.tsx'
+import { Search, Rocket, Save, Coffee, BarChart2 } from 'lucide-react'
+import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
@@ -52,10 +51,11 @@ function glowFromCol(col: string): string {
 /* ── Quick Actions ──────────────────────────────────────── */
 
 const quickActions = [
-  { label: 'Research', icon: Search, color: 'var(--bl)', border: 'var(--bl)' },
-  { label: 'Projekt starten', icon: Rocket, color: 'var(--g)', border: 'var(--g)' },
-  { label: 'Status', icon: Activity, color: 'var(--p)', border: 'var(--p)' },
-  { label: 'Archivieren', icon: Archive, color: 'var(--tx3)', border: 'var(--tx3)' },
+  { label: 'Research starten', icon: Search,    color: 'var(--bl)', border: 'var(--blg)' },
+  { label: 'Score berechnen',  icon: BarChart2, color: 'var(--a)',  border: 'var(--ag)' },
+  { label: '→ Projekt',        icon: Rocket,    color: 'var(--g)',  border: 'var(--gg)' },
+  { label: 'Speichern',        icon: Save,      color: 'var(--p)',  border: 'var(--pg)' },
+  { label: 'Feierabend',       icon: Coffee,    color: 'var(--r)',  border: 'var(--rg)' },
 ]
 
 /* ── Component ─────────────────────────────────────────── */
@@ -102,7 +102,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
 
   const tabs = [
     {
-      label: 'Bewertung',
+      label: 'Next Actions',
       content: (
         <>
           <TcLabel>AI Score</TcLabel>
@@ -136,7 +136,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
       ),
     },
     {
-      label: 'Research',
+      label: 'Research Log',
       content: (
         <>
           <TcLabel>Research Status</TcLabel>
@@ -165,7 +165,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
       ),
     },
     {
-      label: 'Feedback',
+      label: 'KPI',
       content: (
         <>
           <TcLabel>KANI Feedback</TcLabel>
@@ -207,7 +207,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
       ),
     },
     {
-      label: 'Briefing',
+      label: 'Idea Briefing',
       content: (
         <>
           <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.8 }}>
@@ -231,26 +231,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
 
   return (
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header bar matching AgentDetail pattern */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 0', flexShrink: 0 }}>
-        <button
-          onClick={() => nav('/thinktank')}
-          style={{
-            background: 'none', border: 'none', color: 'var(--tx3)',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}
-        >
-          &larr; Thinktank
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <StampButton />
-          <Clock />
-          <div className="ghost-btn" style={{ '--bc': 'rgba(255,255,255,0.06)' } as React.CSSProperties} onClick={toggleTheme}>
-            <Moon size={20} stroke="var(--tx3)" />
-          </div>
-        </div>
-      </div>
+      <Header backLink={{ label: 'Thinktank', href: '/thinktank' }} toggleTheme={toggleTheme} />
 
       <SplitLayout
         ratio="50% 50%"

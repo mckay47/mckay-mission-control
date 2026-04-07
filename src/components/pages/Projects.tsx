@@ -189,8 +189,7 @@ export function Projects({ toggleTheme }: Props) {
 
   return (
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header — no title, no subtitle, no LED */}
-      <Header toggleTheme={toggleTheme} />
+      <Header backLink={{ label: 'Cockpit', href: '/' }} toggleTheme={toggleTheme} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', gap: 28, flex: 1, minHeight: 0 }}>
         {/* ==================== LEFT: PROJECT CARDS ==================== */}

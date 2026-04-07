@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Boot from './components/Boot'
+import ShutdownDialog from './components/ShutdownDialog'
 import { MissionControlProvider } from './lib/MissionControlProvider.tsx'
 
 // V3 Ghost UI Pages
@@ -33,15 +34,31 @@ import { TerminalGrid } from './components/pages/TerminalGrid'
 
 export default function App() {
   const [booted, setBooted] = useState(() => sessionStorage.getItem('mckay-booted') === '1')
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [shutdownOpen, setShutdownOpen] = useState(false)
+
+  // Init dark mode on mount
+  useEffect(() => {
+    document.body.classList.add('dark')
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }, [])
+
+  // Listen for shutdown event dispatched by Header power button
+  useEffect(() => {
+    const handler = () => setShutdownOpen(true)
+    document.addEventListener('open-shutdown', handler)
+    return () => document.removeEventListener('open-shutdown', handler)
+  }, [])
 
   const toggleTheme = useCallback(() => {
-    setTheme(t => {
-      const next = t === 'dark' ? 'light' : 'dark'
-      document.body.classList.toggle('dark', next === 'dark')
-      document.documentElement.setAttribute('data-theme', next)
-      return next
-    })
+    document.body.classList.toggle('dark')
+    const isDark = document.body.classList.contains('dark')
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+  }, [])
+
+  const handleShutdown = useCallback(() => {
+    sessionStorage.removeItem('mckay-booted')
+    setShutdownOpen(false)
+    setTimeout(() => setBooted(false), 200)
   }, [])
 
   if (!booted) return <Boot onComplete={() => { sessionStorage.setItem('mckay-booted', '1'); setBooted(true) }} />
@@ -79,6 +96,12 @@ export default function App() {
           <Route path="/idea/:id/terminal" element={<StandaloneTerminal />} />
           <Route path="/terminals" element={<TerminalGrid toggleTheme={toggleTheme} />} />
         </Routes>
+
+        <ShutdownDialog
+          open={shutdownOpen}
+          onClose={() => setShutdownOpen(false)}
+          onShutdown={handleShutdown}
+        />
       </BrowserRouter>
     </MissionControlProvider>
   )

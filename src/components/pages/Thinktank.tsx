@@ -1,34 +1,32 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lightbulb, Zap, Search, CheckCircle, ExternalLink } from 'lucide-react'
+import { ExternalLink, Rocket } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
-import { StatusLed } from '../ui/StatusLed.tsx'
+import { SplitLayout } from '../shared/SplitLayout.tsx'
+import { PreviewPanel, TcLabel, TcText } from '../shared/PreviewPanel.tsx'
+import { Pipeline } from '../shared/Pipeline.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 
 interface Props { toggleTheme: () => void }
+
+type Filter = 'all' | 'intake' | 'parked' | 'research' | 'ready'
 
 /* ── Helpers ──────────────────────────────────────────── */
 
 function phaseStyle(st: string): { label: string; bg: string; color: string } {
   switch (st) {
-    case 'Bereit':
-      return { label: 'Bereit', bg: 'rgba(0,255,136,0.12)', color: 'var(--g)' }
-    case 'Research':
-      return { label: 'Research', bg: 'rgba(139,92,246,0.12)', color: 'var(--p)' }
-    case 'Geparkt':
-      return { label: 'Geparkt', bg: 'rgba(255,255,255,0.04)', color: 'var(--tx3)' }
-    case 'Projekt':
-      return { label: 'Projekt', bg: 'rgba(0,240,255,0.12)', color: 'var(--t)' }
-    default:
-      return { label: st || 'Neu', bg: 'rgba(0,150,255,0.12)', color: 'var(--bl)' }
+    case 'Bereit':   return { label: 'READY',    bg: 'rgba(0,200,83,0.12)',    color: 'var(--g)' }
+    case 'Research': return { label: 'RESEARCH',  bg: 'rgba(124,77,255,0.12)',  color: 'var(--p)' }
+    case 'Geparkt':  return { label: 'PARKED',    bg: 'rgba(255,255,255,0.06)', color: 'var(--tx3)' }
+    case 'Projekt':  return { label: 'PROJEKT',   bg: 'rgba(0,191,165,0.12)',   color: 'var(--t)' }
+    default:         return { label: 'INTAKE',    bg: 'rgba(41,121,255,0.12)',  color: 'var(--bl)' }
   }
 }
 
-function ideaScore(idea: { feedback?: { innovation?: number } }): number | null {
-  if (idea.feedback && idea.feedback.innovation) {
-    return idea.feedback.innovation * 20
-  }
+function ideaScore(idea: { feedback?: { innovation?: number }; f?: number; pot?: number }): number | null {
+  if (idea.feedback?.innovation) return idea.feedback.innovation * 20
+  if (idea.f && idea.pot) return Math.round((idea.f + idea.pot) * 10)
   return null
 }
 
@@ -39,15 +37,10 @@ function scoreColor(score: number | null): string {
   return 'var(--tx3)'
 }
 
-function glowFromCol(col: string): string {
+function glowFromColor(col: string): string {
   const map: Record<string, string> = {
-    'var(--r)': 'var(--rg)',
-    'var(--g)': 'var(--gg)',
-    'var(--bl)': 'var(--blg)',
-    'var(--p)': 'var(--pg)',
-    'var(--a)': 'var(--ag)',
-    'var(--t)': 'var(--tg)',
-    'var(--o)': 'var(--og)',
+    'var(--r)': 'var(--rg)', 'var(--g)': 'var(--gg)', 'var(--bl)': 'var(--blg)',
+    'var(--p)': 'var(--pg)', 'var(--a)': 'var(--ag)', 'var(--t)': 'var(--tg)', 'var(--o)': 'var(--og)',
   }
   return map[col] || 'var(--blg)'
 }
@@ -55,170 +48,395 @@ function glowFromCol(col: string): string {
 /* ── Component ─────────────────────────────────────────── */
 
 export function Thinktank({ toggleTheme }: Props) {
-  const { ideas, tickerData } = useMissionControl()
+  const { ideas, tickerData, getIdeaPipeline, ideaFeedback, ideaResearch } = useMissionControl()
   const nav = useNavigate()
-  const [sel, setSel] = useState(-1)
+  const [sel, setSel] = useState(0)
+  const [tab, setTab] = useState(0)
+  const [filter, setFilter] = useState<Filter>('all')
 
-  const totalCount = ideas.length
-  const hotCount = ideas.filter(i => { const s = ideaScore(i); return s !== null && s >= 80 }).length
-  const researchCount = ideas.filter(i => i.st === 'Research' || i.st === 'Neu').length
-  const bereitCount = ideas.filter(i => i.st === 'Bereit').length
+  const filtered = useMemo(() => {
+    switch (filter) {
+      case 'intake':   return ideas.filter(i => !['Bereit','Research','Geparkt','Projekt'].includes(i.st))
+      case 'parked':   return ideas.filter(i => i.st === 'Geparkt')
+      case 'research': return ideas.filter(i => i.st === 'Research')
+      case 'ready':    return ideas.filter(i => i.st === 'Bereit')
+      default:         return ideas.filter(i => i.st !== 'Projekt')
+    }
+  }, [ideas, filter])
 
-  const selected = sel >= 0 && sel < ideas.length ? ideas[sel] : null
+  const idea = filtered[sel] ?? filtered[0] ?? null
+
+  const filterTabs: { key: Filter; label: string }[] = [
+    { key: 'all',      label: 'All' },
+    { key: 'intake',   label: 'Intake' },
+    { key: 'parked',   label: 'Parked' },
+    { key: 'research', label: 'Research' },
+    { key: 'ready',    label: 'Ready' },
+  ]
+
+  /* ── Right panel tabs ─────────────────────────────────── */
+
+  const buildTabs = (i: typeof idea) => {
+    if (!i) return []
+    const color = i.col || 'var(--bl)'
+    const ps = phaseStyle(i.st)
+    const sc = ideaScore(i)
+    const fb = ideaFeedback[i.id]
+    const rs = ideaResearch[i.id]
+
+    return [
+      {
+        label: 'Live',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Score + Stage */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 52, fontWeight: 700, color: scoreColor(sc), lineHeight: 1 }}>
+                  {sc ?? '—'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 4 }}>SCORE</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: ps.color }}>{ps.label}</div>
+                <div style={{ fontSize: 9, color: 'var(--tx3)', letterSpacing: 2, marginTop: 2 }}>STAGE</div>
+              </div>
+            </div>
+
+            {/* Description */}
+            {i.txt && <TcText>{i.txt}</TcText>}
+
+            {/* Agent Activity */}
+            <div>
+              <TcLabel>Agent Activity</TcLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {[
+                  { name: 'Research Agent', status: rs?.status === 'done' ? 'FERTIG' : rs?.status === 'running' ? 'AKTIV' : 'BEREIT', color: rs?.status === 'done' ? 'var(--g)' : rs?.status === 'running' ? 'var(--a)' : 'var(--tx3)' },
+                  { name: 'Feedback Agent', status: fb ? 'FERTIG' : 'BEREIT', color: fb ? 'var(--g)' : 'var(--tx3)' },
+                ].map(a => (
+                  <div key={a.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: a.color, boxShadow: a.color !== 'var(--tx3)' ? `0 0 6px ${a.color}` : 'none' }} />
+                      <span style={{ fontSize: 12, color: 'var(--tx2)' }}>{a.name}</span>
+                    </div>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, color: a.color, letterSpacing: 1 }}>{a.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recommendation */}
+            {i.rec && (
+              <div>
+                <TcLabel>Empfehlung</TcLabel>
+                <div style={{ marginTop: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--bl)', textDecoration: 'underline', cursor: 'pointer' }}>{i.rec}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        label: 'Feedback',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {fb ? (
+              <>
+                <div>
+                  <TcLabel>Problem / Mehrwert</TcLabel>
+                  <TcText style={{ marginTop: 6 }}>{fb.problem || '—'}</TcText>
+                </div>
+                <div>
+                  <TcLabel>Zielgruppe</TcLabel>
+                  <TcText style={{ marginTop: 6 }}>{fb.audience || '—'}</TcText>
+                </div>
+                <div>
+                  <TcLabel>Markt-Einschätzung</TcLabel>
+                  <TcText style={{ marginTop: 6 }}>{fb.market || '—'}</TcText>
+                </div>
+                <div>
+                  <TcLabel>Gesamtbewertung</TcLabel>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 28, fontWeight: 700, color: scoreColor(sc) }}>{sc ?? '—'}</span>
+                    <span style={{ fontSize: 10, color: 'var(--tx3)' }}>Score</span>
+                  </div>
+                </div>
+                <div>
+                  <TcLabel>Empfehlung</TcLabel>
+                  <div style={{ marginTop: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--bl)', cursor: 'pointer', textDecoration: 'underline' }}>{fb.recommendation || i.rec || '—'}</span>
+                  </div>
+                </div>
+              </>
+            ) : i.feedback ? (
+              <>
+                {[
+                  { key: 'Problem', val: i.feedback.problem },
+                  { key: 'Markt', val: i.feedback.markt },
+                  { key: 'Nutzen', val: i.feedback.nutzen },
+                ].map(item => (
+                  <div key={item.key}>
+                    <TcLabel>{item.key}</TcLabel>
+                    <TcText style={{ marginTop: 6 }}>{item.val || '—'}</TcText>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <TcText>Kein Feedback vorhanden</TcText>
+            )}
+          </div>
+        ),
+      },
+      {
+        label: 'Research',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <TcLabel>Research Status</TcLabel>
+              <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: rs?.status === 'done' ? 'var(--g)' : rs?.status === 'running' ? 'var(--a)' : 'var(--tx3)' }} />
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: rs?.status === 'done' ? 'var(--g)' : rs?.status === 'running' ? 'var(--a)' : 'var(--tx3)' }}>
+                  {rs?.status === 'done' ? 'Fertig' : rs?.status === 'running' ? 'Läuft' : 'Nicht gestartet'}
+                </span>
+              </div>
+            </div>
+            {i.res && (
+              <div>
+                <TcLabel>Research Ergebnis</TcLabel>
+                <TcText style={{ marginTop: 6 }}>{i.res}</TcText>
+              </div>
+            )}
+            {rs?.summary && (
+              <div>
+                <TcLabel>Zusammenfassung</TcLabel>
+                <TcText style={{ marginTop: 6 }}>{rs.summary}</TcText>
+              </div>
+            )}
+            {rs?.feasibility && (
+              <div>
+                <TcLabel>Machbarkeit</TcLabel>
+                <TcText style={{ marginTop: 6 }}>{rs.feasibility}</TcText>
+              </div>
+            )}
+            {!i.res && !rs?.summary && <TcText>Research noch nicht gestartet</TcText>}
+          </div>
+        ),
+      },
+      {
+        label: 'Reports',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <TcText style={{ opacity: 0.5 }}>Reports werden nach Abschluss des Research generiert.</TcText>
+          </div>
+        ),
+      },
+      {
+        label: 'Briefing',
+        content: (
+          <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.8 }}>
+            <p style={{ marginBottom: 10 }}>
+              <strong style={{ color: 'var(--tx)' }}>{i.n}</strong>{i.txt ? ` — ${i.txt}` : ''}
+            </p>
+            <p style={{ marginBottom: 10 }}>
+              Kategorie: <strong>{i.cat}</strong> | Status: <span style={{ color: ps.color, fontWeight: 700 }}>{ps.label}</span>
+            </p>
+            {sc !== null && (
+              <p>Score: <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: scoreColor(sc) }}>{sc}</span></p>
+            )}
+          </div>
+        ),
+      },
+    ]
+  }
+
+  const psTabs = idea ? buildTabs(idea) : []
+  const ideaColor = idea?.col || 'var(--bl)'
+  const ideaGlow = glowFromColor(ideaColor)
+  const ideaPs = idea ? phaseStyle(idea.st) : { label: '', color: 'var(--bl)' }
+  const milestones = idea ? getIdeaPipeline(idea.st.toLowerCase(), ideaColor, ideaGlow) : []
+  const pipeline = idea ? <Pipeline label="Idee Pipeline" milestones={milestones} summary={ideaPs.label} /> : null
 
   return (
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Header
-        title="Thinktank"
-        ledColor="p"
-      />
+      <Header backLink={{ label: 'Cockpit', href: '/' }} toggleTheme={toggleTheme} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 24, overflow: 'hidden', paddingBottom: 16 }}>
-        {/* KPI Row */}
-        <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
-          {[
-            { label: 'Ideen gesamt', value: totalCount, color: 'var(--p)', glow: 'var(--pg)', icon: Lightbulb },
-            { label: 'Hot', value: hotCount, color: 'var(--r)', glow: 'var(--rg)', icon: Zap },
-            { label: 'Research', value: researchCount, color: 'var(--bl)', glow: 'var(--blg)', icon: Search },
-            { label: 'Bereit', value: bereitCount, color: 'var(--g)', glow: 'var(--gg)', icon: CheckCircle },
-          ].map(kpi => {
-            const Icon = kpi.icon
-            return (
-              <div
-                key={kpi.label}
-                className="ghost-card"
-                style={{ '--hc': kpi.glow, padding: '16px 22px', flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 } as React.CSSProperties}
-              >
-                <Icon size={20} stroke={kpi.color} strokeWidth={1.6} />
-                <div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
-                  <div style={{ fontSize: 10, color: 'var(--tx3)', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{kpi.label}</div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Section Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <span className="st" style={{ padding: '0 2px' }}>Alle Ideen</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>
-            {totalCount} Ideen
-          </span>
-        </div>
-
-        {/* 3-Column Ghost Card Grid */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          {ideas.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: 'var(--tx3)', opacity: 0.3 }}>--</span>
-              <span style={{ fontSize: 13, color: 'var(--tx3)' }}>Keine Ideen vorhanden</span>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-              {ideas.map((idea, i) => {
-                const sc = ideaScore(idea)
-                const ps = phaseStyle(idea.st)
-                const glow = glowFromCol(idea.col)
-                const isDone = idea.st === 'Projekt'
-
-                return (
-                  <div
-                    key={idea.id}
-                    className="ghost-card"
+      <SplitLayout
+        ratio="55% 45%"
+        left={
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 0 }}>
+            {/* Filter tabs + count */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 2 }}>
+                {filterTabs.map(ft => (
+                  <button
+                    key={ft.key}
+                    onClick={() => { setFilter(ft.key); setSel(0) }}
                     style={{
-                      '--hc': glow,
-                      padding: '18px 22px',
-                      gap: 10,
+                      padding: '7px 14px',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: filter === ft.key ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: filter === ft.key ? 'var(--tx)' : 'var(--tx3)',
+                      fontSize: 12,
+                      fontWeight: filter === ft.key ? 700 : 500,
                       cursor: 'pointer',
-                      opacity: isDone ? 0.4 : 1,
-                    } as React.CSSProperties}
-                    onClick={() => setSel(i)}
-                    onDoubleClick={() => nav(`/idea/${idea.id}`)}
+                      fontFamily: 'inherit',
+                      transition: 'all 0.2s',
+                    }}
                   >
-                    {/* Top-right open icon */}
-                    <div
-                      className="ghost-open-icon"
-                      style={{
-                        position: 'absolute', top: 12, right: 12, zIndex: 2,
-                        cursor: 'pointer', opacity: 0,
-                        transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                      }}
-                      onClick={(e) => { e.stopPropagation(); nav(`/idea/${idea.id}`) }}
-                    >
-                      <ExternalLink size={14} stroke="var(--tx3)" />
-                    </div>
-
-                    {/* Score + Status Badge Row */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 18, fontWeight: 700,
-                        color: isDone ? 'var(--g)' : scoreColor(sc),
-                      }}>
-                        {isDone ? '\u2713' : sc !== null ? sc : '\u2014'}
-                      </span>
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                        background: ps.bg, color: ps.color, letterSpacing: 1,
-                      }}>
-                        {ps.label}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.3 }}>
-                      {idea.n}
-                    </div>
-
-                    {/* Description */}
-                    <div style={{
-                      fontSize: 12, color: 'var(--tx2)', lineHeight: 1.5,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                    }}>
-                      {idea.txt || '\u2014'}
-                    </div>
-
-                    {/* Category Tag */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 600, padding: '3px 10px', borderRadius: 6,
-                        background: `${idea.col}18`, color: idea.col || 'var(--bl)',
-                      }}>
-                        {idea.cat}
-                      </span>
-                      {idea.date && (
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: 'var(--tx3)' }}>
-                          {idea.date}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Color accent bar */}
-                    <div style={{ width: 32, height: 3, borderRadius: 2, background: idea.col || 'var(--p)', opacity: 0.5, marginTop: 2 }} />
-                  </div>
-                )
-              })}
-
-              {/* Add placeholder */}
-              <div
-                className="ghost-card"
-                style={{
-                  '--hc': 'rgba(255,255,255,0.04)',
-                  padding: '18px 22px',
-                  alignItems: 'center', justifyContent: 'center',
-                  minHeight: 140,
-                  opacity: 0.3,
-                  cursor: 'default',
-                } as React.CSSProperties}
-              >
-                <Lightbulb size={28} stroke="var(--tx3)" strokeWidth={1.2} />
-                <span style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 8 }}>Neue Idee</span>
+                    {ft.label}
+                  </button>
+                ))}
               </div>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600, color: 'var(--tx3)' }}>
+                ↑ {filtered.length} Ideen
+              </span>
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Idea cards grid */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {filtered.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60%', color: 'var(--tx3)', fontSize: 13 }}>
+                  Keine Ideen in dieser Kategorie
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {filtered.map((idea, i) => {
+                    const sc2 = ideaScore(idea)
+                    const ps2 = phaseStyle(idea.st)
+                    const isSelected = i === sel
+                    return (
+                      <div
+                        key={idea.id}
+                        onClick={() => { setSel(i); setTab(0) }}
+                        onDoubleClick={() => nav(`/idea/${idea.id}`)}
+                        style={{
+                          padding: '14px 16px',
+                          borderRadius: 16,
+                          border: `1px solid ${isSelected ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
+                          background: isSelected ? 'rgba(255,255,255,0.04)' : 'transparent',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                          transition: 'all 0.25s',
+                          position: 'relative',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'transparent'
+                        }}
+                      >
+                        {/* Score + Status */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: scoreColor(sc2) }}>
+                            {sc2 ?? '—'}
+                          </span>
+                          <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: ps2.bg, color: ps2.color, letterSpacing: 0.5 }}>
+                            {ps2.label}
+                          </span>
+                        </div>
+
+                        {/* Name */}
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.3 }}>
+                          {idea.n}
+                        </div>
+
+                        {/* Tags row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          {idea.cat && (
+                            <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 5, background: `${idea.col || 'var(--bl)'}18`, color: idea.col || 'var(--bl)' }}>
+                              {idea.cat}
+                            </span>
+                          )}
+                          {idea.date && (
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: 'var(--tx3)' }}>
+                              {idea.date}
+                            </span>
+                          )}
+                          <div style={{ flex: 1 }} />
+                          <span style={{ fontSize: 11, color: 'var(--tx3)' }}>→</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        }
+        right={
+          idea ? (
+            <PreviewPanel
+              title={idea.n}
+              ledColor={ideaColor}
+              ledGlow={ideaGlow}
+              badge={{ label: ideaPs.label, bg: `${ideaPs.color}18`, color: ideaPs.color }}
+              pipeline={pipeline}
+              tabs={psTabs}
+              activeTab={tab}
+              onTabChange={setTab}
+              accentColor={ideaColor}
+              headerAction={
+                <button
+                  onClick={() => nav(`/idea/${idea.id}`)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: 'var(--tx3)',
+                    letterSpacing: 1,
+                    textTransform: 'uppercase',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <ExternalLink size={12} stroke="var(--tx3)" />
+                  ÖFFNEN
+                </button>
+              }
+              footer={
+                <div style={{ padding: '16px 26px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <button
+                    onClick={() => nav(`/idea/${idea.id}`)}
+                    style={{
+                      width: '100%',
+                      padding: '11px 0',
+                      borderRadius: 12,
+                      border: '1px solid rgba(0,200,83,0.3)',
+                      background: 'rgba(0,200,83,0.08)',
+                      color: 'var(--g)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <Rocket size={14} stroke="var(--g)" />
+                    Als Projekt konvertieren
+                  </button>
+                </div>
+              }
+            />
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--tx3)', fontSize: 13 }}>
+              Idee auswählen
+            </div>
+          )
+        }
+      />
 
       <BottomTicker
         label="THINKTANK"
