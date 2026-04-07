@@ -193,13 +193,22 @@ function transformProject(row: any): Project {
 function transformIdea(row: any): Idea {
   return {
     id: row.id,
-    title: row.title,
-    description: row.description,
-    score: row.score,
-    status: row.status,
-    category: row.category,
-    color: row.color,
-    glow: row.glow,
+    n: row.n || row.name || row.title || '',
+    cat: row.cat || row.category || '',
+    st: row.st || row.status || 'Neu',
+    date: row.date || '',
+    txt: row.txt || row.description || '',
+    f: row.f ?? 0,
+    pot: row.pot ?? 0,
+    c: row.c ?? 3,
+    spd: row.spd ?? 3,
+    r: row.r ?? 2,
+    res: row.res || '',
+    rec: row.rec || '',
+    col: row.col || row.color || 'var(--bl)',
+    raw: row.raw,
+    structured: row.structured,
+    feedback: row.feedback,
   }
 }
 

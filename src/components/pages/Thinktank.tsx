@@ -78,7 +78,6 @@ export function Thinktank({ toggleTheme }: Props) {
 
   const buildTabs = (i: typeof idea) => {
     if (!i) return []
-    const color = i.col || 'var(--bl)'
     const ps = phaseStyle(i.st)
     const sc = ideaScore(i)
     const fb = ideaFeedback[i.id]
