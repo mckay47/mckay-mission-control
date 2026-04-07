@@ -7,7 +7,7 @@ interface HeaderProps {
   ledColor?: string
 }
 
-export default function Header({ backLink, title, ledColor }: HeaderProps) {
+export function Header({ backLink, title, ledColor }: HeaderProps) {
   const navigate = useNavigate()
   const [time, setTime] = useState(() => formatTime())
 

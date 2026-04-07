@@ -1,0 +1,828 @@
+/* ============================================================
+   MCKAY OS v3 — Ghost UI Design System
+   All interactive elements invisible at rest, materialize on hover.
+   ============================================================ */
+
+/* --- CSS Variables ----------------------------------------- */
+:root {
+  --bg: #e3e5e8;
+  --sf: #eceef1;
+  --sft: #f2f3f6;
+  --tx: #1e1e1e;
+  --tx2: #4a4a4a;
+  --tx3: #8e8e96;
+  --shd: rgba(0,0,0,0.1);
+  --shdr: rgba(0,0,0,0.08);
+  --shl: rgba(255,255,255,0.8);
+
+  /* Green */
+  --g: #00c853;
+  --gg: rgba(0,200,83,0.5);
+  --gc: rgba(0,200,83,0.06);
+  /* Red */
+  --r: #ff3d3d;
+  --rg: rgba(255,61,61,0.5);
+  --rc: rgba(255,61,61,0.06);
+  /* Amber */
+  --a: #ffab00;
+  --ag: rgba(255,171,0,0.5);
+  --ac: rgba(255,171,0,0.06);
+  /* Blue */
+  --bl: #2979ff;
+  --blg: rgba(41,121,255,0.5);
+  --blc: rgba(41,121,255,0.06);
+  /* Purple */
+  --p: #7c4dff;
+  --pg: rgba(124,77,255,0.5);
+  --pc: rgba(124,77,255,0.06);
+  /* Teal */
+  --t: #00bfa5;
+  --tg: rgba(0,191,165,0.5);
+  --tc: rgba(0,191,165,0.06);
+  /* Orange */
+  --o: #ff6d00;
+  --og: rgba(255,109,0,0.5);
+  /* Pink */
+  --pk: #f50057;
+  --pkg: rgba(245,0,87,0.4);
+}
+
+/* --- Dark Mode --------------------------------------------- */
+.dark {
+  --bg: #0a0a0c;
+  --sf: #131315;
+  --sft: #1a1a1e;
+  --tx: #e8e8ec;
+  --tx2: #b0b0b8;
+  --tx3: #6a6a74;
+  --shd: rgba(0,0,0,0.5);
+  --shdr: rgba(0,0,0,0.35);
+  --shl: rgba(255,255,255,0.04);
+}
+
+/* --- Dark mode overrides ----------------------------------- */
+.dark .cf {
+  border-color: rgba(255,255,255,0.08);
+  border-bottom-color: rgba(0,0,0,0.2);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset,
+              0 -1px 0 rgba(0,0,0,0.15) inset,
+              0 4px 8px var(--shdr),
+              0 8px 24px var(--shd);
+}
+.dark .cf::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+.dark .in {
+  border-color: rgba(255,255,255,0.04);
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.3),
+              inset -2px -2px 5px rgba(255,255,255,0.03);
+}
+.dark .btn3d {
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 4px 4px 10px rgba(0,0,0,0.3),
+              -3px -3px 8px rgba(255,255,255,0.04),
+              inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.dark .ghost-btn:hover {
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 4px 4px 10px rgba(0,0,0,0.3),
+              -3px -3px 8px rgba(255,255,255,0.04),
+              inset 0 1px 0 rgba(255,255,255,0.06),
+              0 0 24px var(--bc, transparent);
+}
+.dark .ghost-btn:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+.dark .ghost-card:hover {
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset,
+              0 4px 8px var(--shdr),
+              0 8px 24px var(--shd),
+              0 0 28px var(--hc, transparent);
+}
+.dark .ghost-tile:hover .tile-icon {
+  border-color: rgba(255,255,255,0.06);
+}
+.dark .stamp-ghost {
+  border-color: transparent;
+}
+.dark .tab.active {
+  background: rgba(41,121,255,0.08);
+}
+.dark .term-body {
+  background: #0a0a0c;
+}
+.dark .qa-btn {
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* --- Reset ------------------------------------------------- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--tx);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Animations -------------------------------------------- */
+@keyframes lp {
+  0%, 100% { box-shadow: 0 0 6px var(--lc); opacity: .9; }
+  50% { box-shadow: 0 0 14px var(--lc), 0 0 28px var(--lc); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes ts {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* --- Boot Animation ---------------------------------------- */
+@keyframes bootFlicker {
+  0% { opacity: 0; transform: translateY(6px) scale(0.95); }
+  8% { opacity: 0.7; }
+  14% { opacity: 0.1; }
+  22% { opacity: 0.8; transform: translateY(-2px) scale(1.02); }
+  30% { opacity: 0.15; }
+  38% { opacity: 0.9; transform: translateY(2px); }
+  46% { opacity: 0.2; }
+  54% { opacity: 0.7; }
+  62% { opacity: 0.3; transform: translateY(-1px); }
+  70% { opacity: 0.85; }
+  80% { opacity: 0.5; }
+  90% { opacity: 0.95; transform: translateY(0) scale(1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+@keyframes bootHeaderFade {
+  0%, 60% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Title + subtitle — fade synced with tile flicker */
+.boot-title-fill {
+  opacity: 0;
+  animation: slowFadeIn 2.7s ease-out 2.2s forwards;
+}
+.boot-subtitle-fade {
+  opacity: 0;
+  animation: slowFadeIn 2.7s ease-out 2.2s forwards;
+}
+@keyframes slowFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.boot-tile {
+  animation: bootFlicker 1.2s ease-out forwards;
+  opacity: 0;
+}
+.boot-header {
+  animation: bootHeaderFade 3s ease-out forwards;
+}
+
+/* --- Shutdown Animation (smooth, no flicker) --------------- */
+@keyframes shutdownFade {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(6px) scale(0.96); }
+}
+
+@keyframes shutdownTitleDrain {
+  0% { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(100% 0 0 0); }
+}
+
+@keyframes shutdownHeaderFade {
+  0% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+.shutdown-title {
+  animation: slowFadeOut 1.8s ease-in forwards;
+}
+.shutdown-subtitle {
+  animation: slowFadeOut 1.8s ease-in forwards;
+}
+@keyframes slowFadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.shutdown-tile {
+  animation: shutdownFade 0.6s ease-in forwards;
+}
+.shutdown-header {
+  animation: shutdownHeaderFade 0.8s ease-in forwards;
+}
+
+
+/* --- CF: Neumorphic Card (always visible, for display) ----- */
+.cf {
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.6);
+  border-bottom-color: rgba(0,0,0,0.04);
+  position: relative;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset,
+              0 -1px 0 rgba(0,0,0,0.03) inset,
+              1px 1px 2px rgba(255,255,255,0.5) inset,
+              0 4px 8px var(--shdr),
+              0 8px 24px var(--shd),
+              0 14px 40px var(--shdr);
+}
+.cf::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent);
+  border-radius: 22px;
+}
+
+/* --- IN: Inset element ------------------------------------- */
+.in {
+  background: var(--bg);
+  border-radius: 14px;
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.08),
+              inset -2px -2px 5px rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+/* --- BTN3D: 3D Button (always visible) --------------------- */
+.btn3d {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  box-shadow: 5px 5px 12px var(--shd),
+              -4px -4px 10px var(--shl),
+              inset 0 1px 0 rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.btn3d::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 6px;
+  right: 6px;
+  height: 14px;
+  background: radial-gradient(ellipse, var(--bc, rgba(0,0,0,0.06)) 0%, transparent 70%);
+  filter: blur(6px);
+  opacity: 0.5;
+  transition: all 0.3s;
+}
+.btn3d:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 14px var(--shd),
+              -5px -5px 12px var(--shl),
+              inset 0 1px 0 rgba(255,255,255,0.7),
+              0 0 24px var(--bc, transparent);
+}
+.btn3d svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
+  fill: none;
+  position: relative;
+  z-index: 2;
+}
+
+/* --- GHOST-BTN: Invisible button, materializes on hover ---- */
+.ghost-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.ghost-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.4s;
+}
+.ghost-btn::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 6px;
+  right: 6px;
+  height: 14px;
+  background: radial-gradient(ellipse, var(--bc, rgba(0,0,0,0.06)) 0%, transparent 70%);
+  filter: blur(6px);
+  opacity: 0;
+  transition: all 0.4s;
+}
+.ghost-btn:hover {
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: 5px 5px 12px var(--shd),
+              -4px -4px 10px var(--shl),
+              inset 0 1px 0 rgba(255,255,255,0.7),
+              0 0 24px var(--bc, transparent);
+  transform: translateY(-2px);
+}
+.ghost-btn:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent);
+}
+.ghost-btn:hover::after {
+  opacity: 1;
+}
+.ghost-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
+  fill: none;
+  position: relative;
+  z-index: 2;
+  transition: all 0.4s;
+}
+
+/* --- GHOST-CARD: Invisible card, materializes on hover ----- */
+.ghost-card {
+  padding: 22px 26px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 22px;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.ghost-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  border-radius: 22px;
+  background: transparent;
+  transition: all 0.4s;
+}
+.ghost-card:hover {
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  border: 1px solid rgba(255,255,255,0.6);
+  border-bottom-color: rgba(0,0,0,0.04);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset,
+              0 -1px 0 rgba(0,0,0,0.03) inset,
+              1px 1px 2px rgba(255,255,255,0.5) inset,
+              0 8px 20px var(--shd),
+              0 16px 44px var(--shdr),
+              0 0 28px var(--hc, transparent);
+  transform: translateY(-4px);
+}
+.ghost-card:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent);
+}
+
+/* Ghost card content — always visible, only surface ghosts */
+.ghost-card .ghost-desc { opacity: 1; transition: all 0.4s; }
+.ghost-card .ghost-foot { opacity: 1; transition: all 0.4s; }
+.ghost-card .ghost-score {
+  filter: drop-shadow(0 0 6px currentColor);
+  transition: all 0.4s;
+}
+.ghost-card:hover .ghost-score {
+  filter: none;
+}
+.ghost-card .ghost-open-icon { opacity: 0; transition: all 0.4s; }
+.ghost-card:hover .ghost-open-icon { opacity: 0.6; }
+.ghost-card .ghost-open-icon:hover { opacity: 1; }
+
+/* --- GHOST-TILE: Invisible cockpit tile -------------------- */
+.ghost-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  cursor: pointer;
+  transition: all 0.35s;
+  padding: 8px;
+  width: 155px;
+}
+.ghost-tile:hover {
+  transform: translateY(-10px);
+}
+.ghost-tile .tile-icon {
+  width: 92px;
+  height: 92px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.ghost-tile .tile-icon svg {
+  width: 38px;
+  height: 38px;
+  stroke-width: 1.3;
+  fill: none;
+  filter: drop-shadow(0 0 8px var(--tc, transparent));
+  transition: all 0.4s;
+}
+.ghost-tile:hover .tile-icon {
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow: 6px 6px 14px var(--shd),
+              -5px -5px 12px var(--shl),
+              inset 0 1px 0 rgba(255,255,255,0.7),
+              0 0 32px var(--tc, transparent);
+}
+.ghost-tile .tile-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--tx);
+  text-align: center;
+  opacity: 0.6;
+  transition: all 0.4s;
+}
+.ghost-tile:hover .tile-name { opacity: 1; }
+.ghost-tile .tile-desc {
+  font-size: 11px;
+  color: var(--tx3);
+  text-align: center;
+  line-height: 1.5;
+  opacity: 0;
+  transition: all 0.4s;
+}
+.ghost-tile:hover .tile-desc { opacity: 1; }
+
+/* --- STAMP-GHOST: Ghost stamp button ----------------------- */
+.stamp-ghost {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  font-family: inherit;
+}
+.stamp-ghost:hover {
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 5px 5px 12px var(--shd),
+              -4px -4px 10px var(--shl),
+              inset 0 1px 0 rgba(255,255,255,0.7),
+              0 0 28px var(--sc, transparent);
+  transform: translateY(-2px);
+}
+
+/* --- Status LED -------------------------------------------- */
+.sl {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+.sl::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.8), transparent 60%);
+}
+
+/* --- Tile LED ---------------------------------------------- */
+.tile-led {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.tile-led::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 9px;
+  bottom: -6px;
+  left: -4px;
+  background: radial-gradient(ellipse, var(--lc) 0%, transparent 70%);
+  opacity: .4;
+  filter: blur(4px);
+}
+
+/* --- ZONE / MATRIX states ---------------------------------- */
+.stamp-ghost.out {
+  color: var(--tx3);
+  letter-spacing: 3px;
+  --sc: transparent;
+}
+.stamp-ghost.in {
+  color: var(--g);
+  letter-spacing: 3px;
+  --sc: var(--gg);
+}
+.stamp-ghost.in .zone-text {
+  text-shadow: 0 0 8px var(--gg);
+}
+.zone-icon {
+  animation: zonePulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px var(--gg));
+}
+.zone-cursor {
+  animation: cursorBlink 1s step-end infinite;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 300;
+  color: var(--g);
+  margin-left: -4px;
+}
+@keyframes zonePulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* --- Cockpit Nav Button (ghost pill) ----------------------- */
+.cockpit-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--tx3);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.cockpit-nav-btn:hover {
+  color: var(--tx);
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 5px 5px 12px var(--shd),
+              -4px -4px 10px var(--shl),
+              inset 0 1px 0 rgba(255,255,255,0.7);
+  transform: translateY(-2px);
+}
+.cockpit-nav-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+  fill: none;
+}
+.dark .cockpit-nav-btn:hover {
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 4px 4px 10px rgba(0,0,0,0.3),
+              -3px -3px 8px rgba(255,255,255,0.04),
+              inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* --- Section header ---------------------------------------- */
+.st {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+
+/* --- Quick Action Buttons ---------------------------------- */
+.qa-btn {
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s;
+  border: 1.5px solid;
+  background: linear-gradient(145deg, var(--sft), var(--sf));
+  box-shadow: 3px 3px 8px var(--shd),
+              -2px -2px 6px var(--shl);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.qa-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 10px var(--shd),
+              -3px -3px 8px var(--shl),
+              0 0 16px var(--qc, transparent);
+}
+.qa-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+  fill: none;
+}
+
+/* --- Tab --------------------------------------------------- */
+.tab {
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tx3);
+  cursor: pointer;
+  border-radius: 12px 12px 0 0;
+  transition: all 0.2s;
+  position: relative;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.tab:hover { color: var(--tx); }
+.tab.active {
+  color: var(--bl);
+  font-weight: 700;
+  background: rgba(41,121,255,0.04);
+}
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--bl);
+  border-radius: 2px;
+}
+
+/* --- Open Button ------------------------------------------- */
+.open-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  color: #fff;
+  background: var(--bl);
+  box-shadow: 0 4px 16px var(--blg);
+  transition: all 0.2s;
+}
+.open-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--blg);
+}
+
+/* --- Terminal ---------------------------------------------- */
+.term-body {
+  flex: 1;
+  background: #1a1b1e;
+  padding: 20px 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #c8c8d0;
+  overflow-y: auto;
+  line-height: 1.8;
+  min-height: 0;
+}
+.tl { display: flex; gap: 8px; margin-bottom: 3px; }
+.tp { color: var(--g); font-weight: 600; white-space: nowrap; }
+.to { color: #6a6a74; }
+.th { color: var(--g); }
+.tw { color: var(--a); }
+.te { color: var(--r); }
+
+/* --- Scrollbar --------------------------------------------- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+/* --- Ticker ------------------------------------------------ */
+.ticker {
+  flex: 1;
+  height: 48px;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.ticker-lbl {
+  padding: 0 18px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--tx3);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ticker-c {
+  flex: 1;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+}
+.ticker-s {
+  display: flex;
+  gap: 44px;
+  animation: ts 50s linear infinite;
+  white-space: nowrap;
+}
+.ticker-i {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--tx2);
+  white-space: nowrap;
+}
+.ticker-id {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ticker-ia {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* --- Pipeline ---------------------------------------------- */
+.pl-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  display: flex;
+  gap: 3px;
+  overflow: hidden;
+}
+.pl-seg {
+  height: 100%;
+  border-radius: 4px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.pl-seg.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 2s ease-in-out infinite;
+}
