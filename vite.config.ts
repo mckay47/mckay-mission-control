@@ -6,6 +6,7 @@ import mckayPlugin from './scripts/vite-mckay-plugin.mjs'
 import { spawn, type ChildProcess } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
+import { existsSync, mkdirSync, appendFileSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 
@@ -24,6 +25,40 @@ const activeProcesses = new Map<string, ActiveProcess>()
 
 // Tracks which terminals have an ongoing Claude session (for --continue)
 const sessionStarted = new Set<string>()
+
+// ============================================================
+// SIGNALS — Cross-terminal activity log
+// ============================================================
+
+const SIGNALS_PATH = join(homedir(), 'mckay-os', 'sync', 'SIGNALS.md')
+const SIGNALS_DIR  = join(homedir(), 'mckay-os', 'sync')
+
+function ensureSignalsFile() {
+  if (!existsSync(SIGNALS_DIR)) mkdirSync(SIGNALS_DIR, { recursive: true })
+  if (!existsSync(SIGNALS_PATH)) {
+    appendFileSync(SIGNALS_PATH, '# SIGNALS — Cross-Terminal Activity Log\n\n')
+  }
+}
+
+function writeSignal(terminalId: string, signal: string) {
+  try {
+    ensureSignalsFile()
+    const now = new Date()
+    const ts = `${now.toISOString().slice(0, 10)} ${now.toTimeString().slice(0, 5)}`
+    appendFileSync(SIGNALS_PATH, `${ts} | ${terminalId} | ${signal.trim()}\n`)
+  } catch {
+    // non-critical — don't crash the server
+  }
+}
+
+function extractSignals(text: string): string[] {
+  const signals: string[] = []
+  for (const line of text.split('\n')) {
+    const m = line.match(/\[SIGNAL\]\s+(.+)/i)
+    if (m) signals.push(m[1].trim())
+  }
+  return signals
+}
 
 function resolveCwd(cwd: string): string {
   return cwd.startsWith('~') ? join(homedir(), cwd.slice(1)) : cwd
@@ -124,6 +159,14 @@ function kaniTerminal(): Plugin {
           proc.on('close', () => {
             activeProcesses.delete(terminalId)
             res.end()
+
+            // Extract and write [SIGNAL] lines to SIGNALS.md (project terminals only)
+            if (terminalId.startsWith('project:') || terminalId.startsWith('idea:')) {
+              const signals = extractSignals(responseText)
+              for (const signal of signals) {
+                writeSignal(terminalId, signal)
+              }
+            }
 
             // Auto-log to activity_log
             if (serverSupabase) {

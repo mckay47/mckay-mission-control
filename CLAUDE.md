@@ -161,3 +161,29 @@ integrations/ui-design            -- design system, components, patterns
 ---
 
 *Read the full architecture plan at ~/.claude/plans/vast-churning-taco.md*
+
+<!-- AUTO-CONTEXT:START -->
+## Auto-Generated Context
+> Updated: 2026-04-08 13:21
+
+**Project:** mission-control
+**Status:** Phase 0 (active)
+**Stack:** React+Vite, TailwindCSS, Vercel
+**Repo:** ~/path/to/code
+
+**Open Todos:**
+- [ ] **P0** Scaffold project (Vite + Tailwind + react-router-dom + lucide-react + fonts)
+- [ ] **P0** Implement design system tokens (colors, typography, glow effects, glassmorphism, animations)
+- [ ] **P0** Build 18 UI components (GlassCard, KPICard, GaugeChart, GlowNumber, GlowBadge, StatusDot, ProgressBar, ActionButton, PipelineColumn, TimelineItem, SkillCard, AgentCard, ServerStatusCard, NotificationItem, ChecklistItem, ThemeToggle, CommandInput, InlineEditor)
+- [ ] **P0** Build 4 Layout components (Shell, Sidebar, TopBar, PageContainer)
+- [ ] **P0** Create dummy data files from real MCKAY OS sources (REGISTRY.md, CLAUDE.md files, MEMORY.md, settings.json)
+- [ ] **P0** Build 11 Display widgets (ProjectCard, GlobalKPIBar, PriorityList, NotificationCenter, QuickActions, SkillInventory, AgentMap, MCPHealthGrid, PipelineBoard, FolderTree, ProjectTimeline)
+
+**KANI Working Rules:**
+1. When editing code: use the **Repo** path above for all file operations
+2. End EVERY response with exactly one signal line:
+   `[SIGNAL] project:mission-control — what you did (1 sentence)`
+   This signal is automatically forwarded to KANI Cockpit.
+3. Write memories at session end if anything noteworthy was learned.
+
+<!-- AUTO-CONTEXT:END -->
