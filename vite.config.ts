@@ -6,7 +6,7 @@ import mckayPlugin from './scripts/vite-mckay-plugin.mjs'
 import { spawn, type ChildProcess } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, mkdirSync, appendFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 
@@ -25,6 +25,105 @@ const activeProcesses = new Map<string, ActiveProcess>()
 
 // Tracks which terminals have an ongoing Claude session (for --continue)
 const sessionStarted = new Set<string>()
+
+// ============================================================
+// Session History — server-side buffer for terminal reconnect
+// ============================================================
+
+interface HistoryMessage {
+  role: 'user' | 'assistant'
+  text: string
+  ts: number
+}
+
+const sessionHistory = new Map<string, HistoryMessage[]>()
+
+function addToHistory(terminalId: string, role: 'user' | 'assistant', text: string) {
+  if (!sessionHistory.has(terminalId)) sessionHistory.set(terminalId, [])
+  sessionHistory.get(terminalId)!.push({ role, text, ts: Date.now() })
+
+  // Persist to disk (project terminals only)
+  const projectMatch = terminalId.match(/^project:(.+)$/)
+  if (projectMatch) {
+    try {
+      const logPath = join(homedir(), 'mckay-os', 'projects', projectMatch[1], '.terminal-log.jsonl')
+      appendFileSync(logPath, JSON.stringify({ role, text: text.substring(0, 5000), ts: Date.now() }) + '\n')
+    } catch { /* non-critical */ }
+  }
+}
+
+function getHistory(terminalId: string): HistoryMessage[] {
+  // Try memory first
+  if (sessionHistory.has(terminalId)) return sessionHistory.get(terminalId)!
+
+  // Try disk
+  const projectMatch = terminalId.match(/^project:(.+)$/)
+  if (projectMatch) {
+    try {
+      const logPath = join(homedir(), 'mckay-os', 'projects', projectMatch[1], '.terminal-log.jsonl')
+      if (existsSync(logPath)) {
+        const lines = readFileSync(logPath, 'utf-8').trim().split('\n').filter(Boolean)
+        const messages = lines.map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
+        sessionHistory.set(terminalId, messages)
+        return messages
+      }
+    } catch { /* non-critical */ }
+  }
+  return []
+}
+
+function clearHistory(terminalId: string) {
+  sessionHistory.delete(terminalId)
+  const projectMatch = terminalId.match(/^project:(.+)$/)
+  if (projectMatch) {
+    try {
+      const logPath = join(homedir(), 'mckay-os', 'projects', projectMatch[1], '.terminal-log.jsonl')
+      if (existsSync(logPath)) writeFileSync(logPath, '')
+    } catch { /* non-critical */ }
+  }
+}
+
+// ============================================================
+// Auto-sync TODOS.md → Supabase after terminal prompt
+// ============================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function syncTodosToSupabase(projectId: string, sb: any) {
+  try {
+    const todosPath = join(homedir(), 'mckay-os', 'projects', projectId, 'TODOS.md')
+    if (!existsSync(todosPath)) return
+
+    const content = readFileSync(todosPath, 'utf-8')
+    const lines = content.split('\n')
+    const todos: { title: string; priority: string; status: string; description: string; project_id: string; sort_order: number }[] = []
+    let sortOrder = 0
+
+    for (const line of lines) {
+      // Match: - [x] **P1** Title or - [ ] **P2** Title
+      const match = line.match(/^- \[([ x])\]\s+\*\*(\w+)\*\*\s+(.+)$/)
+      if (match) {
+        const done = match[1] === 'x'
+        const priority = match[2]
+        const title = match[3].trim()
+        todos.push({
+          title,
+          priority,
+          status: done ? 'done' : 'open',
+          description: '',
+          project_id: projectId,
+          sort_order: sortOrder++,
+        })
+      }
+    }
+
+    if (todos.length === 0) return
+
+    // Delete existing todos for this project and insert fresh
+    sb.from('todos').delete().eq('project_id', projectId).then(() => {
+      sb.from('todos').insert(todos).then(() => {})
+    })
+  } catch { /* non-critical */ }
+}
 
 // ============================================================
 // SIGNALS — Cross-terminal activity log
@@ -160,18 +259,22 @@ function kaniTerminal(): Plugin {
           const proc = spawn(resolveClaudePath(), claudeArgs, {
             cwd,
             env: spawnEnv(),
+            shell: true,
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 
           // Register in process registry
           activeProcesses.set(terminalId, { proc, terminalId, cwd, startedAt: Date.now() })
 
+          // Add user prompt to history
+          addToHistory(terminalId, 'user', prompt)
+
           let responseText = ''
 
           proc.stdout.on('data', (data: Buffer) => {
             const chunk = data.toString()
             responseText += chunk
-            res.write(chunk)
+            try { res.write(chunk) } catch { /* browser disconnected — process continues */ }
           })
 
           proc.stderr.on('data', () => {
@@ -180,7 +283,10 @@ function kaniTerminal(): Plugin {
 
           proc.on('close', () => {
             activeProcesses.delete(terminalId)
-            res.end()
+            try { res.end() } catch { /* browser may have disconnected */ }
+
+            // Save response to history
+            if (responseText) addToHistory(terminalId, 'assistant', responseText)
 
             // Extract and write [SIGNAL] lines to SIGNALS.md (project terminals only)
             if (terminalId.startsWith('project:') || terminalId.startsWith('idea:')) {
@@ -215,6 +321,11 @@ function kaniTerminal(): Plugin {
                   terminal_id: terminalId,
                 }).then(() => {})
               }
+
+              // Auto-sync TODOS.md → Supabase (project terminals only)
+              if (projectMatch) {
+                syncTodosToSupabase(projectMatch[1], serverSupabase)
+              }
             }
           })
 
@@ -233,6 +344,106 @@ function kaniTerminal(): Plugin {
 
           proc.on('close', () => clearTimeout(timeout))
         })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/kani/session-end-single — End one terminal session
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/kani/session-end-single') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          let terminalId: string
+          try {
+            const parsed = JSON.parse(body)
+            terminalId = parsed.terminalId
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid JSON' }))
+            return
+          }
+
+          if (!terminalId || !sessionStarted.has(terminalId)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true, status: 'no-session' }))
+            return
+          }
+
+          // Kill existing process
+          const existing = activeProcesses.get(terminalId)
+          if (existing) {
+            existing.proc.kill('SIGTERM')
+            activeProcesses.delete(terminalId)
+          }
+
+          const SESSION_END_PROMPT =
+            'Session wird beendet. Führe das Session-End-Protokoll durch: ' +
+            '1) MEMORY.md dieses Projekts aktualisieren (Letzte Session + Next Steps) ' +
+            '2) TODOS.md prüfen und aktualisieren ' +
+            '3) Alle Änderungen committen und pushen ' +
+            'Antworte nur mit: [SESSION_END] ✓'
+
+          const cwd = terminalId.startsWith('project:')
+            ? join(homedir(), 'mckay-os', 'projects', terminalId.replace('project:', ''))
+            : join(homedir(), 'mckay-os')
+
+          addToHistory(terminalId, 'user', '[SESSION END] Feierabend-Protokoll gestartet')
+
+          const proc = spawn(resolveClaudePath(), ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
+            cwd,
+            env: spawnEnv(),
+            shell: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
+
+          activeProcesses.set(terminalId, { proc, terminalId, cwd, startedAt: Date.now() })
+
+          let output = ''
+          proc.stdout.on('data', (data: Buffer) => { output += data.toString() })
+
+          proc.on('close', () => {
+            activeProcesses.delete(terminalId)
+            sessionStarted.delete(terminalId)
+            addToHistory(terminalId, 'assistant', output || '[SESSION_END] ✓')
+            writeSignal(terminalId, 'SESSION_END ✓')
+
+            if (serverSupabase) {
+              serverSupabase.from('activity_log').insert({
+                terminal_id: terminalId,
+                type: 'session_end',
+                text: `[${terminalId}] Session beendet (Feierabend)`,
+                response_preview: output.substring(0, 500),
+                time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              }).then(() => {})
+              serverSupabase.from('notifications').insert({
+                typ: 'info',
+                title: `Feierabend: ${terminalId.replace('project:', '')}`,
+                subtitle: 'Session-End Protokoll abgeschlossen',
+                source: `session-end:${terminalId}`,
+                terminal_id: terminalId,
+              }).then(() => {})
+            }
+          })
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true, terminalId }))
+        })
+      })
+
+      // --------------------------------------------------------
+      // GET /api/kani/history/:terminalId — Get session history
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/kani/history/')) return next()
+
+        const terminalId = decodeURIComponent(req.url.replace('/api/kani/history/', ''))
+        const history = getHistory(terminalId)
+        const isActive = activeProcesses.has(terminalId)
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ terminalId, history, isActive }))
       })
 
       // --------------------------------------------------------
@@ -281,6 +492,7 @@ function kaniTerminal(): Plugin {
           const proc = spawn(resolveClaudePath(), ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
             cwd,
             env: spawnEnv(),
+            shell: true,
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 

@@ -52,11 +52,11 @@ function glowFromCol(col: string): string {
 /* ── Quick Actions ──────────────────────────────────────── */
 
 const quickActions = [
-  { label: 'Research starten', icon: Search,    color: 'var(--bl)', border: 'var(--blg)' },
-  { label: 'Score berechnen',  icon: BarChart2, color: 'var(--a)',  border: 'var(--ag)' },
-  { label: '→ Projekt',        icon: Rocket,    color: 'var(--g)',  border: 'var(--gg)' },
-  { label: 'Speichern',        icon: Save,      color: 'var(--p)',  border: 'var(--pg)' },
-  { label: 'Feierabend',       icon: Coffee,    color: 'var(--r)',  border: 'var(--rg)' },
+  { label: 'Research starten', icon: Search,    color: 'var(--bl)', border: 'var(--blg)', prompt: 'Analysiere diese Idee: Markt, Wettbewerb, Zielgruppe, Machbarkeit. Gib eine klare Empfehlung (GO/PIVOT/STOP).' },
+  { label: 'Score berechnen',  icon: BarChart2, color: 'var(--a)',  border: 'var(--ag)',  prompt: 'Bewerte diese Idee auf einer Skala 1-5 in den Kategorien: Fit, Potenzial, Komplexität, Speed, Risiko. Begründe jede Bewertung.' },
+  { label: '→ Projekt',        icon: Rocket,    color: 'var(--g)',  border: 'var(--gg)',  prompt: '' },
+  { label: 'Speichern',        icon: Save,      color: 'var(--p)',  border: 'var(--pg)',  prompt: 'Speichere den aktuellen Stand dieser Idee in die MEMORY.md und aktualisiere die _INDEX.md.' },
+  { label: 'Feierabend',       icon: Coffee,    color: 'var(--r)',  border: 'var(--rg)',  prompt: 'Session beenden: MEMORY.md aktualisieren, Änderungen committen und pushen.' },
 ]
 
 /* ── Component ─────────────────────────────────────────── */
@@ -263,7 +263,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
-                    onClick={qa.label === '→ Projekt' ? () => setLaunchOpen(true) : undefined}
+                    onClick={qa.label === '→ Projekt' ? () => setLaunchOpen(true) : qa.prompt ? () => setPendingPrompt(qa.prompt) : undefined}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

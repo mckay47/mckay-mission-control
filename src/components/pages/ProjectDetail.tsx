@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Activity, Rocket, FlaskConical, ListTodo, Lightbulb } from 'lucide-react'
+import { Activity, Rocket, FlaskConical, ListTodo, Lightbulb, Power } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText } from '../shared/PreviewPanel.tsx'
@@ -80,11 +80,12 @@ const docStatusLabel = (s: string) => {
 }
 
 const quickActions = [
-  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)', prompt: '/status' },
-  { label: 'Deploy', icon: Rocket, color: 'var(--bl)', border: 'var(--bl)', prompt: '/build deploy' },
-  { label: 'Test', icon: FlaskConical, color: 'var(--a)', border: 'var(--a)', prompt: 'Teste alle Komponenten und zeige Ergebnisse' },
-  { label: 'Todos', icon: ListTodo, color: 'var(--p)', border: 'var(--p)', prompt: 'Zeige alle offenen Todos und ihren Status' },
-  { label: 'Ideas', icon: Lightbulb, color: 'var(--o)', border: 'var(--o)', prompt: 'Welche Feature-Ideen gibt es für dieses Projekt?' },
+  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)', prompt: 'Lies MEMORY.md und TODOS.md und gib mir einen kurzen Status-Überblick: Was wurde zuletzt gemacht, was steht als nächstes an, gibt es Blocker?' },
+  { label: 'Deploy', icon: Rocket, color: 'var(--bl)', border: 'var(--bl)', prompt: 'Deploye dieses Projekt auf Vercel. Prüfe vorher ob der Build sauber durchläuft.' },
+  { label: 'Test', icon: FlaskConical, color: 'var(--a)', border: 'var(--a)', prompt: 'Führe einen TypeScript Check (tsc --noEmit) und einen Build (vite build) durch. Zeige mir Fehler falls vorhanden.' },
+  { label: 'Todos', icon: ListTodo, color: 'var(--p)', border: 'var(--p)', prompt: 'Lies TODOS.md und zeige alle offenen Todos mit Priorität und Status.' },
+  { label: 'Ideas', icon: Lightbulb, color: 'var(--o)', border: 'var(--o)', prompt: 'Was wären sinnvolle nächste Features oder Verbesserungen für dieses Projekt? Basiere deine Vorschläge auf MEMORY.md und dem aktuellen Code.' },
+  { label: 'Feierabend', icon: Power, color: 'var(--r)', border: 'var(--r)', prompt: '__SESSION_END__' },
 ]
 
 export function ProjectDetail({ toggleTheme }: Props) {
@@ -403,7 +404,18 @@ export function ProjectDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
-                    onClick={() => setPendingPrompt(qa.prompt)}
+                    onClick={() => {
+                      if (qa.prompt === '__SESSION_END__') {
+                        fetch('/api/kani/session-end-single', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ terminalId: `project:${project.id}` }),
+                        })
+                        setPendingPrompt(null)
+                      } else {
+                        setPendingPrompt(qa.prompt)
+                      }
+                    }}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}
