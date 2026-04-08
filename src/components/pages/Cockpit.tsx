@@ -21,7 +21,7 @@ const tiles = [
 ]
 
 export function Cockpit({ toggleTheme, kaniStream }: Props) {
-  const { projects, ideas, tickerData } = useMissionControl()
+  const { projects, ideas } = useMissionControl()
   const nav = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)

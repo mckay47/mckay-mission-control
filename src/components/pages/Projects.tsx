@@ -10,7 +10,7 @@ interface Props { toggleTheme: () => void }
 
 type Filter = 'all' | 'attention' | 'active' | 'done'
 
-const statusLabel = (h: string) => {
+const statusLabel = (h: string | undefined) => {
   switch (h) {
     case 'active': return 'ACTIVE'
     case 'blocked': return 'BLOCKED'
@@ -20,7 +20,7 @@ const statusLabel = (h: string) => {
   }
 }
 
-const statusColor = (h: string) => {
+const statusColor = (h: string | undefined) => {
   switch (h) {
     case 'active': return 'var(--g)'
     case 'blocked': return 'var(--r)'
@@ -330,10 +330,10 @@ export function Projects({ toggleTheme }: Props) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 0' }}>
                     <span className="st" style={{ fontSize: 9 }}>Pipeline</span>
                     <div className="pl-track in">
-                      <div className="pl-seg" style={{ flex: Math.max(p.progress, 5), background: p.color }} />
-                      {p.progress < 100 && <div className="pl-seg" style={{ flex: 100 - p.progress, background: 'var(--tx3)', opacity: 0.2 }} />}
+                      <div className="pl-seg" style={{ flex: Math.max(p.progress ?? 0, 5), background: p.color }} />
+                      {(p.progress ?? 0) < 100 && <div className="pl-seg" style={{ flex: 100 - (p.progress ?? 0), background: 'var(--tx3)', opacity: 0.2 }} />}
                     </div>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>{p.progress}%</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>{p.progress ?? 0}%</span>
                   </div>
                 </div>
               )}
@@ -570,7 +570,7 @@ export function Projects({ toggleTheme }: Props) {
                     className="ghost-card"
                     style={{ '--hc': `${p.color}22`, padding: '12px 18px', flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 14 } as React.CSSProperties}
                   >
-                    <DonutChart progress={p.progress} size={44} color={p.color} />
+                    <DonutChart progress={p.progress ?? 0} size={44} color={p.color} />
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flex: 1, alignItems: 'center' }}>
                       {agents.map((a, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

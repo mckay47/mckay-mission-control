@@ -6,12 +6,8 @@ updated: 2026-04-08
 
 ## Active
 
-### Go Live Preparation
-- [ ] **P0** scaffold-project Skill: CLAUDE.md-Generierung + repo_path bei GitHub-Repo-Erstellung automatisieren (W1 Step 7)
-- [ ] **P0** Ideen-Workflow: ideas/{id}/ Verzeichnis + CLAUDE.md automatisch erstellen wenn KANI neue Idee anlegt
-- [ ] **P0** Shutdown-Sequenz: /api/kani/session-end Endpoint + Shutdown-Dialog triggert alle aktiven Terminals (MEMORY.md, TODOS.md, git commit+push)
-- [ ] **P0** Branch dev → main mergen, Vercel Production Deploy
-- [ ] **P0** Supabase: echte Projekt-Daten einpflegen (RESET-KIT.md als Vorlage)
+### Post Go Live
+- [ ] **P1** Supabase Daten einpflegen: Projekte, Agenten, Skills — RESET-KIT.md als Vorlage
 
 ## Done
 
@@ -32,3 +28,8 @@ updated: 2026-04-08
 - [x] generate-project-claude-md.mjs (auto-context in all 14 project CLAUDE.md files)
 - [x] launchd auto-start at login (com.mckay.mission-control.plist)
 - [x] Deployed to Vercel (dev branch)
+- [x] scaffold-project Skill: TODOS.md + DECISIONS.md + REGISTRY.md Format + W1 Referenz aktualisiert (2026-04-08)
+- [x] Ideen-Workflow: IDEA INTAKE PROTOCOL in kani-master.md — ideas/{id}/ + CLAUDE.md + _INDEX.md + Supabase automatisch (2026-04-08)
+- [x] Supabase Datenmigration: 14 Workflows (W1-W14) + 4 echte Todos ersetzt (2026-04-08)
+- [x] Shutdown-Sequenz: POST /api/kani/session-end + ShutdownDialog mit realem Polling (2026-04-08)
+- [x] Go Live: dev → main gepusht, Vercel Production Deploy läuft (2026-04-08)

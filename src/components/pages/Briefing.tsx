@@ -5,7 +5,7 @@ import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 
 interface Props { toggleTheme: () => void }
 
-const healthColor = (h: string) => {
+const healthColor = (h: string | undefined) => {
   switch (h) {
     case 'active': return 'var(--g)'
     case 'blocked': return 'var(--r)'
@@ -15,7 +15,7 @@ const healthColor = (h: string) => {
   }
 }
 
-const healthLabel = (h: string) => {
+const healthLabel = (h: string | undefined) => {
   switch (h) {
     case 'active': return 'ACTIVE'
     case 'blocked': return 'BLOCKED'

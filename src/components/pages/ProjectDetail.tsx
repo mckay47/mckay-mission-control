@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Activity, Rocket, FlaskConical, ListTodo, Lightbulb } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
-import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
+import { PreviewPanel, TcLabel, TcText } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { Terminal } from '../shared/Terminal.tsx'
 import { StatusLed } from '../ui/StatusLed.tsx'
@@ -12,7 +12,7 @@ import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 
 interface Props { toggleTheme: () => void }
 
-const healthColor = (h: string) => {
+const healthColor = (h: string | undefined) => {
   switch (h) {
     case 'active': return 'var(--g)'
     case 'blocked': return 'var(--r)'
@@ -22,7 +22,7 @@ const healthColor = (h: string) => {
   }
 }
 
-const healthLabel = (h: string) => {
+const healthLabel = (h: string | undefined) => {
   switch (h) {
     case 'active': return 'ACTIVE'
     case 'blocked': return 'BLOCKED'
@@ -80,11 +80,11 @@ const docStatusLabel = (s: string) => {
 }
 
 const quickActions = [
-  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)' },
-  { label: 'Deploy', icon: Rocket, color: 'var(--bl)', border: 'var(--bl)' },
-  { label: 'Test', icon: FlaskConical, color: 'var(--a)', border: 'var(--a)' },
-  { label: 'Todos', icon: ListTodo, color: 'var(--p)', border: 'var(--p)' },
-  { label: 'Ideas', icon: Lightbulb, color: 'var(--o)', border: 'var(--o)' },
+  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)', prompt: '/status' },
+  { label: 'Deploy', icon: Rocket, color: 'var(--bl)', border: 'var(--bl)', prompt: '/build deploy' },
+  { label: 'Test', icon: FlaskConical, color: 'var(--a)', border: 'var(--a)', prompt: 'Teste alle Komponenten und zeige Ergebnisse' },
+  { label: 'Todos', icon: ListTodo, color: 'var(--p)', border: 'var(--p)', prompt: 'Zeige alle offenen Todos und ihren Status' },
+  { label: 'Ideas', icon: Lightbulb, color: 'var(--o)', border: 'var(--o)', prompt: 'Welche Feature-Ideen gibt es für dieses Projekt?' },
 ]
 
 export function ProjectDetail({ toggleTheme }: Props) {
@@ -124,7 +124,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
   const milestones = projectPipelines[project.id] || []
 
   const pipeline = milestones.length > 0 ? (
-    <Pipeline label="Roadmap" milestones={milestones} summary={project.phase} />
+    <Pipeline label="Roadmap" milestones={milestones} summary={project.phase ?? ''} />
   ) : undefined
 
   // Project-specific ticker
@@ -204,7 +204,8 @@ export function ProjectDetail({ toggleTheme }: Props) {
                 <div
                   key={i}
                   className="ghost-card"
-                  style={{ '--hc': 'rgba(255,255,255,0.04)', padding: '10px 14px', gap: 2, borderRadius: 14, flexDirection: 'row', alignItems: 'center' } as React.CSSProperties}
+                  style={{ '--hc': 'rgba(255,255,255,0.04)', padding: '10px 14px', gap: 2, borderRadius: 14, flexDirection: 'row', alignItems: 'center', cursor: 'pointer' } as React.CSSProperties}
+                  onClick={() => setPendingPrompt(`/build ${t.title}`)}
                 >
                   <span style={{
                     fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0,
@@ -402,6 +403,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    onClick={() => setPendingPrompt(qa.prompt)}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

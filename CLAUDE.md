@@ -164,19 +164,15 @@ integrations/ui-design            -- design system, components, patterns
 
 <!-- AUTO-CONTEXT:START -->
 ## Auto-Generated Context
-> Updated: 2026-04-08 15:49
+> Updated: 2026-04-08 19:37
 
 **Project:** mission-control
-**Status:** Phase 0 complete → Go Live
-**Stack:** React+Vite, TailwindCSS, Vercel
+**Status:** **Live** ✓
+**Stack:** React+Vite, TailwindCSS, Vercel+Supabase
 **Repo:** ~/mckay-os/projects/mission-control
 
 **Open Todos:**
-- [ ] **P0** scaffold-project Skill: CLAUDE.md-Generierung + repo_path bei GitHub-Repo-Erstellung automatisieren (W1 Step 7)
-- [ ] **P0** Ideen-Workflow: ideas/{id}/ Verzeichnis + CLAUDE.md automatisch erstellen wenn KANI neue Idee anlegt
-- [ ] **P0** Shutdown-Sequenz: /api/kani/session-end Endpoint + Shutdown-Dialog triggert alle aktiven Terminals (MEMORY.md, TODOS.md, git commit+push)
-- [ ] **P0** Branch dev → main mergen, Vercel Production Deploy
-- [ ] **P0** Supabase: echte Projekt-Daten einpflegen (RESET-KIT.md als Vorlage)
+- [ ] **P1** Supabase Daten einpflegen: Projekte, Agenten, Skills
 
 **KANI Working Rules:**
 1. When editing code: use the **Repo** path above for all file operations

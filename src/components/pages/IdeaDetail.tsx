@@ -7,6 +7,7 @@ import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/Prev
 import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { Terminal } from '../shared/Terminal.tsx'
 import { Pipeline } from '../shared/Pipeline.tsx'
+import LaunchWizard from '../shared/LaunchWizard.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 
 interface Props { toggleTheme: () => void }
@@ -66,6 +67,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
   const nav = useNavigate()
   const [tab, setTab] = useState(0)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
+  const [launchOpen, setLaunchOpen] = useState(false)
 
   const idea = ideas.find(i => i.id === id)
 
@@ -80,24 +82,25 @@ export function IdeaDetail({ toggleTheme }: Props) {
 
   const color = idea.col || 'var(--bl)'
   const glow = glowFromCol(color)
-  const ps = phaseStyle(idea.st)
-  const totalScore = idea.f + idea.pot + idea.c + idea.spd - idea.r
-  const innovationScore = idea.feedback?.innovation ? idea.feedback.innovation * 20 : null
-
-  // Pipeline
-  const milestones = getIdeaPipeline(idea.st.toLowerCase(), color, glow)
-  const pipeline = <Pipeline label="Idee Pipeline" milestones={milestones} summary={ps.label} />
+  const ps = phaseStyle(idea.st ?? '')
+  const totalScore = (idea.f ?? 0) + (idea.pot ?? 0) + (idea.c ?? 0) + (idea.spd ?? 0) - (idea.r ?? 0)
 
   // Detail data from context
   const feedback = ideaFeedback[idea.id]
   const research = ideaResearch[idea.id]
 
+  const innovationScore = feedback?.innovation ? feedback.innovation * 20 : null
+
+  // Pipeline
+  const milestones = getIdeaPipeline((idea.st ?? '').toLowerCase(), color, glow)
+  const pipeline = <Pipeline label="Idee Pipeline" milestones={milestones} summary={ps.label} />
+
   const scores = [
-    { label: 'Fit', value: idea.f, max: 5, color: 'var(--g)' },
-    { label: 'Potenzial', value: idea.pot, max: 5, color: 'var(--bl)' },
-    { label: 'Komplexitaet', value: idea.c, max: 5, color: 'var(--p)' },
-    { label: 'Speed', value: idea.spd, max: 5, color: 'var(--a)' },
-    { label: 'Risiko', value: idea.r, max: 5, color: 'var(--r)' },
+    { label: 'Fit', value: idea.f ?? 0, max: 5, color: 'var(--g)' },
+    { label: 'Potenzial', value: idea.pot ?? 0, max: 5, color: 'var(--bl)' },
+    { label: 'Komplexitaet', value: idea.c ?? 0, max: 5, color: 'var(--p)' },
+    { label: 'Speed', value: idea.spd ?? 0, max: 5, color: 'var(--a)' },
+    { label: 'Risiko', value: idea.r ?? 0, max: 5, color: 'var(--r)' },
   ]
 
   const tabs = [
@@ -212,7 +215,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
         <>
           <div style={{ fontSize: 13, color: 'var(--tx2)', lineHeight: 1.8 }}>
             <p style={{ marginBottom: 12 }}>
-              <strong style={{ color: 'var(--tx)' }}>{idea.n}</strong> — {idea.txt || 'Keine Beschreibung'}
+              <strong style={{ color: 'var(--tx)' }}>{idea.n ?? idea.title ?? 'Unbekannt'}</strong> — {idea.txt || 'Keine Beschreibung'}
             </p>
             <p style={{ marginBottom: 12 }}>
               Kategorie: <strong>{idea.cat}</strong> | Status: <span style={{ color: ps.color, fontWeight: 700 }}>{ps.label}</span>
@@ -260,6 +263,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    onClick={qa.label === '→ Projekt' ? () => setLaunchOpen(true) : undefined}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}
@@ -271,7 +275,7 @@ export function IdeaDetail({ toggleTheme }: Props) {
         }
         right={
           <PreviewPanel
-            title={idea.n}
+            title={idea.n ?? idea.title ?? 'Unbekannt'}
             ledColor={color}
             ledGlow={glow}
             badge={{ label: `${ps.label} / ${idea.cat}`, bg: `${ps.color}18`, color: ps.color }}
@@ -285,10 +289,18 @@ export function IdeaDetail({ toggleTheme }: Props) {
       />
 
       <BottomTicker
-        label={idea.n.toUpperCase().split(' ')[0]}
+        label={(idea.n ?? idea.title ?? 'IDEA').toUpperCase().split(' ')[0]}
         ledColor={color}
         ledGlow={glow}
         items={tickerData.thinktank || tickerData.ideas || []}
+      />
+
+      <LaunchWizard
+        open={launchOpen}
+        onClose={() => setLaunchOpen(false)}
+        ideaId={idea.id}
+        ideaName={idea.n ?? idea.title}
+        ideaDescription={idea.txt ?? idea.description}
       />
     </div>
   )

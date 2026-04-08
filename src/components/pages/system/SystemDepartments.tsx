@@ -73,7 +73,7 @@ export function SystemDepartments({ toggleTheme }: Props) {
           <TcLabel>Status</TcLabel>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <StatusLed color={dept.color} glow={dept.glow} animate size={10} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: dept.color }}>{dept.badge.label}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: dept.color }}>{dept.badge?.label ?? ''}</span>
           </div>
           <TcText>{dept.description}</TcText>
           <TcLabel>Assigned Agents</TcLabel>
@@ -88,7 +88,7 @@ export function SystemDepartments({ toggleTheme }: Props) {
           ))}
           <TcLabel>KPIs</TcLabel>
           <TcStatRow>
-            {dept.kpis.map((k, ki) => (
+            {(dept.kpis || []).map((k, ki) => (
               <TcStat key={ki} value={k.value} label={k.label} color={k.color} />
             ))}
           </TcStatRow>
@@ -189,26 +189,28 @@ export function SystemDepartments({ toggleTheme }: Props) {
                   {/* Name + Status badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)' }}>{d.name}</span>
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                      background: d.badge.bg, color: d.badge.color, letterSpacing: 1,
-                    }}>
-                      {d.badge.label}
-                    </span>
+                    {d.badge && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                        background: d.badge.bg, color: d.badge.color, letterSpacing: 1,
+                      }}>
+                        {d.badge.label}
+                      </span>
+                    )}
                   </div>
 
                   {/* Task count */}
                   <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: d.color }}>
-                      {d.kpis.reduce((sum, k) => sum + (parseInt(k.value) || 0), 0)}
+                      {(d.kpis || []).reduce((sum, k) => sum + (parseInt(k.value) || 0), 0)}
                     </span> Tasks
                   </div>
 
                   {/* KPIs inline */}
                   <div className="ghost-foot" style={{ display: 'flex', gap: 14, marginTop: 2 }}>
-                    {d.kpis.slice(0, 2).map((k, ki) => (
+                    {(d.kpis || []).slice(0, 2).map((k, ki) => (
                       <div key={ki} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: k.color }}>{k.value}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: k.color ?? 'var(--tx3)' }}>{k.value}</span>
                         <span style={{ fontSize: 10, color: 'var(--tx3)' }}>{k.label}</span>
                       </div>
                     ))}
@@ -257,7 +259,7 @@ export function SystemDepartments({ toggleTheme }: Props) {
         label="DEPARTMENTS"
         ledColor="var(--a)"
         ledGlow="var(--ag)"
-        items={tickerData.system}
+        items={tickerData.system ?? []}
       />
     </div>
   )

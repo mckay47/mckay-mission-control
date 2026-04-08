@@ -61,7 +61,7 @@ export function TerminalGrid() {
                 placeholder={`${p.id} → ...`}
                 mode="live"
                 cwd={`~/mckay-os/projects/${p.id}`}
-                terminalId={`grid:${p.id}`}
+                terminalId={`project:${p.id}`}
                 inputValue={inputs[p.id] || ''}
                 onInputChange={(v) => setInputs(prev => ({ ...prev, [p.id]: v }))}
                 onClearInput={() => setInputs(prev => ({ ...prev, [p.id]: '' }))}

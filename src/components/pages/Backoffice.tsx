@@ -5,7 +5,6 @@ import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
-import { StatusLed } from '../ui/StatusLed.tsx'
 import { Pipeline } from '../shared/Pipeline.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 
@@ -53,7 +52,7 @@ export function Backoffice({ toggleTheme }: Props) {
       content: (
         <>
           <TcLabel>Offene Tasks</TcLabel>
-          {dept.tasks > 0 ? (
+          {(dept.tasks ?? 0) > 0 ? (
             <TcText>{dept.tasks} Tasks offen in diesem Department</TcText>
           ) : (
             <TcText style={{ color: 'var(--tx3)' }}>Keine offenen Tasks</TcText>

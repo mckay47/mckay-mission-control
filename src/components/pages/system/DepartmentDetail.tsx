@@ -152,13 +152,13 @@ export function DepartmentDetail({ toggleTheme }: Props) {
         <>
           <TcLabel>Department Metrics</TcLabel>
           <TcStatRow>
-            {dept.kpis.map((k, i) => (
+            {(dept.kpis || []).map((k, i) => (
               <TcStat key={i} value={k.value} label={k.label} color={k.color} />
             ))}
           </TcStatRow>
           <TcLabel>Tasks</TcLabel>
           <TcStatRow>
-            <TcStat value={dept.tasks} label="Offen" color={dept.color} />
+            <TcStat value={dept.tasks ?? 0} label="Offen" color={dept.color} />
           </TcStatRow>
         </>
       ),
@@ -203,7 +203,7 @@ export function DepartmentDetail({ toggleTheme }: Props) {
             <div className="st" style={{ padding: '0 2px' }}>Terminal</div>
             <Terminal
               title={`${dept.id} — department`}
-              statusLabel={dept.badge.label}
+              statusLabel={dept.badge?.label ?? ''}
               statusColor={dept.color}
               statusGlow={dept.glow}
               placeholder={`kani dept ${dept.id} → ...`}
@@ -251,7 +251,7 @@ export function DepartmentDetail({ toggleTheme }: Props) {
         label={dept.name.toUpperCase()}
         ledColor={dept.color}
         ledGlow={dept.glow}
-        items={tickerData.backoffice}
+        items={tickerData.backoffice ?? []}
       />
     </div>
   )

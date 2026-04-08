@@ -1,4 +1,4 @@
-import { NOTIFS } from '../../lib/data'
+import { useMissionControl } from '../../lib/MissionControlProvider'
 
 interface TickerItem {
   agent: string
@@ -16,15 +16,6 @@ function typToColor(typ: string): string {
   }
 }
 
-function buildTickerItems(): TickerItem[] {
-  if (NOTIFS.length === 0) return []
-  return NOTIFS.map((n) => ({
-    agent: n.typ,
-    color: typToColor(n.typ),
-    text: n.sub ? `${n.tit} — ${n.sub}` : n.tit,
-  }))
-}
-
 function TickerItems({ items }: { items: TickerItem[] }) {
   return (
     <>
@@ -40,7 +31,13 @@ function TickerItems({ items }: { items: TickerItem[] }) {
 }
 
 export default function LiveFeed() {
-  const feedItems = buildTickerItems()
+  const { notifications } = useMissionControl()
+
+  const feedItems: TickerItem[] = notifications.map((n) => ({
+    agent: n.typ,
+    color: typToColor(n.typ),
+    text: n.subtitle ? `${n.title} — ${n.subtitle}` : n.title,
+  }))
 
   if (feedItems.length === 0) {
     return (
@@ -68,7 +65,6 @@ export default function LiveFeed() {
           LIVE FEED
         </div>
         <div className="ticker-c">
-          {/* Duplicate items for seamless infinite scroll — CSS animation translates -50% */}
           <div className="ticker-s">
             <TickerItems items={feedItems} />
             <TickerItems items={feedItems} />

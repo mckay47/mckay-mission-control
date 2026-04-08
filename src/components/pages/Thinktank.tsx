@@ -6,6 +6,7 @@ import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText } from '../shared/PreviewPanel.tsx'
 import { Pipeline } from '../shared/Pipeline.tsx'
+import LaunchWizard from '../shared/LaunchWizard.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 
 interface Props { toggleTheme: () => void }
@@ -14,7 +15,7 @@ type Filter = 'all' | 'intake' | 'parked' | 'research' | 'ready'
 
 /* ── Helpers ──────────────────────────────────────────── */
 
-function phaseStyle(st: string): { label: string; bg: string; color: string } {
+function phaseStyle(st: string | undefined): { label: string; bg: string; color: string } {
   switch (st) {
     case 'Bereit':   return { label: 'READY',    bg: 'rgba(0,200,83,0.12)',    color: 'var(--g)' }
     case 'Research': return { label: 'RESEARCH',  bg: 'rgba(124,77,255,0.12)',  color: 'var(--p)' }
@@ -53,10 +54,11 @@ export function Thinktank({ toggleTheme }: Props) {
   const [sel, setSel] = useState(0)
   const [tab, setTab] = useState(0)
   const [filter, setFilter] = useState<Filter>('all')
+  const [launchOpen, setLaunchOpen] = useState(false)
 
   const filtered = useMemo(() => {
     switch (filter) {
-      case 'intake':   return ideas.filter(i => !['Bereit','Research','Geparkt','Projekt'].includes(i.st))
+      case 'intake':   return ideas.filter(i => !['Bereit','Research','Geparkt','Projekt'].includes(i.st ?? ''))
       case 'parked':   return ideas.filter(i => i.st === 'Geparkt')
       case 'research': return ideas.filter(i => i.st === 'Research')
       case 'ready':    return ideas.filter(i => i.st === 'Bereit')
@@ -394,7 +396,7 @@ export function Thinktank({ toggleTheme }: Props) {
               footer={
                 <div style={{ padding: '16px 26px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <button
-                    onClick={() => nav(`/idea/${idea.id}`)}
+                    onClick={() => setLaunchOpen(true)}
                     style={{
                       width: '100%',
                       padding: '11px 0',
@@ -416,6 +418,13 @@ export function Thinktank({ toggleTheme }: Props) {
                     <Rocket size={14} stroke="var(--g)" />
                     Als Projekt konvertieren
                   </button>
+                  <LaunchWizard
+                    open={launchOpen}
+                    onClose={() => setLaunchOpen(false)}
+                    ideaId={idea.id}
+                    ideaName={idea.n ?? idea.title}
+                    ideaDescription={idea.txt ?? idea.description}
+                  />
                 </div>
               }
             />

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase.ts'
-import type { Project, Idea, Agent, Skill, Department, PersonalArea, NetworkEntry, TickerItemData } from './types.ts'
+import type { Project, Idea, Agent, Skill, Department, PersonalArea, NetworkEntry, TickerItemData, Notification, LaunchSession } from './types.ts'
 import type { PipelineMilestone } from '../components/shared/Pipeline.tsx'
 import { Shield, ShieldCheck, ShieldAlert, Power, Activity, CheckCircle, Clock, Zap, TrendingUp } from 'lucide-react'
 
@@ -139,6 +139,10 @@ interface MissionControlContextValue {
   mcpServers: McpServer[]
   securityFeatures: SecurityFeature[]
   perfKpis: PerfKpi[]
+
+  // Phase 2: Notifications + Launch
+  notifications: Notification[]
+  launchSessions: LaunchSession[]
 }
 
 // ============================================================
@@ -158,6 +162,7 @@ const emptyContext: MissionControlContextValue = {
   getIdeaPipeline,
   ideaFeedback: {}, ideaResearch: {}, ideaLastUpdate: {},
   workflows: [], mcpServers: [], securityFeatures: [], perfKpis: [],
+  notifications: [], launchSessions: [],
 }
 
 const MissionControlContext = createContext<MissionControlContextValue>(emptyContext)
@@ -171,13 +176,13 @@ function transformProject(row: any): Project {
   return {
     id: row.id,
     name: row.name,
+    color: row.color ?? 'var(--tx3)',
+    glow: row.glow ?? 'rgba(255,255,255,0.04)',
     emoji: row.emoji,
     description: row.description,
     progress: row.progress,
     phase: row.phase,
     health: row.health,
-    color: row.color,
-    glow: row.glow,
     colorBg: row.color_bg,
     stack: row.stack,
     domain: row.domain,
@@ -217,9 +222,9 @@ function transformDepartment(row: any): Department {
   return {
     id: row.id,
     name: row.name,
+    color: row.color ?? 'var(--tx3)',
+    glow: row.glow ?? 'rgba(255,255,255,0.04)',
     description: row.description,
-    color: row.color,
-    glow: row.glow,
     colorBg: row.color_bg,
     tasks: row.tasks,
     badge: row.badge,
@@ -232,9 +237,9 @@ function transformPersonalArea(row: any): PersonalArea {
   return {
     id: row.id,
     name: row.name,
+    color: row.color ?? 'var(--tx3)',
+    glow: row.glow ?? 'rgba(255,255,255,0.04)',
     description: row.description,
-    color: row.color,
-    glow: row.glow,
     colorBg: row.color_bg,
     badge: row.badge,
     items: row.items,
@@ -247,9 +252,9 @@ function transformNetworkEntry(row: any): NetworkEntry {
   return {
     id: row.id,
     name: row.name,
+    color: row.color ?? 'var(--tx3)',
+    glow: row.glow ?? 'rgba(255,255,255,0.04)',
     description: row.description,
-    color: row.color,
-    glow: row.glow,
     colorBg: row.color_bg,
     badge: row.badge,
     kpis: row.kpis,
@@ -345,6 +350,8 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         { data: securityRows },
         { data: kpiRows },
         { data: tickerRows },
+        { data: notifRows },
+        { data: launchRows },
       ] = await Promise.all([
         supabase.from('projects').select('*'),
         supabase.from('ideas').select('*').order('score', { ascending: false }),
@@ -360,6 +367,8 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         supabase.from('security_features').select('*'),
         supabase.from('performance_kpis').select('*'),
         supabase.from('ticker_items').select('*').order('sort_order'),
+        supabase.from('notifications').select('*').eq('dismissed', false).order('created_at', { ascending: false }).limit(50),
+        supabase.from('launch_sessions').select('*').in('status', ['describe','research','brief','review']).order('created_at', { ascending: false }),
       ])
 
       if (!mounted) return
@@ -451,17 +460,17 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
       for (const row of tickerRows || []) {
         if (!tickerData[row.page]) tickerData[row.page] = []
         tickerData[row.page].push({
-          color: row.color,
-          label: row.label,
-          labelColor: row.label_color,
-          text: row.text,
+          color: row.color ?? '',
+          label: row.label ?? '',
+          labelColor: row.label_color ?? '',
+          text: row.text ?? '',
         })
       }
 
       // Flat transforms
       const agents: Agent[] = (agentRows || []).map(r => ({
         name: r.name, emoji: r.emoji, type: r.type, status: r.status,
-        model: r.model, purpose: r.purpose, color: r.color,
+        model: r.model, purpose: r.purpose, color: r.color ?? 'var(--tx3)',
       }))
       const skills: Skill[] = (skillRows || []).map(r => ({
         name: r.name, category: r.category, status: r.status, purpose: r.purpose,
@@ -470,6 +479,21 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
       const mcpServers = (mcpRows || []).map(transformMcpServer)
       const securityFeatures = (securityRows || []).map(transformSecurityFeature)
       const perfKpis = (kpiRows || []).map(transformPerfKpi)
+
+      // Phase 2: Notifications + Launch Sessions (no transform needed — 1:1 from Supabase)
+      const notifications: Notification[] = (notifRows || []).map((r) => ({
+        id: r.id, typ: r.typ, title: r.title, subtitle: r.subtitle ?? '',
+        source: r.source ?? '', project_id: r.project_id, idea_id: r.idea_id,
+        terminal_id: r.terminal_id, is_read: r.is_read ?? false,
+        dismissed: r.dismissed ?? false, metadata: r.metadata ?? {},
+        created_at: r.created_at,
+      }))
+      const launchSessions: LaunchSession[] = (launchRows || []).map((r) => ({
+        id: r.id, idea_id: r.idea_id, status: r.status, name: r.name ?? '',
+        description: r.description ?? '', research_output: r.research_output ?? {},
+        strategy_brief: r.strategy_brief ?? {}, project_id: r.project_id,
+        error: r.error, created_at: r.created_at, updated_at: r.updated_at,
+      }))
 
       setData({
         loading: false,
@@ -484,6 +508,7 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         getIdeaPipeline,
         ideaFeedback, ideaResearch, ideaLastUpdate,
         workflows, mcpServers, securityFeatures, perfKpis,
+        notifications, launchSessions,
       })
     }
 
@@ -499,9 +524,11 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ideas' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'workflows' }, () => fetchAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, () => fetchAll())
+      // activity_log excluded — audit log, not state — would re-fetch all 14 tables on every KANI prompt
       .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, () => fetchAll())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ticker_items' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => fetchAll())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'launch_sessions' }, () => fetchAll())
       .subscribe()
 
     return () => {

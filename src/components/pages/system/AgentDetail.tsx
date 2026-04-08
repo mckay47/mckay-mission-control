@@ -27,7 +27,7 @@ const agentSkills: Record<string, string[]> = {
 }
 
 
-function getAgentPipeline(status: string, color: string): PipelineMilestone[] {
+function getAgentPipeline(status: string | undefined, color: string): PipelineMilestone[] {
   const glow = color.replace(')', 'g)')
   if (status === 'active') {
     return [
@@ -55,8 +55,8 @@ const quickActions = [
   { label: 'Neustart', icon: RotateCcw, color: 'var(--r)', border: 'var(--r)' },
 ]
 
-const statusColor = (s: string) => s === 'active' ? 'var(--g)' : s === 'idle' ? 'var(--a)' : 'var(--tx3)'
-const statusLabel = (s: string) => s === 'active' ? 'Aktiv' : s === 'idle' ? 'Idle' : 'Standby'
+const statusColor = (s: string | undefined) => s === 'active' ? 'var(--g)' : s === 'idle' ? 'var(--a)' : 'var(--tx3)'
+const statusLabel = (s: string | undefined) => s === 'active' ? 'Aktiv' : s === 'idle' ? 'Idle' : 'Standby'
 
 export function AgentDetail({ toggleTheme }: Props) {
   const { agents, skills, tickerData } = useMissionControl()
@@ -131,7 +131,7 @@ export function AgentDetail({ toggleTheme }: Props) {
           <TcText>{agent.purpose}</TcText>
           <TcLabel>Type & Model</TcLabel>
           <TcStatRow>
-            <TcStat value={agent.model} label="LLM" color={color} />
+            <TcStat value={agent.model ?? '--'} label="LLM" color={color} />
             <TcStat value={agent.type === 'core' ? 'Core' : 'Specialist'} label="Type" />
           </TcStatRow>
           <TcLabel>Configuration</TcLabel>
@@ -258,7 +258,7 @@ export function AgentDetail({ toggleTheme }: Props) {
         label={agent.name.toUpperCase()}
         ledColor={color}
         ledGlow={glow}
-        items={tickerData.system}
+        items={tickerData.system ?? []}
       />
     </div>
   )

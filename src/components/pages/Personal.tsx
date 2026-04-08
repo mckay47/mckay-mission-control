@@ -67,7 +67,7 @@ export function Personal({ toggleTheme }: Props) {
         <>
           <TcLabel>Aktuelle Eintraege</TcLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {area.items.map((item, i) => (
+            {(area.items || []).map((item, i) => (
               <div key={i} className="ghost-card" style={{ padding: '12px 16px', borderRadius: 12, fontSize: 13, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 10, '--hc': 'rgba(255,255,255,0.04)' } as React.CSSProperties}>
                 <StatusLed color={area.color} glow={area.glow} size={7} />
                 {item}
@@ -130,18 +130,20 @@ export function Personal({ toggleTheme }: Props) {
                   {/* Name + Status badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)' }}>{a.name}</span>
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                      background: a.badge.bg, color: a.badge.color, letterSpacing: 1,
-                    }}>
-                      {a.badge.label}
-                    </span>
+                    {a.badge && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+                        background: a.badge.bg, color: a.badge.color, letterSpacing: 1,
+                      }}>
+                        {a.badge.label}
+                      </span>
+                    )}
                   </div>
 
                   {/* Item count */}
                   <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: a.color }}>
-                      {a.items.length}
+                      {(a.items || []).length}
                     </span> Items
                   </div>
 
@@ -190,7 +192,7 @@ export function Personal({ toggleTheme }: Props) {
         label="PERSONAL"
         ledColor="var(--pk)"
         ledGlow="var(--pkg)"
-        items={tickerData.personal}
+        items={tickerData.personal ?? []}
       />
     </div>
   )

@@ -96,9 +96,9 @@ export default function App() {
           <Route path="/system/performance" element={<SystemPerformance toggleTheme={toggleTheme} />} />
 
           {/* Standalone windows */}
-          <Route path="/project/:id/terminal" element={<StandaloneTerminal />} />
-          <Route path="/idea/:id/terminal" element={<StandaloneTerminal />} />
-          <Route path="/terminals" element={<TerminalGrid toggleTheme={toggleTheme} />} />
+          <Route path="/project/:id/terminal" element={<StandaloneTerminal type="project" />} />
+          <Route path="/idea/:id/terminal" element={<StandaloneTerminal type="idea" />} />
+          <Route path="/terminals" element={<TerminalGrid />} />
         </Routes>
 
         <ShutdownDialog

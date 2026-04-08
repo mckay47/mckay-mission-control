@@ -6,7 +6,7 @@ import mckayPlugin from './scripts/vite-mckay-plugin.mjs'
 import { spawn, type ChildProcess } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, mkdirSync, appendFileSync } from 'fs'
+import { existsSync, mkdirSync, appendFileSync, writeFileSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 
@@ -63,6 +63,28 @@ function extractSignals(text: string): string[] {
 function resolveCwd(cwd: string): string {
   return cwd.startsWith('~') ? join(homedir(), cwd.slice(1)) : cwd
 }
+
+// Resolve claude CLI path — launchd doesn't inherit full shell PATH
+const CLAUDE_PATH = (() => {
+  const candidates = [
+    '/opt/homebrew/bin/claude',
+    '/opt/homebrew/Cellar/node/25.8.2/bin/claude',
+    '/usr/local/bin/claude',
+  ]
+  for (const p of candidates) {
+    if (existsSync(p)) return p
+  }
+  return 'claude'
+})()
+
+// Ensure spawn env has node + homebrew in PATH (launchd strips it)
+function spawnEnv(): NodeJS.ProcessEnv {
+  const extra = '/opt/homebrew/bin:/opt/homebrew/Cellar/node/25.8.2/bin:/usr/local/bin'
+  const current = process.env.PATH || '/usr/bin:/bin'
+  return { ...process.env, PATH: `${extra}:${current}` }
+}
+
+function resolveClaudePath(): string { return CLAUDE_PATH }
 
 // ============================================================
 // KANI Terminal Plugin — Claude CLI streaming + process mgmt
@@ -135,9 +157,9 @@ function kaniTerminal(): Plugin {
             ? ['-p', prompt, '--output-format', 'text']
             : ['--continue', '-p', prompt, '--output-format', 'text']
 
-          const proc = spawn('claude', claudeArgs, {
+          const proc = spawn(resolveClaudePath(), claudeArgs, {
             cwd,
-            env: { ...process.env },
+            env: spawnEnv(),
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 
@@ -168,7 +190,7 @@ function kaniTerminal(): Plugin {
               }
             }
 
-            // Auto-log to activity_log
+            // Auto-log to activity_log + auto-create notification
             if (serverSupabase) {
               const projectMatch = terminalId.match(/^project:(.+)$/)
               serverSupabase.from('activity_log').insert({
@@ -180,6 +202,19 @@ function kaniTerminal(): Plugin {
                 response_preview: responseText.substring(0, 500),
                 time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
               }).then(() => {})
+
+              // Auto-create notification for [SIGNAL] lines
+              const signals = extractSignals(responseText)
+              for (const signal of signals) {
+                serverSupabase.from('notifications').insert({
+                  typ: 'review',
+                  title: signal,
+                  subtitle: terminalId,
+                  source: `signal:${terminalId}`,
+                  project_id: projectMatch ? projectMatch[1] : null,
+                  terminal_id: terminalId,
+                }).then(() => {})
+              }
             }
           })
 
@@ -243,9 +278,9 @@ function kaniTerminal(): Plugin {
             ? join(homedir(), 'mckay-os', 'projects', terminalId.replace('project:', ''))
             : join(homedir(), 'mckay-os')
 
-          const proc = spawn('claude', ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
+          const proc = spawn(resolveClaudePath(), ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
             cwd,
-            env: { ...process.env },
+            env: spawnEnv(),
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 
@@ -265,6 +300,13 @@ function kaniTerminal(): Plugin {
                 text: `[${terminalId}] Session beendet`,
                 response_preview: output.substring(0, 500),
                 time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              }).then(() => {})
+              // Auto-notification for session end
+              serverSupabase.from('notifications').insert({
+                typ: 'info',
+                title: `Session beendet: ${terminalId}`,
+                source: `session-end:${terminalId}`,
+                terminal_id: terminalId,
               }).then(() => {})
             }
           })
@@ -340,6 +382,304 @@ function kaniTerminal(): Plugin {
           } catch { sessionStarted.clear() }
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: true }))
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/notification — Create notification
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/notification') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', async () => {
+          try {
+            const parsed = JSON.parse(body)
+            if (!serverSupabase) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Supabase not configured' }))
+              return
+            }
+            const { data: row, error } = await serverSupabase.from('notifications').insert({
+              typ: parsed.typ || 'info',
+              title: parsed.title || '',
+              subtitle: parsed.subtitle || '',
+              source: parsed.source || '',
+              project_id: parsed.project_id || null,
+              idea_id: parsed.idea_id || null,
+              terminal_id: parsed.terminal_id || null,
+              metadata: parsed.metadata || {},
+            }).select().single()
+
+            if (error) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: error.message }))
+            } else {
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true, id: row.id }))
+            }
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid JSON' }))
+          }
+        })
+      })
+
+      // --------------------------------------------------------
+      // PATCH /api/notification/:id — Mark read / dismiss
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'PATCH' || !req.url?.startsWith('/api/notification/')) return next()
+
+        const id = req.url.replace('/api/notification/', '')
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', async () => {
+          try {
+            const parsed = JSON.parse(body)
+            if (!serverSupabase) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Supabase not configured' }))
+              return
+            }
+            const update: Record<string, unknown> = {}
+            if (parsed.is_read !== undefined) update.is_read = parsed.is_read
+            if (parsed.dismissed !== undefined) update.dismissed = parsed.dismissed
+
+            const { error } = await serverSupabase.from('notifications').update(update).eq('id', id)
+            if (error) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: error.message }))
+            } else {
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true }))
+            }
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid JSON' }))
+          }
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/project — Create project (Supabase + folder scaffold)
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/project') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', async () => {
+          try {
+            const parsed = JSON.parse(body)
+            if (!serverSupabase) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Supabase not configured' }))
+              return
+            }
+
+            const name = parsed.name?.trim()
+            if (!name) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Name is required' }))
+              return
+            }
+
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+            const color = parsed.color || 'var(--bl)'
+            const glow = color.replace(')', 'g)')
+
+            // Insert into Supabase
+            const { error: dbError } = await serverSupabase.from('projects').insert({
+              id: slug,
+              name,
+              description: parsed.description || '',
+              color,
+              glow,
+              emoji: parsed.emoji || '📦',
+              phase: 'Setup',
+              health: 'active',
+              progress: 0,
+              stack: parsed.stack || 'React+Vite, TailwindCSS, Supabase',
+              pipeline: [
+                { label: 'Mockup', status: 'active', color, glow },
+                { label: 'Foundation', status: 'upcoming', color: 'var(--tx3)', glow: 'transparent' },
+                { label: 'Features', status: 'upcoming', color: 'var(--tx3)', glow: 'transparent' },
+                { label: 'Launch', status: 'upcoming', color: 'var(--tx3)', glow: 'transparent' },
+              ],
+            })
+
+            if (dbError) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: dbError.message }))
+              return
+            }
+
+            // Scaffold folder structure
+            const projectDir = join(homedir(), 'mckay-os', 'projects', slug)
+            if (!existsSync(projectDir)) {
+              mkdirSync(projectDir, { recursive: true })
+              writeFileSync(join(projectDir, 'CLAUDE.md'), `# ${name} — Project CLAUDE.md\n> Created: ${new Date().toISOString().slice(0, 10)}\n\n## Overview\n${parsed.description || 'TBD'}\n`)
+              writeFileSync(join(projectDir, 'TODOS.md'), `---\ntype: project-todos\nproject: "${slug}"\nupdated: ${new Date().toISOString().slice(0, 10)}\n---\n\n## Active\n\n## Done\n`)
+              writeFileSync(join(projectDir, 'MEMORY.md'), `# ${name} — Project Memory\n> Created: ${new Date().toISOString().slice(0, 10)}\n\n## Letzte Session\n\nErste Session.\n\n## Next Steps\n\n1. Phase 0 Mockup starten\n`)
+              writeFileSync(join(projectDir, 'DECISIONS.md'), `# ${name} — Decisions Log\n\n| Date | Decision | Reason |\n|------|----------|--------|\n`)
+            }
+
+            // Update idea status if converting from idea
+            if (parsed.idea_id) {
+              await serverSupabase.from('ideas').update({ status: 'Projekt', st: 'Projekt' }).eq('id', parsed.idea_id)
+            }
+
+            // Update launch session if exists
+            if (parsed.launch_session_id) {
+              await serverSupabase.from('launch_sessions').update({
+                status: 'created',
+                project_id: slug,
+                updated_at: new Date().toISOString(),
+              }).eq('id', parsed.launch_session_id)
+            }
+
+            // Create notification
+            await serverSupabase.from('notifications').insert({
+              typ: 'info',
+              title: `Neues Projekt: ${name}`,
+              subtitle: slug,
+              source: 'launch',
+              project_id: slug,
+            })
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ id: slug, success: true }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/launch/research — Trigger KANI research for idea
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/launch/research') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', async () => {
+          try {
+            const parsed = JSON.parse(body)
+            if (!serverSupabase) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Supabase not configured' }))
+              return
+            }
+
+            const sessionId = parsed.launch_session_id
+            const name = parsed.name || 'Unbekannt'
+            const description = parsed.description || ''
+
+            // Update session status to 'research'
+            await serverSupabase.from('launch_sessions').update({
+              status: 'research',
+              updated_at: new Date().toISOString(),
+            }).eq('id', sessionId)
+
+            // Respond immediately — research runs async
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true }))
+
+            // Spawn Claude CLI for research (async, fire-and-forget)
+            const researchPrompt = [
+              `Analysiere diese Geschäftsidee und erstelle ein strukturiertes Research-Dokument.`,
+              `Projektname: ${name}`,
+              `Beschreibung: ${description}`,
+              ``,
+              `Antworte NUR als valides JSON mit exakt dieser Struktur:`,
+              `{`,
+              `  "summary": "2-3 Sätze Zusammenfassung",`,
+              `  "market": "Marktanalyse und Potenzial",`,
+              `  "competition": "Wettbewerb und Differenzierung",`,
+              `  "audience": "Zielgruppe und Personas",`,
+              `  "techStack": "Empfohlener Tech-Stack",`,
+              `  "monetization": "Monetarisierungsstrategie",`,
+              `  "feasibility": "Machbarkeit (1-10) mit Begründung",`,
+              `  "risks": "Top 3 Risiken",`,
+              `  "recommendation": "GO / PIVOT / STOP mit Begründung"`,
+              `}`,
+            ].join('\n')
+
+            const proc = spawn(resolveClaudePath(), ['-p', researchPrompt, '--output-format', 'text'], {
+              cwd: join(homedir(), 'mckay-os'),
+              env: spawnEnv(),
+              stdio: ['ignore', 'pipe', 'pipe'],
+            })
+
+            let output = ''
+            proc.stdout.on('data', (data: Buffer) => { output += data.toString() })
+
+            proc.on('close', async () => {
+              // Try to parse JSON from output
+              let researchOutput: Record<string, unknown> = {}
+              let strategyBrief: Record<string, unknown> = {}
+              try {
+                const jsonMatch = output.match(/\{[\s\S]*\}/)
+                if (jsonMatch) {
+                  researchOutput = JSON.parse(jsonMatch[0])
+                  strategyBrief = {
+                    goal: researchOutput.summary || '',
+                    audience: researchOutput.audience || '',
+                    stack: researchOutput.techStack || '',
+                    market: researchOutput.market || '',
+                    monetization: researchOutput.monetization || '',
+                    recommendation: researchOutput.recommendation || '',
+                  }
+                }
+              } catch {
+                researchOutput = { raw: output, parseError: true }
+              }
+
+              // Update launch session with results
+              await serverSupabase.from('launch_sessions').update({
+                status: 'brief',
+                research_output: researchOutput,
+                strategy_brief: strategyBrief,
+                updated_at: new Date().toISOString(),
+              }).eq('id', sessionId)
+
+              // Create notification
+              await serverSupabase.from('notifications').insert({
+                typ: 'review',
+                title: `Research fertig: ${name}`,
+                subtitle: 'Strategy Brief bereit zur Review',
+                source: `launch:${sessionId}`,
+              })
+            })
+
+            proc.on('error', async () => {
+              await serverSupabase.from('launch_sessions').update({
+                status: 'describe',
+                error: 'Claude CLI konnte nicht gestartet werden',
+                updated_at: new Date().toISOString(),
+              }).eq('id', sessionId)
+            })
+
+            // Timeout after 3 minutes for research
+            setTimeout(() => {
+              if (!proc.killed) {
+                proc.kill()
+                serverSupabase.from('launch_sessions').update({
+                  status: 'describe',
+                  error: 'Research Timeout (3min)',
+                  updated_at: new Date().toISOString(),
+                }).eq('id', sessionId).then(() => {})
+              }
+            }, 180000)
+
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid JSON' }))
+          }
         })
       })
 

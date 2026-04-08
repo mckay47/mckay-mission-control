@@ -12,8 +12,8 @@ interface Props { toggleTheme: () => void }
 
 type NetFilter = 'all' | 'event' | 'contacts'
 
-const typeLabel = (t: string) => t === 'event' ? 'EVENT' : 'CONTACTS'
-const typeColor = (t: string) => t === 'event' ? 'var(--bl)' : 'var(--p)'
+const typeLabel = (t: string | undefined) => t === 'event' ? 'EVENT' : 'CONTACTS'
+const typeColor = (t: string | undefined) => t === 'event' ? 'var(--bl)' : 'var(--p)'
 
 const detailContent: Record<string, { details: string; location: string; notes: string; contacts: string[] }> = {
   meetup: {
@@ -48,7 +48,7 @@ export function Network({ toggleTheme }: Props) {
       case 'contacts': return networkEntries.filter(e => e.type === 'contacts')
       default: return networkEntries
     }
-  }, [filter])
+  }, [filter, networkEntries])
 
   const entry = filtered[sel] || networkEntries[0] || undefined
   const detail = entry ? detailContent[entry.id] : undefined
@@ -66,7 +66,7 @@ export function Network({ toggleTheme }: Props) {
           <TcText>{detail.details}</TcText>
           <TcLabel>Uebersicht</TcLabel>
           <TcStatRow>
-            {entry.kpis.map((k, i) => (
+            {(entry.kpis || []).map((k, i) => (
               <TcStat key={i} value={k.value} label={k.label} color={k.color} />
             ))}
           </TcStatRow>
@@ -180,7 +180,7 @@ export function Network({ toggleTheme }: Props) {
                     }}>
                       {typeLabel(e.type)}
                     </span>
-                    {e.badge.label && (
+                    {e.badge?.label && (
                       <span style={{
                         fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
                         background: e.badge.bg, color: e.badge.color, letterSpacing: 1,
@@ -192,9 +192,9 @@ export function Network({ toggleTheme }: Props) {
 
                   {/* First 2 KPIs inline */}
                   <div className="ghost-foot" style={{ display: 'flex', gap: 14, marginTop: 2 }}>
-                    {e.kpis.slice(0, 2).map((k, ki) => (
+                    {(e.kpis || []).slice(0, 2).map((k, ki) => (
                       <div key={ki} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: k.color }}>{k.value}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: k.color ?? 'var(--tx3)' }}>{k.value}</span>
                         <span style={{ fontSize: 10, color: 'var(--tx3)' }}>{k.label}</span>
                       </div>
                     ))}
@@ -218,7 +218,7 @@ export function Network({ toggleTheme }: Props) {
             title={entry.name}
             ledColor={entry.color}
             ledGlow={entry.glow}
-            badge={entry.badge.label ? entry.badge : undefined}
+            badge={entry.badge?.label ? entry.badge : undefined}
             pipeline={netPipeline}
             tabs={tabs}
             activeTab={tab}
@@ -242,7 +242,7 @@ export function Network({ toggleTheme }: Props) {
         label="NETWORK"
         ledColor="var(--t)"
         ledGlow="var(--tg)"
-        items={tickerData.network}
+        items={tickerData.network ?? []}
       />
     </div>
   )

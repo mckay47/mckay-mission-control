@@ -1,18 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-
-export interface TickerItem {
-  color: string
-  label: string
-  labelColor: string
-  text: string
-}
+import type { TickerItemData } from '../../lib/types.ts'
 
 interface BottomTickerProps {
   label: string
   ledColor: string
   ledGlow: string
-  items: TickerItem[]
+  items: TickerItemData[]
   backLabel?: string
   backPath?: string
 }

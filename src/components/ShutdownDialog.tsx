@@ -30,6 +30,8 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
   // Fetch active terminal count on open
   useEffect(() => {
     if (!open) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null }
       const t = setTimeout(() => { setPhase(0); setTerminals([]) }, 300)
       return () => clearTimeout(t)
     }

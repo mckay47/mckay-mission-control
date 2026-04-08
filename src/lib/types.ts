@@ -1,111 +1,197 @@
+// ============================================================
+// MCKAY OS Mission Control — Canonical Types
+// Source of truth: MissionControlProvider.tsx transforms
+// Updated: 2026-04-08 — unified to Supabase field names
+// ============================================================
+
 export interface Project {
   id: string
-  n: string
-  e: string
-  pct: number
-  phN: number
-  phase: string
-  health: string
-  col: string
-  cr: string
-  tkn: number
-  cost: number
-  days: number
-  term: string
-  dom: string
-  stack: string
-  model: string
-  prompts: number
-  last: string
-  next: string
-  todos: number
-  ideas: number
-  rev: number
-  mkt: string
+  name: string
+  color: string
+  glow: string
+  emoji?: string
+  description?: string
+  progress?: number
+  phase?: string
+  health?: string
+  colorBg?: string
+  stack?: string
+  domain?: string
+  todos?: number
+  ideas?: number
+  lastAction?: string
+  nextStep?: string
+  agent?: string
 }
 
 export interface Agent {
-  n: string
-  e: string
-  typ: string
-  st: string
-  mdl: string
-  proj: string
-  tkn: string
-  cost: string
-  pr: number
-  suc: number
-  act: string
-  col: string
-  bg: string
+  name: string
+  color: string
+  emoji?: string
+  type?: string
+  status?: string
+  model?: string
+  purpose?: string
 }
 
 export interface Skill {
-  n: string
-  cat: string
-  st: number
-  p: number
-  orig: string
+  name: string
+  category?: string
+  status?: string
+  purpose?: string
+}
+
+export interface BadgeData {
+  label: string
+  bg: string
+  color: string
+}
+
+export interface KpiData {
+  value: string
+  label: string
+  color?: string
 }
 
 export interface Idea {
   id: string
-  n: string
-  cat: string
-  st: string
-  date: string
-  txt: string
-  f: number
-  pot: number
-  c: number
-  spd: number
-  r: number
-  res: string
-  rec: string
-  col: string
-  // AI-generated fields (Stufe 1)
+  // Supabase fields (preferred)
+  title?: string
+  description?: string
+  status?: string
+  category?: string
+  score?: number
+  color?: string
+  glow?: string
+  last_update?: string
+  feedback?: Record<string, unknown>
+  research?: Record<string, unknown>
+  // Legacy fields (data.ts fallback)
+  n?: string
+  cat?: string
+  st?: string
+  date?: string
+  txt?: string
+  f?: number
+  pot?: number
+  c?: number
+  spd?: number
+  r?: number
+  res?: string
+  rec?: string
+  col?: string
   raw?: string
   structured?: string
-  feedback?: IdeaFeedback
 }
 
 export interface IdeaFeedback {
-  branche: string
-  markt: string
-  innovation: number
-  highlights: string
-  problem: string
-  nutzen: string
+  branche?: string
+  markt?: string
+  innovation?: number
+  highlights?: string
+  problem?: string
+  nutzen?: string
 }
 
 export interface Todo {
-  id: number
-  txt: string
-  proj: string
-  prio: string
-  due: string
-  done: boolean
-  ov: boolean
+  id: string | number
+  title?: string
+  txt?: string
+  project_id?: string
+  proj?: string
+  priority?: string
+  prio?: string
+  duration?: string
+  status?: string
+  description?: string
+  agent?: string
+  due?: string
+  done?: boolean
+  ov?: boolean
+}
+
+export interface Department {
+  id: string
+  name: string
+  color: string
+  glow: string
+  description?: string
+  colorBg?: string
+  tasks?: number
+  badge?: BadgeData
+  kpis?: KpiData[]
+}
+
+export interface PersonalArea {
+  id: string
+  name: string
+  color: string
+  glow: string
+  description?: string
+  colorBg?: string
+  badge?: BadgeData
+  items?: string[]
+  info?: string
+}
+
+export interface NetworkEntry {
+  id: string
+  name: string
+  color: string
+  glow: string
+  description?: string
+  colorBg?: string
+  badge?: BadgeData
+  kpis?: KpiData[]
+  type?: string
+}
+
+export interface TickerItemData {
+  color: string
+  label: string
+  labelColor: string
+  text: string
 }
 
 export interface Notification {
-  typ: string
-  ico: string
-  tit: string
-  sub: string
-  t: string
+  id: string
+  typ: 'wichtig' | 'sofort' | 'info' | 'review'
+  title: string
+  subtitle: string
+  source: string
+  project_id?: string
+  idea_id?: string
+  terminal_id?: string
+  is_read: boolean
+  dismissed: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface LaunchSession {
+  id: string
+  idea_id?: string
+  status: 'describe' | 'research' | 'brief' | 'review' | 'confirmed' | 'rejected' | 'created'
+  name: string
+  description: string
+  research_output: Record<string, unknown>
+  strategy_brief: Record<string, unknown>
+  project_id?: string
+  error?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface CalendarEntry {
-  t: string
-  n: string
-  s: string
-  today: boolean
+  t?: string
+  n?: string
+  s?: string
+  today?: boolean
 }
 
 export interface MemoryFile {
-  ico: string
-  n: string
-  m: string
-  b: string
+  ico?: string
+  n?: string
+  m?: string
+  b?: string
 }
