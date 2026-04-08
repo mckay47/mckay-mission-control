@@ -22,6 +22,9 @@ interface ActiveProcess {
 
 const activeProcesses = new Map<string, ActiveProcess>()
 
+// Tracks which terminals have an ongoing Claude session (for --continue)
+const sessionStarted = new Set<string>()
+
 function resolveCwd(cwd: string): string {
   return cwd.startsWith('~') ? join(homedir(), cwd.slice(1)) : cwd
 }
@@ -90,7 +93,14 @@ function kaniTerminal(): Plugin {
             'Cache-Control': 'no-cache',
           })
 
-          const proc = spawn('claude', ['-p', prompt, '--output-format', 'text'], {
+          const isNewSession = !sessionStarted.has(terminalId)
+          sessionStarted.add(terminalId)
+
+          const claudeArgs = isNewSession
+            ? ['-p', prompt, '--output-format', 'text']
+            : ['--continue', '-p', prompt, '--output-format', 'text']
+
+          const proc = spawn('claude', claudeArgs, {
             cwd,
             env: { ...process.env },
             stdio: ['ignore', 'pipe', 'pipe'],
@@ -211,6 +221,25 @@ function kaniTerminal(): Plugin {
 
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ killed }))
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/kani/reset — Clear session state for a terminal
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/kani/reset') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const { terminalId } = JSON.parse(body)
+            if (terminalId) sessionStarted.delete(terminalId)
+            else sessionStarted.clear()
+          } catch { sessionStarted.clear() }
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ ok: true }))
         })
       })
 

@@ -84,7 +84,13 @@ export function useKaniStream({ cwd, terminalId }: UseKaniStreamOptions) {
 
   const clearLines = useCallback(() => {
     setLines([])
-  }, [])
+    // Reset server-side session so next message starts a fresh Claude conversation
+    fetch('/api/kani/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ terminalId }),
+    }).catch(() => {})
+  }, [terminalId])
 
   // Abort on unmount
   useEffect(() => {
