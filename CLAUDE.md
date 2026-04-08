@@ -164,20 +164,19 @@ integrations/ui-design            -- design system, components, patterns
 
 <!-- AUTO-CONTEXT:START -->
 ## Auto-Generated Context
-> Updated: 2026-04-08 13:21
+> Updated: 2026-04-08 15:49
 
 **Project:** mission-control
-**Status:** Phase 0 (active)
+**Status:** Phase 0 complete → Go Live
 **Stack:** React+Vite, TailwindCSS, Vercel
 **Repo:** ~/mckay-os/projects/mission-control
 
 **Open Todos:**
-- [ ] **P0** Scaffold project (Vite + Tailwind + react-router-dom + lucide-react + fonts)
-- [ ] **P0** Implement design system tokens (colors, typography, glow effects, glassmorphism, animations)
-- [ ] **P0** Build 18 UI components (GlassCard, KPICard, GaugeChart, GlowNumber, GlowBadge, StatusDot, ProgressBar, ActionButton, PipelineColumn, TimelineItem, SkillCard, AgentCard, ServerStatusCard, NotificationItem, ChecklistItem, ThemeToggle, CommandInput, InlineEditor)
-- [ ] **P0** Build 4 Layout components (Shell, Sidebar, TopBar, PageContainer)
-- [ ] **P0** Create dummy data files from real MCKAY OS sources (REGISTRY.md, CLAUDE.md files, MEMORY.md, settings.json)
-- [ ] **P0** Build 11 Display widgets (ProjectCard, GlobalKPIBar, PriorityList, NotificationCenter, QuickActions, SkillInventory, AgentMap, MCPHealthGrid, PipelineBoard, FolderTree, ProjectTimeline)
+- [ ] **P0** scaffold-project Skill: CLAUDE.md-Generierung + repo_path bei GitHub-Repo-Erstellung automatisieren (W1 Step 7)
+- [ ] **P0** Ideen-Workflow: ideas/{id}/ Verzeichnis + CLAUDE.md automatisch erstellen wenn KANI neue Idee anlegt
+- [ ] **P0** Shutdown-Sequenz: /api/kani/session-end Endpoint + Shutdown-Dialog triggert alle aktiven Terminals (MEMORY.md, TODOS.md, git commit+push)
+- [ ] **P0** Branch dev → main mergen, Vercel Production Deploy
+- [ ] **P0** Supabase: echte Projekt-Daten einpflegen (RESET-KIT.md als Vorlage)
 
 **KANI Working Rules:**
 1. When editing code: use the **Repo** path above for all file operations

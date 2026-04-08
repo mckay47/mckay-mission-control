@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react'
-import { Zap, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Zap, CheckCircle, Loader2 } from 'lucide-react'
+
+interface TerminalStatus {
+  id: string
+  label: string
+  done: boolean
+}
 
 interface ShutdownDialogProps {
   open: boolean
@@ -7,50 +13,94 @@ interface ShutdownDialogProps {
   onShutdown: () => void
 }
 
-const SYNC_ITEMS = [
-  { key: 'kani', label: 'KANI Cockpit synchronisiert' },
-  { key: 'memory', label: 'Memory gesichert' },
-  { key: 'data', label: 'Daten gespeichert' },
-]
+function terminalLabel(id: string): string {
+  if (id.startsWith('project:')) return `Projekt: ${id.replace('project:', '')}`
+  if (id === 'kani') return 'KANI Cockpit'
+  return id
+}
 
 export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDialogProps) {
   // phase: 0 = confirm, 1 = syncing, 2 = done
   const [phase, setPhase] = useState(0)
-  const [syncedCount, setSyncedCount] = useState(0)
+  const [terminals, setTerminals] = useState<TerminalStatus[]>([])
+  const [activeCount, setActiveCount] = useState(0)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Fetch active terminal count on open
   useEffect(() => {
     if (!open) {
-      // reset on close
-      const t = setTimeout(() => { setPhase(0); setSyncedCount(0) }, 300)
+      const t = setTimeout(() => { setPhase(0); setTerminals([]) }, 300)
       return () => clearTimeout(t)
     }
+    fetch('/api/kani/status')
+      .then(r => r.json())
+      .then((data: { activeTerminals: Array<{ terminalId: string }> }) => {
+        setActiveCount(data.activeTerminals.length)
+      })
+      .catch(() => {})
   }, [open])
 
+  // Cleanup on unmount
   useEffect(() => {
-    if (phase !== 1) return
-    // simulate sync: each item takes 800ms
-    let count = 0
-    const tick = () => {
-      count++
-      setSyncedCount(count)
-      if (count >= SYNC_ITEMS.length) {
-        setTimeout(() => setPhase(2), 400)
-      } else {
-        setTimeout(tick, 800)
-      }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
-    setTimeout(tick, 600)
-  }, [phase])
+  }, [])
+
+  const startSessionEnd = async () => {
+    setPhase(1)
+    try {
+      const response = await fetch('/api/kani/session-end', { method: 'POST' })
+      const data = await response.json() as { dispatched: string[] }
+      const dispatched = data.dispatched
+
+      if (dispatched.length === 0) {
+        setTimeout(() => setPhase(2), 600)
+        return
+      }
+
+      setTerminals(dispatched.map(id => ({ id, label: terminalLabel(id), done: false })))
+
+      // Poll until all dispatched terminals are gone from activeProcesses
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusRes = await fetch('/api/kani/status')
+          const statusData = await statusRes.json() as { activeTerminals: Array<{ terminalId: string }> }
+          const activeIds = new Set(statusData.activeTerminals.map((t: { terminalId: string }) => t.terminalId))
+
+          setTerminals(prev => {
+            const updated = prev.map(t => ({ ...t, done: !activeIds.has(t.id) }))
+            if (updated.every(t => t.done)) {
+              if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+              if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null }
+              setTimeout(() => setPhase(2), 500)
+            }
+            return updated
+          })
+        } catch {
+          // poll failure is non-critical
+        }
+      }, 1500)
+
+      // Hard timeout: 3 minutes
+      timeoutRef.current = setTimeout(() => {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+        setTerminals(prev => prev.map(t => ({ ...t, done: true })))
+        setTimeout(() => setPhase(2), 400)
+      }, 180000)
+
+    } catch {
+      setTimeout(() => setPhase(2), 600)
+    }
+  }
 
   if (!open) return null
 
   const handleConfirm = () => {
-    if (phase === 0) {
-      setPhase(1)
-      setSyncedCount(0)
-    } else if (phase === 2) {
-      onShutdown()
-    }
+    if (phase === 0) startSessionEnd()
+    else if (phase === 2) onShutdown()
   }
 
   const btnLabel =
@@ -89,7 +139,7 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
           borderRadius: 20,
           padding: '28px 32px',
           minWidth: 360,
-          maxWidth: 400,
+          maxWidth: 420,
           boxShadow: '0 24px 60px rgba(0,0,0,0.7), 0 8px 20px rgba(0,0,0,0.5)',
           display: 'flex',
           flexDirection: 'column',
@@ -104,23 +154,25 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
           </span>
         </div>
 
-        {/* Terminals section */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)' }}>
-            Offene Terminals: 1
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--g)', boxShadow: '0 0 6px var(--gg)' }} />
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--tx2)' }}>
-                KANI Cockpit
+        {/* Active terminals section (phase 0 only) */}
+        {phase === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+              {activeCount > 0 ? `Aktive Terminals: ${activeCount}` : 'Keine aktiven Sitzungen'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--g)', boxShadow: '0 0 6px var(--gg)' }} />
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--tx2)' }}>
+                  KANI Cockpit
+                </span>
+              </div>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600, color: 'var(--g)' }}>
+                {activeCount > 0 ? 'In Betrieb' : 'Bereit'}
               </span>
             </div>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600, color: 'var(--g)' }}>
-              Bereit
-            </span>
           </div>
-        </div>
+        )}
 
         {/* Sync section — visible in phase 1+2 */}
         {phase >= 1 && (
@@ -134,45 +186,58 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
             }}
           >
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)' }}>
-              Sitzung wird gesichert...
+              {phase === 1 ? 'Sitzung wird gesichert...' : 'Sitzung gesichert ✓'}
             </div>
-            {SYNC_ITEMS.map((item, i) => {
-              const done = i < syncedCount
-              const active = i === syncedCount && phase === 1
-              return (
-                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: done ? 'var(--g)' : active ? 'var(--a)' : 'rgba(255,255,255,0.12)',
-                        boxShadow: done ? '0 0 6px var(--gg)' : active ? '0 0 6px var(--ag)' : 'none',
-                        transition: 'all 0.4s ease',
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 11,
-                        color: done ? 'var(--tx2)' : 'var(--tx3)',
-                        transition: 'color 0.4s ease',
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                  {done && (
-                    <CheckCircle
-                      size={14}
-                      stroke="var(--g)"
-                      style={{ filter: 'drop-shadow(0 0 4px var(--gg))' }}
-                    />
-                  )}
+
+            {terminals.length === 0 && phase === 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Loader2 size={12} stroke="var(--a)" style={{ animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--tx3)' }}>
+                  Wird vorbereitet...
+                </span>
+              </div>
+            )}
+
+            {terminals.map(terminal => (
+              <div key={terminal.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: terminal.done ? 'var(--g)' : 'var(--a)',
+                      boxShadow: terminal.done ? '0 0 6px var(--gg)' : '0 0 6px var(--ag)',
+                      transition: 'all 0.4s ease',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 11,
+                      color: terminal.done ? 'var(--tx2)' : 'var(--tx3)',
+                      transition: 'color 0.4s ease',
+                    }}
+                  >
+                    {terminal.label}
+                  </span>
                 </div>
-              )
-            })}
+                {terminal.done ? (
+                  <CheckCircle size={14} stroke="var(--g)" style={{ filter: 'drop-shadow(0 0 4px var(--gg))' }} />
+                ) : (
+                  <Loader2 size={14} stroke="var(--a)" style={{ animation: 'spin 1s linear infinite' }} />
+                )}
+              </div>
+            ))}
+
+            {terminals.length === 0 && phase === 2 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle size={14} stroke="var(--g)" style={{ filter: 'drop-shadow(0 0 4px var(--gg))' }} />
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--tx2)' }}>
+                  Keine aktiven Sitzungen
+                </span>
+              </div>
+            )}
           </div>
         )}
 

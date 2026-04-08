@@ -249,6 +249,11 @@ body {
   100% { opacity: 0; transform: translateY(-8px); }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .shutdown-title {
   animation: slowFadeOut 1.8s ease-in forwards;
 }

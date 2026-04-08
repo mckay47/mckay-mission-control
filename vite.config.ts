@@ -218,6 +218,63 @@ function kaniTerminal(): Plugin {
       })
 
       // --------------------------------------------------------
+      // POST /api/kani/session-end — Send session-end prompt to all active sessions
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/kani/session-end') return next()
+
+        const SESSION_END_PROMPT =
+          'Session wird beendet. Führe das Session-End-Protokoll durch: ' +
+          '1) MEMORY.md dieses Projekts aktualisieren (Letzte Session + Next Steps) ' +
+          '2) TODOS.md prüfen und aktualisieren ' +
+          '3) Alle Änderungen committen und pushen ' +
+          'Antworte nur mit: [SESSION_END] ✓'
+
+        const dispatched: string[] = []
+
+        for (const terminalId of sessionStarted) {
+          const existing = activeProcesses.get(terminalId)
+          if (existing) {
+            existing.proc.kill('SIGTERM')
+            activeProcesses.delete(terminalId)
+          }
+
+          const cwd = terminalId.startsWith('project:')
+            ? join(homedir(), 'mckay-os', 'projects', terminalId.replace('project:', ''))
+            : join(homedir(), 'mckay-os')
+
+          const proc = spawn('claude', ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
+            cwd,
+            env: { ...process.env },
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
+
+          activeProcesses.set(terminalId, { proc, terminalId, cwd, startedAt: Date.now() })
+          dispatched.push(terminalId)
+
+          let output = ''
+          proc.stdout.on('data', (data: Buffer) => { output += data.toString() })
+
+          proc.on('close', () => {
+            activeProcesses.delete(terminalId)
+            writeSignal(terminalId, 'SESSION_END ✓')
+            if (serverSupabase) {
+              serverSupabase.from('activity_log').insert({
+                terminal_id: terminalId,
+                type: 'session_end',
+                text: `[${terminalId}] Session beendet`,
+                response_preview: output.substring(0, 500),
+                time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              }).then(() => {})
+            }
+          })
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ dispatched }))
+      })
+
+      // --------------------------------------------------------
       // POST /api/kani/kill — Kill terminal processes
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {
