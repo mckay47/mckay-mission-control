@@ -169,7 +169,7 @@ integrations/ui-design            -- design system, components, patterns
 **Project:** mission-control
 **Status:** Phase 0 (active)
 **Stack:** React+Vite, TailwindCSS, Vercel
-**Repo:** ~/path/to/code
+**Repo:** ~/mckay-os/projects/mission-control
 
 **Open Todos:**
 - [ ] **P0** Scaffold project (Vite + Tailwind + react-router-dom + lucide-react + fonts)
