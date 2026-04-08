@@ -310,10 +310,15 @@ function kaniTerminal(): Plugin {
 
           let responseText = ''
 
+          let resEnded = false
+          res.on('close', () => { resEnded = true })
+
           proc.stdout.on('data', (data: Buffer) => {
             const chunk = data.toString()
             responseText += chunk
-            try { res.write(chunk) } catch { /* browser disconnected — process continues */ }
+            if (!resEnded) {
+              try { res.write(chunk) } catch { resEnded = true }
+            }
           })
 
           proc.stderr.on('data', () => {
