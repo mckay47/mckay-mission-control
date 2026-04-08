@@ -21,13 +21,14 @@ export function System({ toggleTheme }: Props) {
   const nav = useNavigate()
 
   return (
-    <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <Header
+        backLink={{ label: 'Cockpit', href: '/' }}
         toggleTheme={toggleTheme}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 40 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28, maxWidth: 900, width: '100%' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 40, background: 'var(--bg)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28, maxWidth: 900, width: '100%', background: 'var(--bg)' }}>
           {tiles.map(t => {
             const Icon = t.icon
             return (

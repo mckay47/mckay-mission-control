@@ -191,9 +191,9 @@ export function Projects({ toggleTheme }: Props) {
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header backLink={{ label: 'Cockpit', href: '/' }} toggleTheme={toggleTheme} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', gap: 28, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', gap: 28, flex: 1, minHeight: 0, background: 'var(--bg)' }}>
         {/* ==================== LEFT: PROJECT CARDS ==================== */}
-        <div style={{ overflowY: 'auto', padding: '4px 4px 4px 2px' }}>
+        <div style={{ overflowY: 'auto', padding: '4px 4px 4px 2px', background: 'var(--bg)' }}>
           {/* Filter bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
             {([
@@ -291,7 +291,7 @@ export function Projects({ toggleTheme }: Props) {
         </div>
 
         {/* ==================== RIGHT: PREVIEW PANEL ==================== */}
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', background: 'var(--bg)' }}>
           {!p ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: 'var(--tx3)', opacity: 0.3 }}>—</span>

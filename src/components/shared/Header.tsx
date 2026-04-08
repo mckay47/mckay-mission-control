@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Power } from 'lucide-react'
+import { Power, Moon } from 'lucide-react'
 import { StampButton } from './StampButton.tsx'
 
 interface HeaderProps {
@@ -10,7 +10,7 @@ interface HeaderProps {
   toggleTheme?: () => void
 }
 
-export function Header({ backLink }: HeaderProps) {
+export function Header({ backLink, toggleTheme }: HeaderProps) {
   const navigate = useNavigate()
   const [datetime, setDatetime] = useState(() => formatDatetime())
 
@@ -61,22 +61,14 @@ export function Header({ backLink }: HeaderProps) {
           {datetime}
         </div>
 
-        {/* Clock ghost button */}
+        {/* Dark / Light mode toggle */}
         <div
           className="ghost-btn"
-          style={{ '--bc': 'rgba(255,255,255,0.04)', width: 38, height: 38 } as React.CSSProperties}
-          title="Clock"
+          style={{ '--bc': 'rgba(255,255,255,0.04)', width: 38, height: 38, cursor: 'pointer' } as React.CSSProperties}
+          onClick={toggleTheme}
+          title="Dark / Light Mode"
         >
-          <svg
-            viewBox="0 0 24 24"
-            stroke="var(--tx3)"
-            strokeWidth={1.8}
-            fill="none"
-            style={{ width: 17, height: 17 }}
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
+          <Moon size={17} stroke="var(--tx3)" strokeWidth={1.8} />
         </div>
 
         {/* Power / Logoff ghost button */}

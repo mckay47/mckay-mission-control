@@ -17,14 +17,14 @@ export function TerminalGrid() {
 
   if (activeProjects.length === 0) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0c', color: '#6a6a74', fontFamily: "'JetBrains Mono', monospace" }}>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#070708', color: '#6a6a74', fontFamily: "'JetBrains Mono', monospace" }}>
         Keine aktiven Terminals
       </div>
     )
   }
 
   return (
-    <div style={{ height: '100vh', width: '100vw', background: '#0a0a0c', padding: 8, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100vh', width: '100vw', background: '#070708', padding: 8, display: 'flex', flexDirection: 'column' }}>
       {/* Minimal header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', flexShrink: 0 }}>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: '#6a6a74', letterSpacing: 2 }}>

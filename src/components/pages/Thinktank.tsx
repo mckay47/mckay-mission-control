@@ -308,26 +308,16 @@ export function Thinktank({ toggleTheme }: Props) {
                     return (
                       <div
                         key={idea.id}
+                        className="ghost-card"
                         onClick={() => { setSel(i); setTab(0) }}
                         onDoubleClick={() => nav(`/idea/${idea.id}`)}
                         style={{
+                          '--hc': glowFromColor(idea.col || 'var(--bl)'),
                           padding: '14px 16px',
                           borderRadius: 16,
-                          border: `1px solid ${isSelected ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
-                          background: isSelected ? 'rgba(255,255,255,0.04)' : 'transparent',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
                           gap: 8,
-                          transition: 'all 0.25s',
-                          position: 'relative',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'transparent'
-                        }}
+                          ...(isSelected ? { borderColor: 'rgba(255,255,255,0.25)' } : {}),
+                        } as React.CSSProperties}
                       >
                         {/* Score + Status */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -12,7 +12,7 @@ export function StandaloneTerminal({ type }: Props) {
 
   if (type === 'project') {
     const project = projects.find(p => p.id === id)
-    if (!project) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0c', color: '#6a6a74', fontFamily: "'JetBrains Mono', monospace" }}>Projekt nicht gefunden</div>
+    if (!project) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#070708', color: '#6a6a74', fontFamily: "'JetBrains Mono', monospace" }}>Projekt nicht gefunden</div>
 
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', padding: 12 }}>
@@ -36,7 +36,7 @@ export function StandaloneTerminal({ type }: Props) {
 
   // Idea terminal
   const idea = ideas.find(i => i.id === id)
-  if (!idea) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0c', color: '#6a6a74', fontFamily: "'JetBrains Mono', monospace" }}>Idee nicht gefunden</div>
+  if (!idea) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#070708', color: '#6a6a74', fontFamily: "'JetBrains Mono', monospace" }}>Idee nicht gefunden</div>
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', padding: 12 }}>

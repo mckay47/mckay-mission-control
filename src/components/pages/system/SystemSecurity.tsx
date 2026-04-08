@@ -126,7 +126,7 @@ export function SystemSecurity({ toggleTheme }: Props) {
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header
         toggleTheme={toggleTheme}
-        backTo={{ label: 'System', path: '/system' }}
+        backLink={{ label: 'System', href: '/system' }}
       />
 
       <SplitLayout

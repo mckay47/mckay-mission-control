@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Boot from './components/Boot'
 import ShutdownDialog from './components/ShutdownDialog'
 import { MissionControlProvider } from './lib/MissionControlProvider.tsx'
+import { useKaniStream } from './hooks/useKaniStream.ts'
+import { ZoneProvider } from './components/ZoneProvider'
 
 // V3 Ghost UI Pages
 import { Cockpit } from './components/pages/Cockpit'
@@ -35,6 +37,7 @@ import { TerminalGrid } from './components/pages/TerminalGrid'
 export default function App() {
   const [booted, setBooted] = useState(() => sessionStorage.getItem('mckay-booted') === '1')
   const [shutdownOpen, setShutdownOpen] = useState(false)
+  const kaniStream = useKaniStream({ cwd: '~/mckay-os', terminalId: 'cockpit' })
 
   // Init dark mode on mount
   useEffect(() => {
@@ -61,14 +64,15 @@ export default function App() {
     setTimeout(() => setBooted(false), 200)
   }, [])
 
-  if (!booted) return <Boot onComplete={() => { sessionStorage.setItem('mckay-booted', '1'); setBooted(true) }} />
+  if (!booted) return <Boot onComplete={() => { sessionStorage.setItem('mckay-booted', '1'); sessionStorage.setItem('mckay-launching', '1'); setBooted(true) }} />
 
   return (
+    <ZoneProvider>
     <MissionControlProvider>
       <BrowserRouter>
         <Routes>
           {/* Main Pages */}
-          <Route path="/" element={<Cockpit toggleTheme={toggleTheme} />} />
+          <Route path="/" element={<Cockpit toggleTheme={toggleTheme} kaniStream={kaniStream} />} />
           <Route path="/projects" element={<Projects toggleTheme={toggleTheme} />} />
           <Route path="/project/:id" element={<ProjectDetail toggleTheme={toggleTheme} />} />
           <Route path="/thinktank" element={<Thinktank toggleTheme={toggleTheme} />} />
@@ -104,5 +108,6 @@ export default function App() {
         />
       </BrowserRouter>
     </MissionControlProvider>
+    </ZoneProvider>
   )
 }
