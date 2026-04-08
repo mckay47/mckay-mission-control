@@ -88,6 +88,45 @@ function clearHistory(terminalId: string) {
 // ============================================================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function addFeedEntry(projectId: string, prompt: string, responseText: string, sb: any) {
+  try {
+    const time = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+
+    // Determine feed type + text from prompt and response
+    let type: 'success' | 'info' | 'warning' | 'error' = 'info'
+    let text = ''
+
+    const promptLower = prompt.toLowerCase()
+    if (promptLower.includes('deploy')) {
+      type = responseText.toLowerCase().includes('error') ? 'error' : 'success'
+      text = `Deploy: ${responseText.split('\n')[0]?.substring(0, 80) || 'ausgeführt'}`
+    } else if (promptLower.includes('test') || promptLower.includes('typescript') || promptLower.includes('build')) {
+      type = responseText.toLowerCase().includes('error') || responseText.toLowerCase().includes('fehler') ? 'warning' : 'success'
+      text = `Build/Test: ${responseText.split('\n')[0]?.substring(0, 80) || 'ausgeführt'}`
+    } else if (promptLower.includes('session beenden') || promptLower.includes('feierabend')) {
+      type = 'info'
+      text = 'Session beendet — MEMORY + TODOS aktualisiert'
+    } else if (promptLower.includes('todo')) {
+      type = 'info'
+      text = `Todos: ${responseText.split('\n')[0]?.substring(0, 80) || 'aktualisiert'}`
+    } else {
+      // Generic: use first line of response as feed text
+      const firstLine = responseText.split('\n').find(l => l.trim().length > 10)
+      text = `KANI: ${firstLine?.substring(0, 80) || prompt.substring(0, 60)}`
+    }
+
+    // Prepend to feed array (max 20 entries)
+    const newEntry = { text, time, type }
+
+    sb.from('projects').select('feed').eq('id', projectId).single().then(({ data }: { data: { feed: unknown[] } | null }) => {
+      const currentFeed = (data?.feed || []) as { text: string; time: string; type: string }[]
+      const updatedFeed = [newEntry, ...currentFeed].slice(0, 20)
+      sb.from('projects').update({ feed: updatedFeed }).eq('id', projectId).then(() => {})
+    })
+  } catch { /* non-critical */ }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function syncTodosToSupabase(projectId: string, sb: any) {
   try {
     const todosPath = join(homedir(), 'mckay-os', 'projects', projectId, 'TODOS.md')
@@ -322,9 +361,10 @@ function kaniTerminal(): Plugin {
                 }).then(() => {})
               }
 
-              // Auto-sync TODOS.md → Supabase (project terminals only)
+              // Auto-sync TODOS.md + Live Feed → Supabase (project terminals only)
               if (projectMatch) {
                 syncTodosToSupabase(projectMatch[1], serverSupabase)
+                addFeedEntry(projectMatch[1], prompt, responseText, serverSupabase)
               }
             }
           })
@@ -365,11 +405,14 @@ function kaniTerminal(): Plugin {
             return
           }
 
-          if (!terminalId || !sessionStarted.has(terminalId)) {
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ ok: true, status: 'no-session' }))
+          if (!terminalId) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'terminalId required' }))
             return
           }
+
+          // Ensure session is tracked (may have been lost on server restart)
+          sessionStarted.add(terminalId)
 
           // Kill existing process
           const existing = activeProcesses.get(terminalId)

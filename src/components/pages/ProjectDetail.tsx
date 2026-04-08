@@ -85,7 +85,7 @@ const quickActions = [
   { label: 'Test', icon: FlaskConical, color: 'var(--a)', border: 'var(--a)', prompt: 'Führe einen TypeScript Check (tsc --noEmit) und einen Build (vite build) durch. Zeige mir Fehler falls vorhanden.' },
   { label: 'Todos', icon: ListTodo, color: 'var(--p)', border: 'var(--p)', prompt: 'Lies TODOS.md und zeige alle offenen Todos mit Priorität und Status.' },
   { label: 'Ideas', icon: Lightbulb, color: 'var(--o)', border: 'var(--o)', prompt: 'Was wären sinnvolle nächste Features oder Verbesserungen für dieses Projekt? Basiere deine Vorschläge auf MEMORY.md und dem aktuellen Code.' },
-  { label: 'Feierabend', icon: Power, color: 'var(--r)', border: 'var(--r)', prompt: '__SESSION_END__' },
+  { label: 'Feierabend', icon: Power, color: 'var(--r)', border: 'var(--r)', prompt: 'Session beenden: 1) MEMORY.md aktualisieren (was wurde gemacht, was kommt als nächstes) 2) TODOS.md aktualisieren (erledigte Tasks abhaken, neue hinzufügen) 3) Alle Änderungen committen und pushen. Antworte mit [SESSION_END] ✓ wenn fertig.' },
 ]
 
 export function ProjectDetail({ toggleTheme }: Props) {
@@ -404,18 +404,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
-                    onClick={() => {
-                      if (qa.prompt === '__SESSION_END__') {
-                        fetch('/api/kani/session-end-single', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ terminalId: `project:${project.id}` }),
-                        })
-                        setPendingPrompt(null)
-                      } else {
-                        setPendingPrompt(qa.prompt)
-                      }
-                    }}
+                    onClick={() => setPendingPrompt(qa.prompt)}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

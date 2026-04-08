@@ -6,8 +6,15 @@ updated: 2026-04-08
 
 ## Active
 
-### Post Go Live
-- [ ] **P1** Supabase Daten einpflegen: Projekte, Agenten, Skills — RESET-KIT.md als Vorlage
+### Phase 3: Personal Modules
+- [ ] **P1** Todo-Widget funktional machen (persistent, schreibt in Dateien)
+- [ ] **P2** Kalender — Google Calendar Anbindung
+- [ ] **P2** Notizen — persistent in ~/mckay-os/notes/
+- [ ] **P3** E-Mail — Resend-Integration
+
+### Cleanup
+- [ ] **P2** Agent Status mit echten Daten befüllen (aktuell Dummy)
+- [ ] **P2** Bottom Ticker mit echten Daten statt Dummy
 
 ## Done
 
@@ -28,8 +35,16 @@ updated: 2026-04-08
 - [x] generate-project-claude-md.mjs (auto-context in all 14 project CLAUDE.md files)
 - [x] launchd auto-start at login (com.mckay.mission-control.plist)
 - [x] Deployed to Vercel (dev branch)
-- [x] scaffold-project Skill: TODOS.md + DECISIONS.md + REGISTRY.md Format + W1 Referenz aktualisiert (2026-04-08)
-- [x] Ideen-Workflow: IDEA INTAKE PROTOCOL in kani-master.md — ideas/{id}/ + CLAUDE.md + _INDEX.md + Supabase automatisch (2026-04-08)
-- [x] Supabase Datenmigration: 14 Workflows (W1-W14) + 4 echte Todos ersetzt (2026-04-08)
-- [x] Shutdown-Sequenz: POST /api/kani/session-end + ShutdownDialog mit realem Polling (2026-04-08)
-- [x] Go Live: dev → main gepusht, Vercel Production Deploy läuft (2026-04-08)
+- [x] scaffold-project Skill aktualisiert (2026-04-08)
+- [x] Ideen-Workflow: IDEA INTAKE PROTOCOL (2026-04-08)
+- [x] Supabase Datenmigration: 14 Workflows + 4 Todos (2026-04-08)
+- [x] Shutdown-Sequenz: POST /api/kani/session-end + ShutdownDialog (2026-04-08)
+- [x] Go Live: dev → main, Vercel Production Deploy (2026-04-08)
+- [x] Phase 2: Live Notifications (Supabase Realtime, Dismiss, Auto-Notifications) (2026-04-08)
+- [x] Phase 2: LaunchWizard (5-Step: Describe → Research → Brief → Review → Created) (2026-04-08)
+- [x] Phase 2: Session Persistence (Server Buffer + Disk Log + Reconnect) (2026-04-08)
+- [x] Phase 2: Feierabend-Button pro Projekt (2026-04-08)
+- [x] Phase 2: Auto-Sync TODOS.md → Supabase (2026-04-08)
+- [x] Phase 2: Auto-Feed — Live Feed aus Terminal-Aktivität (2026-04-08)
+- [x] TypeScript null-safety Fixes (10+ Komponenten) (2026-04-08)
+- [x] RLS Policies für anon-Zugriff auf alle Tabellen (2026-04-08)

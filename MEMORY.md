@@ -4,24 +4,32 @@
 
 ---
 
-## Letzte Session: 2026-04-08 (Go Live Session)
+## Letzte Session: 2026-04-08 (Phase 2 Build)
 
 **Was gebaut wurde:**
-- Supabase Datenmigration: 14 Workflows (W1-W14) + 4 echte MC-Todos eingepflegt
-- scaffold-project Skill: TODOS.md + DECISIONS.md + W1-Referenz + REGISTRY.md-Format korrigiert
-- Ideen-Workflow: IDEA INTAKE PROTOCOL in kani-master.md — 5 Schritte (Folder + CLAUDE.md + _INDEX.md + Supabase)
-- Shutdown-Sequenz: POST /api/kani/session-end Endpoint + ShutdownDialog mit echtem API-Polling
-- kani-master.md: SESSION START PROTOCOL + LAUNCH PROTOCOL auf W1 aktualisiert
-- Go Live: dev → main gemergt + Vercel Production Deploy ausgelöst
+- Live Notifications: Supabase-backed, Realtime, Dismiss, Mark-read, Auto-Notifications
+- LaunchWizard: 5-Step Modal (Describe → Research → Brief → Review → Created)
+- /api/project Endpoint: Supabase Insert + Folder Scaffold
+- /api/launch/research: Claude CLI Research mit JSON-Output
+- Server-side Session Buffer: Terminal-History persistent über Fenster-Schließen
+- Terminal Reconnect: History laden beim Öffnen, Background-Prozesse weiterlaufen
+- Feierabend-Button pro Projekt: Session-End Protokoll per Quick Action
+- Auto-Sync TODOS.md → Supabase nach Terminal-Prompt
+- Auto-Feed: Live Feed Einträge aus Terminal-Aktivität
+- Quick Action Buttons: Status, Deploy, Test, Todos, Ideas, Feierabend
+- TypeScript null-safety Fixes über 10+ Komponenten
+- Claude CLI spawn: absolute Pfade + expliziter PATH für launchd
+- Projekt-ID Fix: mc → mission-control
 
-**Letzter Commit:** d040216 (branch: main + dev)
+**Letzter Commit:** 952c2d5 (branch: dev)
 
 ---
 
 ## Next Steps
 
-1. Supabase Daten einpflegen: Projekte, Agenten, Skills — RESET-KIT.md als Vorlage (P1)
-2. Vercel Production URL verifizieren — live check auf Vercel Dashboard
+1. Projekt-Memory und TODOS.md werden jetzt automatisch via Terminal-Session aktualisiert
+2. Phase 3: Personal Modules (Todo, Kalender, Notizen, E-Mail)
+3. Agent Status und weitere Supabase-Felder mit echten Daten befüllen
 
 ---
 
@@ -34,8 +42,8 @@ keine
 ## Technischer Stand
 
 - **URL lokal:** localhost:5173 (dev, via launchd)
-- **URL Produktion:** Vercel Production Deploy am Laufen (main branch, Commit d040216)
-- **Branch:** dev (main ist auf Stand von dev)
-- **Supabase:** Verbunden — 14 Workflows + 4 Todos live
-- **launchd:** aktiv (com.mckay.mission-control.plist), Logs: /tmp/mission-control.log
-- **RESET-KIT:** ~/mckay-os/docs/RESET-KIT.md (alle Test-Daten gesichert)
+- **Branch:** dev
+- **Supabase:** Verbunden — 17 Tabellen, Realtime auf notifications + launch_sessions + projects + todos
+- **launchd:** aktiv (com.mckay.mission-control.plist)
+- **Neue Features:** Live Notifications, LaunchWizard, Session Persistence, Auto-Feed, Feierabend-Button
+- **RLS:** Alle Tabellen haben anon-Policies für Dashboard-Zugriff
