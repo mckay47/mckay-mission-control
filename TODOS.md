@@ -6,15 +6,15 @@ updated: 2026-04-09
 
 ## Active
 
-- [ ] **P2** Kalender — Google Calendar Anbindung
-- [ ] **P2** Notizen — persistent in ~/mckay-os/notes/
 - [ ] **P2** Individuelle Action Buttons pro Bereich (Projects, Thinktank, etc.)
+- [ ] **P2** Kalender — Google Calendar Anbindung
 - [ ] **P3** E-Mail — Resend-Integration
-- [ ] **P3** TerminalGrid Seite (/terminals) — Component bauen
 - [ ] **P3** Personal/Backoffice/Network — editierbare Inhalte + ggf. Terminals
 
 ## Done
 
+- [x] **P1** Kumulativer Time Tracker (ZoneProvider) + Shutdown-Anzeige + Briefing
+- [x] **P1** Kitchen Tile im Cockpit + TerminalGrid Attention-System (3 Severity-Overlays)
 - [x] **P1** useTerminalSession Hook — Lifecycle-Pattern aus ProjectDetail extrahiert
 - [x] **P1** IdeaDetail Terminal-Lifecycle (Dormant/Active/Shutdown, gleiches Pattern wie Projects)
 - [x] **P2** WindowManager überall — alle 11 window.open → openOrFocus in 6 Files

@@ -4,43 +4,39 @@
 
 ---
 
-## Letzte Session: 2026-04-09 (Phase 3 — Session 2, 1 Commit)
+## Letzte Session: 2026-04-09 (Phase 3 — Session 2, 4 Commits)
 
 **Was gebaut wurde:**
 
-useTerminalSession Hook (`src/hooks/useTerminalSession.ts`):
-- Terminal-Lifecycle-Pattern aus ProjectDetail extrahiert
-- State: sessionActive, terminalBusy, shuttingDown, sessionKey, pendingPrompt
-- Mount-Detection, Activate, Shutdown, New Session, onThinkingChange
-- Wiederverwendbar für alle Bereiche
+useTerminalSession Hook + Refactoring:
+- Hook extrahiert aus ProjectDetail, wiederverwendbar
+- ProjectDetail + IdeaDetail nutzen beide den Hook
+- WindowManager: alle 11 window.open → openOrFocus
 
-ProjectDetail Refactor:
-- Inline-State + Callbacks durch useTerminalSession Hook ersetzt
-- Todo-Integration bleibt lokal (handleThinkingChange/handleSend wrappen Hook)
-- ~160 Zeilen entfernt, gleiche Funktionalität
+Kitchen + TerminalGrid Attention:
+- "Kitchen" Tile im Cockpit (Flame-Icon, rot-orange Glow)
+- 3 Severity-Level: Gruen (fertig), Orange (wartet), Rot (eingriff)
+- Volles Overlay mit pulsierender Sirenen-Animation (4s Zyklus)
+- Status-Endpoint: Disk-Discovery fuer Terminals nach Server-Restart
+- Window-Dedup: Kitchen und Projects oeffnen gleichen Pfad
 
-IdeaDetail Upgrade:
-- Vollständiges Terminal-Lifecycle via useTerminalSession
-- Dormant-Overlay + Aktivierung (gleiches Pattern wie ProjectDetail)
-- Session-Persistenz, Shutdown, Neue Session
-- terminalId: idea:{id}, cwd: ~/mckay-os
+Kumulativer Time Tracker:
+- ZoneProvider: todayTotal akkumuliert ueber Zone/Matrix-Wechsel
+- localStorage Persistenz (mckay-workday + 30-Tage History)
+- StampButton: H:MM:SS Format ab 60min
+- ShutdownDialog: zeigt Arbeitszeit + resetDay() bei Shutdown
+- Briefing: heute (live) + gestern (aus History)
 
-WindowManager überall:
-- 11 direkte window.open Calls → openOrFocus() in 6 System-Seiten
-- Kein window.open mehr im src/ außer windowManager.ts selbst
-
-**Commits (branch: dev):** 7f386de
+**Commits (branch: dev):** 7f386de, f0165ba, 9b412c3, fc7ee80
 
 ---
 
 ## Next Steps
 
-1. **Kalender** — Google Calendar Anbindung (P2)
-2. **Notizen** — persistent in ~/mckay-os/notes/ (P2)
-3. **Action Buttons** — individuelle Quick Actions pro Bereich (P2)
-4. **E-Mail** — Resend-Integration (P3)
-5. **TerminalGrid** — /terminals Seite bauen (P3)
-6. **Personal/Backoffice/Network** — editierbare Inhalte (P3)
+1. **Action Buttons** — individuelle Quick Actions pro Bereich (P2)
+2. **Kalender** — Google Calendar Anbindung (P2)
+3. **E-Mail** — Resend-Integration (P3)
+4. **Personal/Backoffice/Network** — editierbare Inhalte (P3)
 
 ---
 
@@ -48,15 +44,15 @@ WindowManager überall:
 
 - Terminal Startup: 5-15s bei Kaltstart (normal, kein Bug)
 - Feierabend/Shutdown-Sequenz dauert ~60-80s bei Kaltstart (Claude laedt Kontext)
-- Claude CLI erkennt Nachrichten in MEMORY.md als "Prompt Injection" wenn zu befehlsartig formuliert
 
 ---
 
 ## Technischer Stand
 
 - **URL lokal:** localhost:5173 (dev, via launchd)
-- **Branch:** dev (5 Commits heute)
+- **Branch:** dev (8 Commits, 4 heute)
 - **Supabase:** 17+ Tabellen, Realtime aktiv
 - **launchd:** aktiv (com.mckay.mission-control.plist)
-- **Terminal-Lifecycle:** useTerminalSession Hook — wiederverwendbar in allen Bereichen
-- **Pattern-Status:** Projects ✅ Thinktank ✅ System (info-only) ✅ Rest: visuell
+- **Terminal-Lifecycle:** useTerminalSession Hook — Projects + Thinktank
+- **Kitchen:** TerminalGrid mit 3-Severity Attention-System
+- **Time Tracker:** Kumulativ, localStorage, Shutdown-Reset, Briefing-Integration
