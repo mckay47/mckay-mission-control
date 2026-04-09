@@ -4,35 +4,37 @@
 
 ---
 
-## Letzte Session: 2026-04-09 (Build: Todo-Widget + Agent Status)
+## Letzte Session: 2026-04-09 (Bugfixes — Signal-Filter + Shutdown Race)
 
 **Was gebaut wurde:**
 
-- `useTodoActions.ts` — CRUD für Todos via Supabase (add/toggle/delete)
-- `useAgentStatus.ts` — Echtzeit Agent-Status aus Terminal-Aktivität
-- `ProjectDetail.tsx` — massiv erweitert (333 Insertions): Todo-Widget + Agent Status integriert
-- `MissionControlProvider.tsx` — erweitert für neue Hooks
-- `vite.config.ts` — 70 neue Zeilen (Proxy/Plugin-Setup)
-- `Header.tsx`, `Terminal.tsx`, `data.ts` — kleinere Anpassungen
-- `TODOS.md` — Todo-Widget ✓ + Kalender ✓ abgehakt
+`[SIGNAL]`-Filter im Terminal (`useKaniStream.ts`):
+- `[SIGNAL]`-Zeilen werden beim Restore aus History gefiltert
+- `[SIGNAL]`-Zeilen werden beim Live-Streaming gefiltert
+- Sauberere Terminal-Ausgabe — Signale gehen nur ans Dashboard
 
-**Commits (branch: dev):** ca01aa7 + dieser Session-End Commit
+Shutdown/Refresh Race-Fix (`ProjectDetail.tsx`):
+- `.catch(() => {})` → `.finally()` bei beiden fetch-Aufrufen (reset endpoint)
+- State-Updates (setShuttingDown, setSessionActive, setSessionKey) erst nach Reset-Response
+- Refresh-Delay 100ms → 200ms für sicheres Remount
+
+**Commits (branch: dev):** 1ab4bd3 + dieser Session-End Commit
 
 ---
 
 ## Next Steps
 
-1. **Bottom Ticker** mit echten Daten statt statischen Einträgen (P2)
-2. **Notizen** — persistent in ~/mckay-os/notes/ (P2)
-3. **E-Mail** — Resend-Integration (P3)
-4. Agent Status weiter verfeinern (Live-Daten verifizieren)
+1. **Ideas-Terminal** mit gleichem Pattern wie Projects (Todo-Tracking, Lifecycle)
+2. **Kalender** — Google Calendar Anbindung (P2)
+3. **Notizen** — persistent in ~/mckay-os/notes/ (P2)
+4. **E-Mail** — Resend-Integration (P3)
 
 ---
 
 ## Bekannte Issues
 
-- Feierabend Quick Action Button zeigt keinen visuellen Effekt beim Klick (vermutlich alter Cache)
-- Terminal im Projektfenster: Claude CLI Startup dauert 5-15 Sekunden (normal, kein Bug)
+- Terminal Startup: 5-15s bei Kaltstart (normal, kein Bug)
+- Feierabend/Shutdown-Sequenz dauert ~60-80s bei Kaltstart (Claude lädt Kontext)
 
 ---
 
@@ -40,8 +42,9 @@
 
 - **URL lokal:** localhost:5173 (dev, via launchd)
 - **Branch:** dev
-- **Supabase:** 17 Tabellen, Realtime auf notifications + launch_sessions + projects + todos + agents + ticker_items
+- **Supabase:** 17+ Tabellen, Realtime auf notifications + launch_sessions + projects + todos + agents + ticker_items
 - **launchd:** aktiv (com.mckay.mission-control.plist)
 - **RLS:** Alle Tabellen haben anon-Policies
 - **Session Persistence:** Server-side Buffer + Disk-Log + Reconnect
 - **Auto-Sync:** TODOS.md → Supabase + Feed-Einträge nach jedem Prompt
+- **Terminal-Lifecycle:** Dormant → Active → Shutdown mit Session-Detection

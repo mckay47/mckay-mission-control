@@ -519,34 +519,35 @@ export function ProjectDetail({ toggleTheme }: Props) {
                     setStatus(sentTodoId, 'done', project.id)
                     setSentTodoId(null)
                   }
-                  // Detect shutdown completion — reset terminal for clean next session
+                  // Detect shutdown completion — wait for reset, then remount clean
                   if (!thinking && shuttingDown) {
                     const tid = `project:${project.id}`
                     fetch('/api/kani/reset', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ terminalId: tid }),
-                    }).catch(() => {})
-                    setShuttingDown(false)
-                    setSessionActive(false)
-                    setSessionKey(k => k + 1)
+                    }).finally(() => {
+                      setShuttingDown(false)
+                      setSessionActive(false)
+                      setSessionKey(k => k + 1)
+                    })
                   }
-                  // Detect refresh/new-session completion — reset + re-activate
+                  // Detect refresh/new-session completion — wait for reset, then re-activate
                   if (!thinking && refreshing) {
                     const tid = `project:${project.id}`
                     fetch('/api/kani/reset', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ terminalId: tid }),
-                    }).catch(() => {})
-                    setRefreshing(false)
-                    setSessionKey(k => k + 1)
-                    // Re-activate with fresh wake-up prompt after a tick (Terminal needs to remount)
-                    setTimeout(() => {
-                      setPendingPrompt(
-                        'Lies MEMORY.md und TODOS.md dieses Projekts. Fasse kurz zusammen: Wo sind wir stehen geblieben? Was steht als nächstes an? Zeige die offenen Todos.'
-                      )
-                    }, 100)
+                    }).finally(() => {
+                      setRefreshing(false)
+                      setSessionKey(k => k + 1)
+                      setTimeout(() => {
+                        setPendingPrompt(
+                          'Lies MEMORY.md und TODOS.md dieses Projekts. Fasse kurz zusammen: Wo sind wir stehen geblieben? Was steht als nächstes an? Zeige die offenen Todos.'
+                        )
+                      }, 200)
+                    })
                   }
                 }}
               />

@@ -26,9 +26,10 @@ export function useKaniStream({ cwd, terminalId }: UseKaniStreamOptions) {
             if (msg.role === 'user') {
               restored.push({ type: 'prompt', text: msg.text })
             } else {
-              // Split assistant response into lines
+              // Split assistant response into lines, filter [SIGNAL] lines
               const outputLines = msg.text.split('\n')
               for (const line of outputLines) {
+                if (line.trim().startsWith('[SIGNAL]')) continue
                 restored.push({ type: 'output', text: line })
               }
             }
@@ -63,6 +64,7 @@ export function useKaniStream({ cwd, terminalId }: UseKaniStreamOptions) {
               } else {
                 const outputLines = msg.text.split('\n')
                 for (const line of outputLines) {
+                  if (line.trim().startsWith('[SIGNAL]')) continue
                   restored.push({ type: 'output', text: line })
                 }
               }
@@ -114,17 +116,15 @@ export function useKaniStream({ cwd, terminalId }: UseKaniStreamOptions) {
         buffer = lineBreaks.pop() || ''
 
         for (const line of lineBreaks) {
-          if (firstChunk) {
-            setLines(prev => [...prev, { type: 'output', text: line }])
-            firstChunk = false
-          } else {
-            setLines(prev => [...prev, { type: 'output', text: line }])
-          }
+          // Filter out [SIGNAL] lines — they're for the dashboard, not the user
+          if (line.trim().startsWith('[SIGNAL]')) continue
+          firstChunk = false
+          setLines(prev => [...prev, { type: 'output', text: line }])
         }
       }
 
-      // Flush remaining buffer
-      if (buffer) {
+      // Flush remaining buffer (also filter signals)
+      if (buffer && !buffer.trim().startsWith('[SIGNAL]')) {
         setLines(prev => [...prev, { type: 'output', text: buffer }])
       }
     } catch (err) {
