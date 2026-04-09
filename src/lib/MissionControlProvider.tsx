@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase.ts'
-import type { Project, Idea, Agent, Skill, Department, PersonalArea, NetworkEntry, TickerItemData, Notification, LaunchSession } from './types.ts'
+import type { Project, Idea, Agent, Skill, Department, PersonalArea, NetworkEntry, TickerItemData, Notification, LaunchSession, Todo } from './types.ts'
 import type { PipelineMilestone } from '../components/shared/Pipeline.tsx'
 import { Shield, ShieldCheck, ShieldAlert, Power, Activity, CheckCircle, Clock, Zap, TrendingUp } from 'lucide-react'
 
@@ -144,6 +144,9 @@ interface MissionControlContextValue {
   // Phase 2: Notifications + Launch
   notifications: Notification[]
   launchSessions: LaunchSession[]
+
+  // Hub
+  hubTodos: { id: string; title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; due: string }[]
 }
 
 // ============================================================
@@ -165,6 +168,7 @@ const emptyContext: MissionControlContextValue = {
   ideaFeedback: {}, ideaResearch: {}, ideaLastUpdate: {},
   workflows: [], mcpServers: [], securityFeatures: [], perfKpis: [],
   notifications: [], launchSessions: [],
+  hubTodos: [],
 }
 
 const MissionControlContext = createContext<MissionControlContextValue>(emptyContext)
@@ -399,10 +403,23 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         projectNextMilestone[row.id] = row.next_milestone || ''
       }
 
-      // Group todos by project_id
+      // Group todos by project_id + collect hub todos (no project)
       const projectTodos: Record<string, { id: string; title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; agent: string; project_id: string }[]> = {}
+      const hubTodos: { id: string; title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; due: string }[] = []
       for (const row of todoRows || []) {
         const pid = row.project_id
+        if (!pid) {
+          hubTodos.push({
+            id: row.id,
+            title: row.title,
+            priority: row.priority || 'P2',
+            duration: row.duration || '',
+            status: row.status || 'open',
+            description: row.description || '',
+            due: row.due || '',
+          })
+          continue
+        }
         if (!projectTodos[pid]) projectTodos[pid] = []
         projectTodos[pid].push({
           id: row.id,
@@ -542,6 +559,7 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         ideaFeedback, ideaResearch, ideaLastUpdate,
         workflows, mcpServers, securityFeatures, perfKpis,
         notifications, launchSessions,
+        hubTodos,
       })
     }
 

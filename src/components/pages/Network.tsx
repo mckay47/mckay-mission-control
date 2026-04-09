@@ -3,7 +3,7 @@ import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
-import { networkCategories } from '../../lib/data.ts'
+import { networkCategories } from '../../lib/categories.ts'
 
 interface Props { toggleTheme: () => void }
 

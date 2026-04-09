@@ -406,6 +406,83 @@ function kaniTerminal(): Plugin {
       })
 
       // --------------------------------------------------------
+      // GET /api/calendar/events — Fetch Google Calendar events
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/calendar/events')) return next()
+
+        const url = new URL(req.url, 'http://localhost')
+        const timeMin = url.searchParams.get('timeMin') || new Date().toISOString()
+        const timeMax = url.searchParams.get('timeMax') || new Date(Date.now() + 30 * 86400000).toISOString()
+
+        const env = loadEnv('development', process.cwd(), '')
+        const clientId = env.VITE_GOOGLE_CLIENT_ID
+        const clientSecret = env.VITE_GOOGLE_CLIENT_SECRET
+        const refreshToken = env.GOOGLE_REFRESH_TOKEN
+        const calendarId = env.GOOGLE_CALENDAR_ID || 'primary'
+
+        if (!clientId || !clientSecret || !refreshToken) {
+          res.writeHead(503, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Google Calendar not configured. Add credentials to .env.local', events: [] }))
+          return
+        }
+
+        // Get access token from refresh token, then fetch events
+        ;(async () => {
+          try {
+            // Step 1: Exchange refresh token for access token
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                client_id: clientId,
+                client_secret: clientSecret,
+                refresh_token: refreshToken,
+                grant_type: 'refresh_token',
+              }),
+            })
+            const tokenData = await tokenRes.json()
+            if (!tokenData.access_token) {
+              res.writeHead(401, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Failed to get access token', details: tokenData, events: [] }))
+              return
+            }
+
+            // Step 2: Fetch calendar events
+            const calUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` + new URLSearchParams({
+              timeMin,
+              timeMax,
+              singleEvents: 'true',
+              orderBy: 'startTime',
+              maxResults: '100',
+            })
+            const calRes = await fetch(calUrl, {
+              headers: { Authorization: `Bearer ${tokenData.access_token}` },
+            })
+            const calData = await calRes.json()
+
+            // Step 3: Transform to our CalendarEvent format
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const events = (calData.items || []).map((item: any) => ({
+              id: item.id,
+              title: item.summary || '(Kein Titel)',
+              start: item.start?.dateTime || item.start?.date || '',
+              end: item.end?.dateTime || item.end?.date || '',
+              allDay: !item.start?.dateTime,
+              location: item.location || '',
+              description: (item.description || '').substring(0, 200),
+            }))
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ events }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message, events: [] }))
+          }
+        })()
+      })
+
+      // --------------------------------------------------------
       // POST /api/todos/sync-to-file — Write Supabase todos back to TODOS.md
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {

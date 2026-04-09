@@ -4,11 +4,6 @@ project: "mission-control"
 updated: 2026-04-09
 ---
 
-## Active — Session A: Hub ausbauen
-- [ ] **P1** Google Calendar Anbindung (Hub → Kalender-Tab)
-- [ ] **P1** Non-Projekt Todos CRUD (Hub → Todos-Tab)
-- [ ] **P2** E-Mail Übersicht (Hub → Links + Unread-Count)
-
 ## Active — Session B: Office ausbauen
 - [ ] **P1** Buchhaltung: Belege-Upload, Auto-Rename, KPIs
 - [ ] **P2** Subscriptions: Provider-Liste, Kosten, API-Key-Datei-Links
@@ -30,7 +25,12 @@ updated: 2026-04-09
 - [ ] **P1** Action Buttons pro Bereich finalisieren
 - [ ] **P1** Dev → Main merge
 
-## Done (Heute: 2026-04-09)
+## Done (Session A: 2026-04-09 Spätschicht)
+- [x] **P1** Google Calendar Anbindung (Hub → Kalender-Tab) — OAuth2, 3 Views
+- [x] **P1** Non-Projekt Todos CRUD (Hub → Todos-Tab) — Add/Check/Delete
+- [x] **P2** E-Mail Übersicht (Hub → 20 Konten, 5 Gruppen)
+
+## Done (2026-04-09 Tagschicht)
 - [x] **P1** useTerminalSession Hook — Lifecycle-Pattern extrahiert
 - [x] **P1** IdeaDetail Terminal-Lifecycle
 - [x] **P2** WindowManager überall (11 Calls)

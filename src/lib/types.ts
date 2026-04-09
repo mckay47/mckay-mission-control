@@ -189,6 +189,35 @@ export interface CalendarEntry {
   today?: boolean
 }
 
+export interface CalendarEvent {
+  id: string
+  title: string
+  start: string    // ISO datetime
+  end: string      // ISO datetime
+  allDay: boolean
+  calendar?: string // calendar name/color
+  location?: string
+  description?: string
+}
+
+export interface EmailAccount {
+  email: string
+  provider: 'gmail' | 'strato' | 'custom'
+  unread?: number   // placeholder, later via MCP
+}
+
+export interface EmailGroup {
+  id: string
+  name: string
+  color: string
+  glow: string
+  emoji: string
+  badge: string
+  desc: string
+  accounts: EmailAccount[]
+  stats: { label: string; value: string }[]
+}
+
 export interface MemoryFile {
   ico?: string
   n?: string
