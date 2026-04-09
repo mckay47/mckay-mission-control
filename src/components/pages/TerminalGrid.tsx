@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Terminal } from '../shared/Terminal.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
+import { openOrFocus } from '../../lib/windowManager'
 
 export function TerminalGrid() {
   const { projects } = useMissionControl()
@@ -51,7 +52,7 @@ export function TerminalGrid() {
             <div
               key={p.id}
               style={{ display: 'flex', flexDirection: 'column', minHeight: 0, cursor: 'pointer' }}
-              onClick={() => window.open(`/project/${p.id}/terminal`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no')}
+              onClick={() => openOrFocus(`/project/${p.id}/terminal`, 'width=1440,height=900,menubar=no,toolbar=no')}
             >
               <Terminal
                 title={`${p.name} · ~/projects/${p.id}`}

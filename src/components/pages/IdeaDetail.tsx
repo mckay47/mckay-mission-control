@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Search, Rocket, Save, Coffee, BarChart2 } from 'lucide-react'
+import { Search, Rocket, Save, Coffee, BarChart2, Zap, RefreshCw } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
@@ -9,6 +9,7 @@ import { Terminal } from '../shared/Terminal.tsx'
 import { Pipeline } from '../shared/Pipeline.tsx'
 import LaunchWizard from '../shared/LaunchWizard.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
+import { useTerminalSession } from '../../hooks/useTerminalSession.ts'
 
 interface Props { toggleTheme: () => void }
 
@@ -66,10 +67,14 @@ export function IdeaDetail({ toggleTheme }: Props) {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
   const [tab, setTab] = useState(0)
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
   const [launchOpen, setLaunchOpen] = useState(false)
 
   const idea = ideas.find(i => i.id === id)
+
+  const session = useTerminalSession({
+    terminalId: `idea:${idea?.id || id || ''}`,
+    cwd: '~/mckay-os',
+  })
 
   if (!idea) {
     return (
@@ -240,37 +245,104 @@ export function IdeaDetail({ toggleTheme }: Props) {
         ratio="50% 50%"
         left={
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
-            <div className="st" style={{ padding: '0 2px' }}>KANI Terminal</div>
-            <Terminal
-              title={`${idea.id} — research`}
-              statusLabel={ps.label}
-              statusColor={ps.color}
-              statusGlow={glow}
-              placeholder={`kani@${idea.id} ~$ `}
-              mode="live"
-              cwd={`~/mckay-os/ideas/${idea.id}`}
-              terminalId={`idea:${idea.id}`}
-              inputValue={pendingPrompt || undefined}
-              onInputChange={(v) => setPendingPrompt(v || null)}
-              onClearInput={() => setPendingPrompt(null)}
-              onSend={() => setPendingPrompt(null)}
-            />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
-              {quickActions.map((qa, i) => {
-                const Icon = qa.icon
-                return (
-                  <button
-                    key={i}
-                    className="qa-btn"
-                    style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
-                    onClick={qa.label === '→ Projekt' ? () => setLaunchOpen(true) : qa.prompt ? () => setPendingPrompt(qa.prompt) : undefined}
-                  >
-                    <Icon size={14} stroke={qa.color} />
-                    {qa.label}
-                  </button>
-                )
-              })}
+            <div className="st" style={{ padding: '0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              KANI Terminal
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: '3px 10px', borderRadius: 6, letterSpacing: 1,
+                background: session.sessionActive ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.04)',
+                color: session.sessionActive ? 'var(--g)' : 'var(--tx3)',
+              }}>
+                {session.shuttingDown ? 'SHUTDOWN...' : session.sessionActive ? 'ACTIVE' : 'DORMANT'}
+              </span>
             </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+              <Terminal
+                key={session.sessionKey}
+                title={`${idea.id} — research`}
+                statusLabel={session.sessionActive ? (session.terminalBusy ? 'Thinking...' : 'Active') : 'Dormant'}
+                statusColor={session.sessionActive ? (session.terminalBusy ? 'var(--a)' : ps.color) : 'var(--tx3)'}
+                statusGlow={session.sessionActive ? (session.terminalBusy ? 'var(--ag)' : glow) : 'rgba(255,255,255,0.04)'}
+                placeholder={session.sessionActive ? `kani@${idea.id} ~$ ` : ''}
+                mode="live"
+                cwd="~/mckay-os"
+                terminalId={`idea:${idea.id}`}
+                inputValue={session.pendingPrompt || undefined}
+                onInputChange={(v) => session.setPendingPrompt(v || null)}
+                onClearInput={() => session.setPendingPrompt(null)}
+                onSend={() => session.onSend()}
+                onThinkingChange={(thinking) => session.onThinkingChange(thinking)}
+              />
+
+              {/* Dormant overlay */}
+              {!session.sessionActive && !session.shuttingDown && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 20,
+                  background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+                  zIndex: 10,
+                }}>
+                  <div style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 600 }}>Terminal inaktiv</div>
+                  <button
+                    className="qa-btn"
+                    style={{
+                      borderColor: 'var(--g)', color: 'var(--g)', '--qc': 'var(--g)',
+                      padding: '14px 28px', fontSize: 13, fontWeight: 700,
+                    } as React.CSSProperties}
+                    onClick={() => session.activate(
+                      `Analysiere die Idee "${idea.n ?? idea.title ?? idea.id}": Lies relevante Dateien und gib einen kurzen Status-Überblick.`
+                    )}
+                  >
+                    <Zap size={16} stroke="var(--g)" />
+                    Aktivieren
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick actions — only when active */}
+            {session.sessionActive && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
+                {quickActions.map((qa, i) => {
+                  const Icon = qa.icon
+                  const isFeierabend = qa.label === 'Feierabend'
+                  const disabled = session.terminalBusy || session.shuttingDown || session.refreshing
+                  return (
+                    <button
+                      key={i}
+                      className="qa-btn"
+                      style={{
+                        borderColor: qa.border, color: qa.color, '--qc': qa.color,
+                        ...(disabled ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                      } as React.CSSProperties}
+                      onClick={
+                        qa.label === '→ Projekt' ? () => setLaunchOpen(true) :
+                        isFeierabend ? () => session.shutdown() :
+                        qa.prompt ? () => session.setPendingPrompt(qa.prompt) :
+                        undefined
+                      }
+                      disabled={disabled}
+                    >
+                      <Icon size={14} stroke={qa.color} />
+                      {qa.label}
+                    </button>
+                  )
+                })}
+                {/* Neue Session — soft reset */}
+                <button
+                  className="qa-btn"
+                  style={{
+                    borderColor: 'var(--bl)', color: 'var(--bl)', '--qc': 'var(--bl)',
+                    ...((session.terminalBusy || session.shuttingDown || session.refreshing) ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                  } as React.CSSProperties}
+                  onClick={() => session.newSession()}
+                  disabled={session.terminalBusy || session.shuttingDown || session.refreshing}
+                >
+                  <RefreshCw size={14} stroke="var(--bl)" />
+                  Neue Session
+                </button>
+              </div>
+            )}
           </div>
         }
         right={

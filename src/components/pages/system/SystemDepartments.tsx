@@ -7,6 +7,7 @@ import { BottomTicker } from '../../shared/BottomTicker.tsx'
 import { StatusLed } from '../../ui/StatusLed.tsx'
 import { Pipeline } from '../../shared/Pipeline.tsx'
 import { useMissionControl } from '../../../lib/MissionControlProvider.tsx'
+import { openOrFocus } from '../../../lib/windowManager'
 
 interface Props { toggleTheme: () => void }
 
@@ -176,7 +177,7 @@ export function SystemDepartments({ toggleTheme }: Props) {
                   {/* Top-right external link */}
                   <div
                     className="ghost-open-icon"
-                    onClick={(e) => { e.stopPropagation(); window.open(`/system/departments/${d.id}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no') }}
+                    onClick={(e) => { e.stopPropagation(); openOrFocus(`/system/departments/${d.id}`, 'width=1440,height=900,menubar=no,toolbar=no') }}
                     style={{
                       position: 'absolute', top: 12, right: 12, zIndex: 2,
                       cursor: 'pointer', opacity: 0,
@@ -244,7 +245,7 @@ export function SystemDepartments({ toggleTheme }: Props) {
               <div
                 className="ghost-btn"
                 style={{ '--bc': `${dept.color}22`, padding: '5px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', width: 'auto', height: 'auto' } as React.CSSProperties}
-                onClick={() => window.open(`/system/departments/${dept.id}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no')}
+                onClick={() => openOrFocus(`/system/departments/${dept.id}`, 'width=1440,height=900,menubar=no,toolbar=no')}
               >
                 <ExternalLink size={12} stroke={dept.color} />
                 <span style={{ fontSize: 10, fontWeight: 700, color: dept.color }}>Oeffnen</span>

@@ -4,6 +4,7 @@ import { Header } from '../shared/Header.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { StatusLed } from '../ui/StatusLed.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
+import { openOrFocus } from '../../lib/windowManager'
 
 interface Props { toggleTheme: () => void }
 
@@ -58,7 +59,7 @@ export function System({ toggleTheme }: Props) {
         </div>
 
         <button
-          onClick={() => window.open('/terminals', '_blank', 'width=3440,height=1440,menubar=no,toolbar=no')}
+          onClick={() => openOrFocus('/terminals', 'width=3440,height=1440,menubar=no,toolbar=no')}
           style={{
             padding: '16px 32px', borderRadius: 16, fontSize: 14, fontWeight: 700,
             cursor: 'pointer', border: '2px solid var(--o)', color: 'var(--o)',

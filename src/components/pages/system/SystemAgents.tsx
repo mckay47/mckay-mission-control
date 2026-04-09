@@ -7,6 +7,7 @@ import { BottomTicker } from '../../shared/BottomTicker.tsx'
 import { StatusLed } from '../../ui/StatusLed.tsx'
 import { Pipeline } from '../../shared/Pipeline.tsx'
 import { useMissionControl } from '../../../lib/MissionControlProvider.tsx'
+import { openOrFocus } from '../../../lib/windowManager'
 import type { PipelineMilestone } from '../../shared/Pipeline.tsx'
 
 interface Props { toggleTheme: () => void }
@@ -302,7 +303,7 @@ export function SystemAgents({ toggleTheme }: Props) {
                   {/* Top-right external link */}
                   <div
                     className="ghost-open-icon"
-                    onClick={(e) => { e.stopPropagation(); window.open(`/system/agents/${a.name.toLowerCase().replace(/\s+/g, '-')}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no') }}
+                    onClick={(e) => { e.stopPropagation(); openOrFocus(`/system/agents/${a.name.toLowerCase().replace(/\s+/g, '-')}`, 'width=1440,height=900,menubar=no,toolbar=no') }}
                     style={{
                       position: 'absolute', top: 12, right: 12, zIndex: 2,
                       cursor: 'pointer', opacity: 0,
@@ -393,7 +394,7 @@ export function SystemAgents({ toggleTheme }: Props) {
               <div
                 className="ghost-btn"
                 style={{ '--bc': `${color}22`, padding: '5px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', width: 'auto', height: 'auto' } as React.CSSProperties}
-                onClick={() => window.open(`/system/agents/${agent!.name.toLowerCase().replace(/\s+/g, '-')}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no')}
+                onClick={() => openOrFocus(`/system/agents/${agent!.name.toLowerCase().replace(/\s+/g, '-')}`, 'width=1440,height=900,menubar=no,toolbar=no')}
               >
                 <ExternalLink size={12} stroke={color} />
                 <span style={{ fontSize: 10, fontWeight: 700, color }}>Oeffnen</span>

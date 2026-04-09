@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Activity, Rocket, FlaskConical, ListTodo, Lightbulb, Power, Check, Zap, RefreshCw } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
@@ -11,6 +11,7 @@ import { Pipeline } from '../shared/Pipeline.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 import { useTodoActions } from '../../lib/useTodoActions.ts'
 import { useAgentStatus } from '../../lib/useAgentStatus.ts'
+import { useTerminalSession } from '../../hooks/useTerminalSession.ts'
 
 interface Props { toggleTheme: () => void }
 
@@ -100,13 +101,8 @@ export function ProjectDetail({ toggleTheme }: Props) {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
   const [tab, setTab] = useState(0)
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
-  const [terminalBusy, setTerminalBusy] = useState(false)
   const [activeTodoId, setActiveTodoId] = useState<string | null>(null)   // UI highlight on click
   const [sentTodoId, setSentTodoId] = useState<string | null>(null)       // actually sent to terminal
-  const [sessionActive, setSessionActive] = useState(false)               // terminal lifecycle
-  const [shuttingDown, setShuttingDown] = useState(false)
-  const [sessionKey, setSessionKey] = useState(0)                         // increment to force Terminal remount
   const { addTodo, setStatus, deleteTodo } = useTodoActions()
 
   const project = projects.find(p => p.id === id)
@@ -114,44 +110,41 @@ export function ProjectDetail({ toggleTheme }: Props) {
   // All hooks must be called unconditionally — before any early return
   const agents = useAgentStatus(project?.id || '', allAgents)
 
-  // Detect existing session on mount (e.g. user navigated away and came back)
-  useEffect(() => {
-    if (!id) return
-    const tid = `project:${id}`
-    Promise.all([
-      fetch(`/api/kani/history/${encodeURIComponent(tid)}`).then(r => r.json()).catch(() => null),
-      fetch('/api/kani/status').then(r => r.json()).catch(() => null),
-    ]).then(([historyData, statusData]) => {
-      const hasHistory = historyData?.history?.length > 0
-      const hasActiveProcess = statusData?.activeTerminals?.some((t: { terminalId: string }) => t.terminalId === tid)
-      if (hasHistory || hasActiveProcess) {
-        setSessionActive(true)
-      }
-    })
-  }, [id])
+  const session = useTerminalSession({
+    terminalId: `project:${project?.id || id || ''}`,
+    cwd: `~/mckay-os/projects/${project?.id || id || ''}`,
+  })
 
-  const handleActivate = useCallback(() => {
-    setSessionActive(true)
-    setPendingPrompt(
+  const handleActivate = () => {
+    session.activate(
       'Lies MEMORY.md und TODOS.md dieses Projekts. Fasse kurz zusammen: Wo sind wir stehen geblieben? Was steht als nächstes an? Zeige die offenen Todos.'
     )
-  }, [])
+  }
 
-  const handleProjectShutdown = useCallback(() => {
-    setShuttingDown(true)
-    setPendingPrompt(
-      'Session beenden: 1) MEMORY.md aktualisieren (Letzte Session + Next Steps) 2) TODOS.md prüfen und abhaken 3) Alle Änderungen committen und pushen 4) Antworte mit [SESSION_END] ✓'
-    )
-  }, [])
+  const handleProjectShutdown = () => {
+    session.shutdown()
+  }
 
-  // Soft reset: save state, clear conversation, fresh session
-  const [refreshing, setRefreshing] = useState(false)
-  const handleNewSession = useCallback(() => {
-    setRefreshing(true)
-    setPendingPrompt(
-      'Zwischenspeichern: 1) MEMORY.md kurz aktualisieren (aktueller Stand) 2) Antworte nur mit: [CHECKPOINT] ✓'
-    )
-  }, [])
+  const handleNewSession = () => {
+    session.newSession()
+  }
+
+  const handleThinkingChange = (thinking: boolean) => {
+    session.onThinkingChange(thinking)
+    if (!thinking && sentTodoId && project) {
+      setStatus(sentTodoId, 'done', project.id)
+      setSentTodoId(null)
+    }
+  }
+
+  const handleSend = () => {
+    session.onSend()
+    if (activeTodoId && project) {
+      setStatus(activeTodoId, 'in-progress', project.id)
+      setSentTodoId(activeTodoId)
+      setActiveTodoId(null)
+    }
+  }
 
   if (!project) {
     return (
@@ -271,7 +264,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
                       } as React.CSSProperties}
                       onClick={() => {
                         setActiveTodoId(t.id)
-                        setPendingPrompt(`/build ${t.title}`)
+                        session.setPendingPrompt(`/build ${t.title}`)
                       }}
                     >
                       {/* Status indicator */}
@@ -470,7 +463,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
         backLink={{ label: 'Projekte', href: '/projects' }}
         title={project.name}
         toggleTheme={toggleTheme}
-        onPowerClick={sessionActive ? handleProjectShutdown : undefined}
+        onPowerClick={session.sessionActive ? handleProjectShutdown : undefined}
       />
 
       <SplitLayout
@@ -481,79 +474,36 @@ export function ProjectDetail({ toggleTheme }: Props) {
               Terminal
               <span style={{
                 fontSize: 9, fontWeight: 700, padding: '3px 10px', borderRadius: 6, letterSpacing: 1,
-                background: sessionActive ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.04)',
-                color: sessionActive ? 'var(--g)' : 'var(--tx3)',
+                background: session.sessionActive ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.04)',
+                color: session.sessionActive ? 'var(--g)' : 'var(--tx3)',
               }}>
-                {shuttingDown ? 'SHUTDOWN...' : sessionActive ? 'ACTIVE' : 'DORMANT'}
+                {session.shuttingDown ? 'SHUTDOWN...' : session.sessionActive ? 'ACTIVE' : 'DORMANT'}
               </span>
             </div>
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
               <Terminal
-                key={sessionKey}
+                key={session.sessionKey}
                 title={`${project.id} — project`}
-                statusLabel={sessionActive ? (terminalBusy ? 'Thinking...' : 'Active') : 'Dormant'}
-                statusColor={sessionActive ? (terminalBusy ? 'var(--a)' : 'var(--g)') : 'var(--tx3)'}
-                statusGlow={sessionActive ? (terminalBusy ? 'var(--ag)' : 'var(--gg)') : 'rgba(255,255,255,0.04)'}
-                placeholder={sessionActive ? `kani project ${project.id} → ...` : ''}
+                statusLabel={session.sessionActive ? (session.terminalBusy ? 'Thinking...' : 'Active') : 'Dormant'}
+                statusColor={session.sessionActive ? (session.terminalBusy ? 'var(--a)' : 'var(--g)') : 'var(--tx3)'}
+                statusGlow={session.sessionActive ? (session.terminalBusy ? 'var(--ag)' : 'var(--gg)') : 'rgba(255,255,255,0.04)'}
+                placeholder={session.sessionActive ? `kani project ${project.id} → ...` : ''}
                 mode="live"
                 cwd={`~/mckay-os/projects/${project.id}`}
                 terminalId={`project:${project.id}`}
-                inputValue={pendingPrompt || undefined}
+                inputValue={session.pendingPrompt || undefined}
                 onInputChange={(v) => {
-                  setPendingPrompt(v || null)
+                  session.setPendingPrompt(v || null)
                   if (!v && activeTodoId) setActiveTodoId(null)
                 }}
-                onClearInput={() => { setPendingPrompt(null); setActiveTodoId(null) }}
-                onSend={() => {
-                  setPendingPrompt(null)
-                  if (activeTodoId && project) {
-                    setStatus(activeTodoId, 'in-progress', project.id)
-                    setSentTodoId(activeTodoId)
-                    setActiveTodoId(null)
-                  }
-                }}
-                onThinkingChange={(thinking) => {
-                  setTerminalBusy(thinking)
-                  if (!thinking && sentTodoId && project) {
-                    setStatus(sentTodoId, 'done', project.id)
-                    setSentTodoId(null)
-                  }
-                  // Detect shutdown completion — wait for reset, then remount clean
-                  if (!thinking && shuttingDown) {
-                    const tid = `project:${project.id}`
-                    fetch('/api/kani/reset', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ terminalId: tid }),
-                    }).finally(() => {
-                      setShuttingDown(false)
-                      setSessionActive(false)
-                      setSessionKey(k => k + 1)
-                    })
-                  }
-                  // Detect refresh/new-session completion — wait for reset, then re-activate
-                  if (!thinking && refreshing) {
-                    const tid = `project:${project.id}`
-                    fetch('/api/kani/reset', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ terminalId: tid }),
-                    }).finally(() => {
-                      setRefreshing(false)
-                      setSessionKey(k => k + 1)
-                      setTimeout(() => {
-                        setPendingPrompt(
-                          'Lies MEMORY.md und TODOS.md dieses Projekts. Fasse kurz zusammen: Wo sind wir stehen geblieben? Was steht als nächstes an? Zeige die offenen Todos.'
-                        )
-                      }, 200)
-                    })
-                  }
-                }}
+                onClearInput={() => { session.setPendingPrompt(null); setActiveTodoId(null) }}
+                onSend={handleSend}
+                onThinkingChange={handleThinkingChange}
               />
 
               {/* Dormant overlay */}
-              {!sessionActive && !shuttingDown && (
+              {!session.sessionActive && !session.shuttingDown && (
                 <div style={{
                   position: 'absolute', inset: 0, borderRadius: 20,
                   background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
@@ -577,12 +527,12 @@ export function ProjectDetail({ toggleTheme }: Props) {
             </div>
 
             {/* Quick actions — only when active */}
-            {sessionActive && (
+            {session.sessionActive && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
                 {quickActions.map((qa, i) => {
                   const Icon = qa.icon
                   const isFeierabend = qa.label === 'Feierabend'
-                  const disabled = terminalBusy || shuttingDown || refreshing
+                  const disabled = session.terminalBusy || session.shuttingDown || session.refreshing
                   return (
                     <button
                       key={i}
@@ -591,7 +541,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
                         borderColor: qa.border, color: qa.color, '--qc': qa.color,
                         ...(disabled ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
                       } as React.CSSProperties}
-                      onClick={() => isFeierabend ? handleProjectShutdown() : setPendingPrompt(qa.prompt)}
+                      onClick={() => isFeierabend ? handleProjectShutdown() : session.setPendingPrompt(qa.prompt)}
                       disabled={disabled}
                     >
                       <Icon size={14} stroke={qa.color} />
@@ -604,10 +554,10 @@ export function ProjectDetail({ toggleTheme }: Props) {
                   className="qa-btn"
                   style={{
                     borderColor: 'var(--bl)', color: 'var(--bl)', '--qc': 'var(--bl)',
-                    ...((terminalBusy || shuttingDown || refreshing) ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                    ...((session.terminalBusy || session.shuttingDown || session.refreshing) ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
                   } as React.CSSProperties}
                   onClick={handleNewSession}
-                  disabled={terminalBusy || shuttingDown || refreshing}
+                  disabled={session.terminalBusy || session.shuttingDown || session.refreshing}
                 >
                   <RefreshCw size={14} stroke="var(--bl)" />
                   Neue Session
