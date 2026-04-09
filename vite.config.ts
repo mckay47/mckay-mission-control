@@ -287,6 +287,8 @@ function kaniTerminal(): Plugin {
             'Transfer-Encoding': 'chunked',
             'Cache-Control': 'no-cache',
           })
+          // Flush headers immediately so browser knows response is streaming
+          res.write(' \n')
 
           const isNewSession = !sessionStarted.has(terminalId)
           sessionStarted.add(terminalId)
@@ -298,7 +300,6 @@ function kaniTerminal(): Plugin {
           const proc = spawn(resolveClaudePath(), claudeArgs, {
             cwd,
             env: spawnEnv(),
-            shell: true,
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 
@@ -311,7 +312,21 @@ function kaniTerminal(): Plugin {
           let responseText = ''
 
           let resEnded = false
-          res.on('close', () => { resEnded = true })
+          res.on('close', () => {
+            resEnded = true
+            // Kill Claude CLI process when browser disconnects (user pressed abort)
+            if (activeProcesses.has(terminalId)) {
+              proc.kill('SIGTERM')
+            }
+          })
+
+          proc.on('error', (err) => {
+            activeProcesses.delete(terminalId)
+            const msg = `[spawn error] ${err.message}`
+            if (!resEnded) {
+              try { res.write(msg); res.end() } catch { /* */ }
+            }
+          })
 
           proc.stdout.on('data', (data: Buffer) => {
             const chunk = data.toString()
@@ -442,7 +457,6 @@ function kaniTerminal(): Plugin {
           const proc = spawn(resolveClaudePath(), ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
             cwd,
             env: spawnEnv(),
-            shell: true,
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 
@@ -450,6 +464,12 @@ function kaniTerminal(): Plugin {
 
           let output = ''
           proc.stdout.on('data', (data: Buffer) => { output += data.toString() })
+
+          proc.on('error', (err) => {
+            activeProcesses.delete(terminalId)
+            sessionStarted.delete(terminalId)
+            writeSignal(terminalId, `SESSION_END ERROR: ${err.message}`)
+          })
 
           proc.on('close', () => {
             activeProcesses.delete(terminalId)
@@ -540,7 +560,6 @@ function kaniTerminal(): Plugin {
           const proc = spawn(resolveClaudePath(), ['--continue', '-p', SESSION_END_PROMPT, '--output-format', 'text'], {
             cwd,
             env: spawnEnv(),
-            shell: true,
             stdio: ['ignore', 'pipe', 'pipe'],
           })
 
@@ -549,6 +568,11 @@ function kaniTerminal(): Plugin {
 
           let output = ''
           proc.stdout.on('data', (data: Buffer) => { output += data.toString() })
+
+          proc.on('error', (err) => {
+            activeProcesses.delete(terminalId)
+            writeSignal(terminalId, `SESSION_END ERROR: ${err.message}`)
+          })
 
           proc.on('close', () => {
             activeProcesses.delete(terminalId)

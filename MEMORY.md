@@ -1,45 +1,33 @@
 # Mission Control — Project Memory
-> Ebene 1: Pro-Projekt Memory · Updated: 2026-04-08
+> Ebene 1: Pro-Projekt Memory · Updated: 2026-04-09
 > Wird bei jedem Session-Ende von KANI aktualisiert.
 
 ---
 
-## Letzte Session: 2026-04-08 (Phase 2 Complete + Session Persistence)
+## Letzte Session: 2026-04-09 (Mehrere kurze Sessions — kein neuer Build)
 
 **Was gebaut wurde:**
 
-Phase 2 — Live Notifications + Launch Integration:
-- Supabase `notifications` + `launch_sessions` Tabellen mit Realtime
-- Notifications.tsx: Supabase-backed, Dismiss, Mark-read, Unread-Counter
-- LiveFeed.tsx: Echtzeit-Ticker aus Notifications
-- LaunchWizard: 5-Step Modal (Describe → Research → Brief → Review → Created)
-- /api/project: Supabase Insert + Folder Scaffold (CLAUDE.md, TODOS.md, MEMORY.md, DECISIONS.md)
-- /api/launch/research: Claude CLI Research mit JSON-Output
-- Auto-Notifications bei KANI Signals, Session-End, Projekt-Erstellung
+Keine Build-Aktivität. Alle Sessions wurden direkt beendet (nur Verbindungstests).
+Offene Änderungen im Working Directory (immer noch uncommitted):
+- src/components/pages/ProjectDetail.tsx
+- src/components/shared/Terminal.tsx
+- src/lib/data.ts
+- vite.config.ts
+→ Dringend prüfen + committen in nächster Session.
 
-Session Persistence + Terminal Features:
-- Server-side Session Buffer (in-memory + .terminal-log.jsonl auf Disk)
-- Terminal Reconnect: History laden beim Öffnen, Background-Prozesse weiterlaufen
-- Feierabend Quick Action Button pro Projekt (Session-End Protokoll)
-- Auto-Sync TODOS.md → Supabase nach jedem Terminal-Prompt
-- Auto-Feed: Live Feed Einträge aus Terminal-Aktivität in Supabase
-- Quick Action Buttons mit echten Prompts (Status, Deploy, Test, Todos, Ideas, Feierabend)
+**Letzter bekannter Build-Stand (2026-04-08):**
+Phase 2 vollständig: Live Notifications, LaunchWizard, Session Persistence,
+Feierabend-Button, Auto-Sync TODOS→Supabase, RLS Policies, TypeScript Fixes.
 
-Fixes:
-- TypeScript null-safety Fixes über 10+ Komponenten
-- Claude CLI spawn: absolute Pfade + expliziter PATH + shell:true für launchd
-- Projekt-ID Fix: mc → mission-control (Supabase + FK Updates)
-- RLS Policies: anon-Zugriff für alle Dashboard-Tabellen
-- Dummy-Feed gelöscht, nur noch echte Einträge
-
-**Commits:** 10881f8, 952c2d5, 644c9e9 + pending (branch: dev)
+**Commits (branch: dev):** 2349c80, 644c9e9, 952c2d5, 10881f8
 
 ---
 
 ## Next Steps
 
-1. Feierabend-Button Debug: Button reagiert optisch nicht — wahrscheinlich Browser-Cache, morgen mit Hard-Reload testen
-2. Phase 3: Personal Modules (Todo, Kalender, Notizen, E-Mail)
+1. **Offene Änderungen prüfen + committen** — ProjectDetail.tsx, Terminal.tsx, data.ts, vite.config.ts
+2. Phase 3: Personal Modules — Todo-Widget persistent (P1), Kalender (P2), Notizen (P2)
 3. Agent Status mit echten Daten befüllen (aktuell Dummy)
 4. Bottom Ticker mit echten Daten statt statischen Einträgen
 

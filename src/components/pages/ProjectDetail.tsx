@@ -85,7 +85,7 @@ const quickActions = [
   { label: 'Test', icon: FlaskConical, color: 'var(--a)', border: 'var(--a)', prompt: 'Führe einen TypeScript Check (tsc --noEmit) und einen Build (vite build) durch. Zeige mir Fehler falls vorhanden.' },
   { label: 'Todos', icon: ListTodo, color: 'var(--p)', border: 'var(--p)', prompt: 'Lies TODOS.md und zeige alle offenen Todos mit Priorität und Status.' },
   { label: 'Ideas', icon: Lightbulb, color: 'var(--o)', border: 'var(--o)', prompt: 'Was wären sinnvolle nächste Features oder Verbesserungen für dieses Projekt? Basiere deine Vorschläge auf MEMORY.md und dem aktuellen Code.' },
-  { label: 'Feierabend', icon: Power, color: 'var(--r)', border: 'var(--r)', prompt: 'Session beenden: 1) MEMORY.md aktualisieren (was wurde gemacht, was kommt als nächstes) 2) TODOS.md aktualisieren (erledigte Tasks abhaken, neue hinzufügen) 3) Alle Änderungen committen und pushen. Antworte mit [SESSION_END] ✓ wenn fertig.' },
+  { label: 'Feierabend', icon: Power, color: 'var(--r)', border: 'var(--r)', prompt: 'Session beenden: 1) Lies MEMORY.md und aktualisiere den "Letzte Session" Block mit was heute gemacht wurde und "Next Steps" mit was als nächstes ansteht. 2) Prüfe TODOS.md und hake erledigte Tasks ab. Antworte kurz mit [SESSION_END] ✓ wenn fertig.' },
 ]
 
 export function ProjectDetail({ toggleTheme }: Props) {
@@ -99,6 +99,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
   const nav = useNavigate()
   const [tab, setTab] = useState(0)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
+  const [terminalBusy, setTerminalBusy] = useState(false)
 
   const project = projects.find(p => p.id === id)
 
@@ -395,6 +396,7 @@ export function ProjectDetail({ toggleTheme }: Props) {
               onInputChange={(v) => setPendingPrompt(v || null)}
               onClearInput={() => setPendingPrompt(null)}
               onSend={() => setPendingPrompt(null)}
+              onThinkingChange={setTerminalBusy}
             />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
               {quickActions.map((qa, i) => {
@@ -403,8 +405,12 @@ export function ProjectDetail({ toggleTheme }: Props) {
                   <button
                     key={i}
                     className="qa-btn"
-                    style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    style={{
+                      borderColor: qa.border, color: qa.color, '--qc': qa.color,
+                      ...(terminalBusy ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                    } as React.CSSProperties}
                     onClick={() => setPendingPrompt(qa.prompt)}
+                    disabled={terminalBusy}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

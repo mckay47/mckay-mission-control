@@ -20,6 +20,7 @@ interface TerminalProps {
   onClearInput?: () => void
   onSend?: () => void
   onInputChange?: (value: string) => void
+  onThinkingChange?: (thinking: boolean) => void
   // Live mode props
   mode?: 'live' | 'clipboard'
   cwd?: string
@@ -29,7 +30,7 @@ interface TerminalProps {
 export function Terminal({
   title, statusLabel = 'Running', statusColor = 'var(--g)', statusGlow = 'var(--gg)',
   lines: externalLines, placeholder, inputValue: externalInputValue,
-  onClearInput, onSend, onInputChange,
+  onClearInput, onSend, onInputChange, onThinkingChange,
   mode = 'clipboard', cwd = '~/mckay-os', terminalId = 'unknown',
 }: TerminalProps) {
 
@@ -50,6 +51,18 @@ export function Terminal({
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus input when external prompt is injected (e.g. Quick Action buttons)
+  useEffect(() => {
+    if (externalInputValue && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [externalInputValue])
+
+  // Report thinking state to parent
+  useEffect(() => {
+    onThinkingChange?.(stream.isThinking)
+  }, [stream.isThinking, onThinkingChange])
 
   // Combine lines based on mode
   const allLines = mode === 'live'
