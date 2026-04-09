@@ -4,6 +4,10 @@ project: "mission-control"
 updated: 2026-04-09
 ---
 
+## Active — Hub E-Mail + Kalender Vision
+- [ ] **P1** Mehtis Vision fuer E-Mail Funktionen (Preview, Aktionen)
+- [ ] **P1** Mehtis Vision fuer Kalender Funktionen
+
 ## Active — Session B: Office ausbauen
 - [ ] **P1** Buchhaltung: Belege-Upload, Auto-Rename, KPIs
 - [ ] **P2** Subscriptions: Provider-Liste, Kosten, API-Key-Datei-Links
@@ -26,9 +30,12 @@ updated: 2026-04-09
 - [ ] **P1** Dev → Main merge
 
 ## Done (Session A: 2026-04-09 Spätschicht)
-- [x] **P1** Google Calendar Anbindung (Hub → Kalender-Tab) — OAuth2, 3 Views
-- [x] **P1** Non-Projekt Todos CRUD (Hub → Todos-Tab) — Add/Check/Delete
-- [x] **P2** E-Mail Übersicht (Hub → 20 Konten, 5 Gruppen)
+- [x] **P1** Google Calendar API — OAuth2, 3 Views (Heute/Woche/Monat)
+- [x] **P1** Non-Projekt Todos CRUD — Add/Check/Delete, hubTodos
+- [x] **P2** E-Mail Übersicht — 20 Konten, 5 Gruppen, Hub restructure
+- [x] **P1** IMAP Integration — 17/20 Konten live, imapflow, 5-Min Cache
+- [x] **P2** Punycode-Fix hebammenbüro.de
+- [x] **P2** categories.ts — Category-Daten vor Auto-Generation geschützt
 
 ## Done (2026-04-09 Tagschicht)
 - [x] **P1** useTerminalSession Hook — Lifecycle-Pattern extrahiert

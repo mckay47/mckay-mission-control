@@ -4,52 +4,53 @@
 
 ---
 
-## Letzte Session: 2026-04-09 Spaetschicht (Session A: Hub)
+## Letzte Session: 2026-04-09 Spaetschicht
 
 **Was gebaut wurde:**
-- Hub Rebuild: 8 Kategorien statt 3 (Kalender, Todos, E-Mail Uebersicht + 5 Postfach-Gruppen)
-- Google Calendar API: OAuth2 Setup, Refresh Token, /api/calendar/events Endpoint, useCalendarEvents Hook
-- Kalender UI: Heute (Zeitstrahl), Woche (7-Tage Grid), Monat (Kalender-Grid mit Punkt-Indikatoren)
-- Non-Projekt Todos CRUD: hubTodos in MissionControlProvider, addTodo/setStatus/deleteTodo mit project_id=null
-- E-Mail Postfaecher: 20 Konten in 5 Gruppen (Persoenlich, Stillzentrum, Hebammenbuero, MCKAY.AGENCY, Hebammen.Agency)
-- categories.ts: Neue Datei fuer Category-Daten (sicher vor Auto-Generation)
-- Office/Life/Network Imports auf categories.ts umgestellt
+- Hub Rebuild: 8 Kategorien (Kalender, Todos, E-Mail Uebersicht + 5 Postfach-Gruppen)
+- Google Calendar API: OAuth2 Setup, /api/calendar/events, useCalendarEvents Hook, 3 Views (Heute/Woche/Monat)
+- Non-Projekt Todos CRUD: hubTodos (project_id=null), Add/Check/Delete
+- E-Mail IMAP Integration: 17/20 Konten live via imapflow, /api/email/unread Endpoint, 5-Min Cache
+- 20 Konten in 5 Gruppen mit echten Unread-Counts im Hub
+- categories.ts: Eigene Datei fuer Category-Daten (sicher vor Auto-Generation)
+
+**Commits (branch: dev):** 28982b7, 4cfed29
 
 **Learnings:**
-- data.ts wird von scripts/generate-data.mjs ueberschrieben — manuelle Daten muessen in separate Datei (categories.ts)
-- Google Calendar: Testnutzer muss explizit im OAuth Consent Screen hinzugefuegt werden, sonst 403
+- data.ts wird von generate-data.mjs ueberschrieben — manuelle Daten in categories.ts
+- Google OAuth: Testnutzer muss im Consent Screen stehen, sonst 403
+- Strato Umlaut-Domains brauchen Punycode (xn--hebammenbro-1hb.de)
+- Gmail App-Passwoerter brauchen 2FA — 3 Konten ohne 2FA uebersprungen
+- Credentials NIE im Chat — immer via nano direkt in Datei
 
 ---
 
-## Next Steps — Roadmap zu Live
+## Next Steps
 
-**Session A:** ✅ Hub fertig (Google Calendar, Todos CRUD, E-Mail 20 Konten)
-**Session B:** Office ausbauen (Buchhaltung Upload, Subscriptions, Vertraege, Kunden)
-**Session C:** Life ausbauen (Wohnung, Familie, Gesundheit, Private Todos)
-**Session D:** Network ausbauen (Kontakte, Events, Portale, Partner, Opportunities)
-**Session E:** Final Review + Go Live (alle Bereiche durchgehen, Action Buttons finalisieren, dev→main)
+**Naechste Session:** Mehtis Vision fuer E-Mail + Kalender Funktionen im Hub (Preview, Aktionen, etc.)
+**Session B:** Office ausbauen
+**Session C:** Life ausbauen
+**Session D:** Network ausbauen
+**Session E:** Final Review + Go Live
 
-7 von 9 Bereichen sind live-ready. Office/Life/Network brauchen noch echten Inhalt.
+7 von 9 Bereichen live-ready. Hub ist jetzt mit echten Daten ausgestattet.
 
 ---
 
 ## Bekannte Issues
 
-- Terminal Startup: 5-15s bei Kaltstart (normal, kein Bug)
-- Feierabend/Shutdown-Sequenz dauert ~60-80s bei Kaltstart (Claude laedt Kontext)
-- Google Calendar: Refresh Token kann ablaufen — dann OAuth Playground erneut durchlaufen
+- Gmail: 3 Konten ohne 2FA (mckaykay0711, cryptomkay, Stillzentrum.ulm) — uebersprungen
+- IMAP Polling: 17 parallele Verbindungen alle 5 Min — bei Strato kein Problem bisher
+- Google Calendar Refresh Token kann ablaufen — OAuth Playground erneut durchlaufen
 
 ---
 
 ## Technischer Stand
 
-- **URL lokal:** localhost:5173 (dev, via launchd)
-- **Branch:** dev
-- **Supabase:** 17+ Tabellen, Realtime aktiv
-- **launchd:** aktiv (com.mckay.mission-control.plist)
-- **Google Calendar:** OAuth2 via Refresh Token, GCP Projekt "MCKAY Mission Control"
-- **Cockpit:** 9 Tiles (Projects, Thinktank, System, Office, Life, Hub, Network, Briefing, Kitchen)
-- **Hub:** 8 Kategorien (Kalender, Todos, E-Mail Uebersicht + 5 Postfach-Gruppen)
-- **Category-Daten:** categories.ts (sicher vor Auto-Generation), nicht data.ts
-- **Hub-Todos:** project_id=null in Supabase todos, hubTodos im Context
-- **E-Mail:** 20 Konten in 5 Gruppen, statisch, MCP-Server fuer Strato IMAP ausstehend
+- **Branch:** dev (2 neue Commits)
+- **Google Calendar:** OAuth2, GCP "MCKAY Mission Control", useCalendarEvents Hook
+- **IMAP:** imapflow, .email-credentials.json (gitignored), /api/email/unread + /api/email/refresh
+- **Hub:** 8 Kategorien, echte Calendar Events, echte Unread-Counts, Todo CRUD
+- **Category-Daten:** categories.ts (nicht data.ts)
+- **Hub-Todos:** project_id=null in Supabase, hubTodos im Context
+- **Verbundene Konten:** 17/20 (14 Strato + 2 Punycode-Fix + 1 Gmail App-PW)
