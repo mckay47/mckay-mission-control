@@ -9,6 +9,8 @@ import { join } from 'path'
 import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, readdirSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
+// @ts-expect-error — imapflow types
+import { ImapFlow } from 'imapflow'
 
 // ============================================================
 // Process Registry — tracks all active Claude CLI processes
@@ -403,6 +405,89 @@ function kaniTerminal(): Plugin {
 
           proc.on('close', () => clearTimeout(timeout))
         })
+      })
+
+      // --------------------------------------------------------
+      // GET /api/email/unread — Fetch unread counts via IMAP
+      // --------------------------------------------------------
+
+      // Cache: { [email]: count }, refreshed every 5 min
+      let emailCache: { data: Record<string, number>; ts: number } = { data: {}, ts: 0 }
+      const EMAIL_CACHE_TTL = 5 * 60 * 1000
+
+      // Force refresh endpoint
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/email/refresh') return next()
+        emailCache = { data: {}, ts: 0 }
+        res.writeHead(200, { 'Content-Type': 'text/plain' })
+        res.end('Cache cleared')
+      })
+
+      const emailErrors: Record<string, string> = {}
+
+      async function fetchUnreadCount(host: string, port: number, email: string, password: string): Promise<number> {
+        if (!password) { emailErrors[email] = 'no password'; return -1 }
+        try {
+          const client = new ImapFlow({ host, port, secure: true, auth: { user: email, pass: password }, logger: false })
+          await client.connect()
+          const lock = await client.getMailboxLock('INBOX')
+          try {
+            const status = await client.status('INBOX', { unseen: true })
+            return status.unseen ?? 0
+          } finally {
+            lock.release()
+            await client.logout()
+          }
+        } catch (err) {
+          emailErrors[email] = (err as Error).message || 'unknown error'
+          return -1
+        }
+      }
+
+      async function refreshEmailCache() {
+        const credPath = join(process.cwd(), '.email-credentials.json')
+        if (!existsSync(credPath)) return
+        const creds = JSON.parse(readFileSync(credPath, 'utf-8'))
+        const results: Record<string, number> = {}
+        const tasks: Promise<void>[] = []
+
+        for (const provider of ['strato', 'gmail'] as const) {
+          const cfg = creds[provider]
+          if (!cfg?.accounts) continue
+          for (const acc of cfg.accounts) {
+            if (!acc.password) { results[acc.email] = -1; continue }
+            tasks.push(
+              fetchUnreadCount(cfg.host, cfg.port, acc.email, acc.password)
+                .then(count => { results[acc.email] = count })
+            )
+          }
+        }
+
+        await Promise.allSettled(tasks)
+        emailCache.data = results
+        emailCache.ts = Date.now()
+      }
+
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || req.url !== '/api/email/unread') return next()
+
+        ;(async () => {
+          // Return cache if fresh
+          if (Date.now() - emailCache.ts < EMAIL_CACHE_TTL && Object.keys(emailCache.data).length > 0) {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ counts: emailCache.data, cached: true, errors: emailErrors }))
+            return
+          }
+
+          try {
+            await refreshEmailCache()
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ counts: emailCache.data, cached: false, errors: emailErrors }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message, counts: {} }))
+          }
+        })()
       })
 
       // --------------------------------------------------------

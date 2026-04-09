@@ -7,6 +7,7 @@ import { hubCategories, emailGroups } from '../../lib/categories.ts'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
 import { useTodoActions } from '../../lib/useTodoActions.ts'
 import { useCalendarEvents } from '../../hooks/useCalendarEvents.ts'
+import { useEmailUnread } from '../../hooks/useEmailUnread.ts'
 import type { CalendarEvent } from '../../lib/types.ts'
 import { Plus, Check, Trash2, ExternalLink, Mail, Calendar, Clock } from 'lucide-react'
 
@@ -301,55 +302,69 @@ function TodoList() {
 // Email Tab Content
 // ============================================================
 
-function EmailGroupDetail({ groupId }: { groupId: string }) {
+function EmailGroupDetail({ groupId, getUnread }: { groupId: string; getUnread: (email: string) => number | undefined }) {
   const group = emailGroups.find(g => g.id === groupId)
   if (!group) return <TcText>Gruppe nicht gefunden.</TcText>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {group.accounts.map(acc => (
-        <div key={acc.email} className="ghost-card" style={{ '--hc': group.glow, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 } as React.CSSProperties}>
-          <Mail size={14} stroke={group.color} style={{ flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {acc.email}
+      {group.accounts.map(acc => {
+        const unread = getUnread(acc.email)
+        const hasCount = unread !== undefined && unread >= 0
+        return (
+          <div key={acc.email} className="ghost-card" style={{ '--hc': group.glow, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 } as React.CSSProperties}>
+            <Mail size={14} stroke={group.color} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {acc.email}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 1 }}>
+                {acc.provider === 'gmail' ? 'Google Gmail' : acc.provider === 'strato' ? 'Strato' : 'Custom'}
+              </div>
             </div>
-            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 1 }}>
-              {acc.provider === 'gmail' ? 'Google Gmail' : acc.provider === 'strato' ? 'Strato' : 'Custom'}
-            </div>
-          </div>
-          {acc.unread !== undefined && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-              background: acc.unread > 0 ? `${group.color}20` : 'transparent',
-              color: acc.unread > 0 ? group.color : 'var(--tx3)',
+              background: hasCount && unread > 0 ? `${group.color}20` : 'transparent',
+              color: hasCount ? (unread > 0 ? group.color : 'var(--tx3)') : 'var(--tx3)',
               fontFamily: "'JetBrains Mono', monospace",
             }}>
-              {acc.unread}
+              {hasCount ? unread : '\u2014'}
             </span>
-          )}
-          <a
-            href={acc.provider === 'gmail' ? 'https://mail.google.com' : 'https://outlook.live.com/mail'}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--tx3)', opacity: 0.5, display: 'flex' }}
-          >
-            <ExternalLink size={13} />
-          </a>
-        </div>
-      ))}
+            <a
+              href={acc.provider === 'gmail' ? 'https://mail.google.com' : 'https://outlook.live.com/mail'}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--tx3)', opacity: 0.5, display: 'flex' }}
+            >
+              <ExternalLink size={13} />
+            </a>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function EmailOverview() {
+function EmailOverview({ getGroupUnread }: { getGroupUnread: (emails: string[]) => number | null }) {
+  const totalUnread = getGroupUnread(emailGroups.flatMap(g => g.accounts.map(a => a.email)))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {emailGroups.map(g => (
+      {emailGroups.map(g => {
+        const groupUnread = getGroupUnread(g.accounts.map(a => a.email))
+        return (
         <div key={g.id} className="ghost-card" style={{ '--hc': g.glow, padding: '14px 18px', gap: 6 } as React.CSSProperties}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 16 }}>{g.emoji}</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)' }}>{g.name}</span>
+            {groupUnread !== null && groupUnread > 0 && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                background: `${g.color}20`, color: g.color,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}>
+                {groupUnread}
+              </span>
+            )}
             <span style={{
               fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
               background: `${g.color}15`, color: g.color, letterSpacing: 1, marginLeft: 'auto',
@@ -369,14 +384,15 @@ function EmailOverview() {
             ))}
           </div>
         </div>
-      ))}
+        )
+      })}
       <TcLabel>Gesamt</TcLabel>
       <TcStatRow>
         <TcStat value="20" label="Konten" color="var(--bl)" />
         <TcStat value="5" label="Gruppen" color="var(--bl)" />
-        <TcStat value="—" label="Ungelesen" color="var(--o)" />
+        <TcStat value={`${totalUnread !== null ? totalUnread : '\u2014'}`} label="Ungelesen" color="var(--o)" />
       </TcStatRow>
-      <TcText>Unread-Counts werden verfügbar sobald der Strato MCP-Server eingerichtet ist.</TcText>
+      {totalUnread === null && <TcText>IMAP-Passwörter in .email-credentials.json eintragen für echte Unread-Counts.</TcText>}
     </div>
   )
 }
@@ -399,6 +415,7 @@ export function Hub({ toggleTheme }: Props) {
   const [tab, setTab] = useState(0)
   const { hubTodos } = useMissionControl()
   const { todayEvents, getEventsForDate, getWeekEvents, events, loading: calLoading, error: calError } = useCalendarEvents()
+  const { getGroupUnread, getUnread } = useEmailUnread()
 
   const cat = hubCategories[sel]
 
@@ -410,6 +427,19 @@ export function Hub({ toggleTheme }: Props) {
     if (c.id === 'todos') {
       const open = hubTodos.filter(t => t.status !== 'done').length
       return { ...c, badge: `${open} offen`, stats: [{ label: 'Offen', value: `${open}` }, { label: 'Erledigt', value: `${hubTodos.filter(t => t.status === 'done').length}` }] }
+    }
+    // Dynamic unread counts for email groups
+    const groupId = emailGroupMap[c.id]
+    if (groupId) {
+      const group = emailGroups.find(g => g.id === groupId)
+      if (group) {
+        const unread = getGroupUnread(group.accounts.map(a => a.email))
+        return { ...c, stats: [{ label: 'Konten', value: `${group.accounts.length}` }, { label: 'Ungelesen', value: unread !== null ? `${unread}` : '\u2014' }] }
+      }
+    }
+    if (c.id === 'email-hub') {
+      const totalUnread = getGroupUnread(emailGroups.flatMap(g => g.accounts.map(a => a.email)))
+      return { ...c, stats: [{ label: 'Gruppen', value: '5' }, { label: 'Ungelesen', value: totalUnread !== null ? `${totalUnread}` : '\u2014' }] }
     }
     return c
   })
@@ -458,7 +488,7 @@ export function Hub({ toggleTheme }: Props) {
 
     if (cat.id === 'email-hub') {
       return [
-        { label: 'Übersicht', content: <EmailOverview /> },
+        { label: 'Übersicht', content: <EmailOverview getGroupUnread={getGroupUnread} /> },
       ]
     }
 
@@ -467,7 +497,7 @@ export function Hub({ toggleTheme }: Props) {
     if (groupId) {
       const group = emailGroups.find(g => g.id === groupId)
       return [
-        { label: 'Konten', content: <EmailGroupDetail groupId={groupId} /> },
+        { label: 'Konten', content: <EmailGroupDetail groupId={groupId} getUnread={getUnread} /> },
         { label: 'Info', content: (
           <>
             <TcLabel>Gruppe: {group?.name}</TcLabel>
@@ -581,8 +611,8 @@ export function Hub({ toggleTheme }: Props) {
         items={[
           { color: 'var(--g)', label: 'KALENDER', labelColor: 'var(--g)', text: calLoading ? 'Laden...' : `${todayEvents.length} Termine heute — ${getWeekEvents().length} diese Woche` },
           { color: 'var(--o)', label: 'TODOS', labelColor: 'var(--o)', text: `${hubTodos.filter(t => t.status !== 'done').length} offene Todos` },
-          { color: 'var(--bl)', label: 'EMAIL', labelColor: 'var(--bl)', text: `20 Konten in 5 Gruppen — Outlook` },
-          { color: 'var(--p)', label: 'STRATO', labelColor: 'var(--p)', text: '17 Konten via Strato.de — MCP-Integration ausstehend' },
+          { color: 'var(--bl)', label: 'EMAIL', labelColor: 'var(--bl)', text: (() => { const t = getGroupUnread(emailGroups.flatMap(g => g.accounts.map(a => a.email))); return t !== null ? `${t} ungelesene Mails — 20 Konten` : '20 Konten in 5 Gruppen' })() },
+          { color: 'var(--p)', label: 'STRATO', labelColor: 'var(--p)', text: '17 Konten via Strato.de IMAP' },
         ]}
       />
     </div>
