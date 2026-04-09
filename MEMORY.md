@@ -4,39 +4,32 @@
 
 ---
 
-## Letzte Session: 2026-04-09 (Phase 3 — Session 2, 4 Commits)
+## Letzte Session: 2026-04-09 (Massive Session, 7 Commits)
 
 **Was gebaut wurde:**
-
-useTerminalSession Hook + Refactoring:
-- Hook extrahiert aus ProjectDetail, wiederverwendbar
-- ProjectDetail + IdeaDetail nutzen beide den Hook
-- WindowManager: alle 11 window.open → openOrFocus
-
-Kitchen + TerminalGrid Attention:
-- "Kitchen" Tile im Cockpit (Flame-Icon, rot-orange Glow)
-- 3 Severity-Level: Gruen (fertig), Orange (wartet), Rot (eingriff)
-- Volles Overlay mit pulsierender Sirenen-Animation (4s Zyklus)
+- useTerminalSession Hook: Lifecycle-Pattern extrahiert, ProjectDetail + IdeaDetail refactored
+- Kitchen Tile im Cockpit: Flame-Icon, TerminalGrid mit 3-Severity Attention-Overlays (Gruen/Orange/Rot, Sirenen-Pulse)
 - Status-Endpoint: Disk-Discovery fuer Terminals nach Server-Restart
 - Window-Dedup: Kitchen und Projects oeffnen gleichen Pfad
+- Kumulativer Time Tracker: ZoneProvider akkumuliert, Shutdown-Anzeige, Briefing-Integration
+- System Detail Quick Actions: alle 4 Seiten verdrahtet mit Platzhalter-Prompts
+- Office/Life/Hub Pages: 3 neue Seiten mit Split-Layout, Kategorien, Tabs
+- Network Rewrite: neues Category-Pattern statt altem filter-Muster
+- Cockpit: 9 Tiles (Projects, Thinktank, System, Office, Life, Hub, Network, Briefing, Kitchen)
 
-Kumulativer Time Tracker:
-- ZoneProvider: todayTotal akkumuliert ueber Zone/Matrix-Wechsel
-- localStorage Persistenz (mckay-workday + 30-Tage History)
-- StampButton: H:MM:SS Format ab 60min
-- ShutdownDialog: zeigt Arbeitszeit + resetDay() bei Shutdown
-- Briefing: heute (live) + gestern (aus History)
-
-**Commits (branch: dev):** 7f386de, f0165ba, 9b412c3, fc7ee80
+**Commits (branch: dev):** 7f386de, f0165ba, 9b412c3, fc7ee80, 07d3c5d, 387bf8a, 717c5fc
 
 ---
 
-## Next Steps
+## Next Steps — Roadmap zu Live
 
-1. **Action Buttons** — individuelle Quick Actions pro Bereich (P2)
-2. **Kalender** — Google Calendar Anbindung (P2)
-3. **E-Mail** — Resend-Integration (P3)
-4. **Personal/Backoffice/Network** — editierbare Inhalte (P3)
+**Session A:** Hub ausbauen (Google Calendar, Non-Projekt Todos CRUD, E-Mail Uebersicht)
+**Session B:** Office ausbauen (Buchhaltung Upload, Subscriptions, Vertraege, Kunden)
+**Session C:** Life ausbauen (Wohnung, Familie, Gesundheit, Private Todos)
+**Session D:** Network ausbauen (Kontakte, Events, Portale, Partner, Opportunities)
+**Session E:** Final Review + Go Live (alle Bereiche durchgehen, Action Buttons finalisieren, dev→main)
+
+6 von 9 Bereichen sind live-ready. Office/Life/Hub/Network brauchen echten Inhalt.
 
 ---
 
@@ -50,9 +43,13 @@ Kumulativer Time Tracker:
 ## Technischer Stand
 
 - **URL lokal:** localhost:5173 (dev, via launchd)
-- **Branch:** dev (8 Commits, 4 heute)
+- **Branch:** dev (12+ Commits)
 - **Supabase:** 17+ Tabellen, Realtime aktiv
 - **launchd:** aktiv (com.mckay.mission-control.plist)
+- **Cockpit:** 9 Tiles (Projects, Thinktank, System, Office, Life, Hub, Network, Briefing, Kitchen)
 - **Terminal-Lifecycle:** useTerminalSession Hook — Projects + Thinktank
-- **Kitchen:** TerminalGrid mit 3-Severity Attention-System
-- **Time Tracker:** Kumulativ, localStorage, Shutdown-Reset, Briefing-Integration
+- **Kitchen:** TerminalGrid mit 3-Severity Attention (Gruen/Orange/Rot)
+- **Time Tracker:** Kumulativ, localStorage, Shutdown-Reset, Briefing
+- **Neue Seiten:** Office, Life, Hub (Split-Layout, Dummy-Daten, Tabs vorbereitet)
+- **Network:** Umgeschrieben auf Category-Pattern
+- **Daten:** Office/Life/Hub/Network aus data.ts (nicht Supabase), bei Bedarf migrierbar
