@@ -407,6 +407,76 @@ function kaniTerminal(): Plugin {
       })
 
       // --------------------------------------------------------
+      // POST /api/todos/sync-to-file — Write Supabase todos back to TODOS.md
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/todos/sync-to-file') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', async () => {
+          let projectId: string
+          try {
+            projectId = JSON.parse(body).project_id
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'text/plain' })
+            res.end('Invalid JSON')
+            return
+          }
+
+          if (!projectId || !serverSupabase) {
+            res.writeHead(400, { 'Content-Type': 'text/plain' })
+            res.end('Missing project_id or no Supabase connection')
+            return
+          }
+
+          try {
+            const { data: todos } = await serverSupabase
+              .from('todos')
+              .select('*')
+              .eq('project_id', projectId)
+              .order('sort_order')
+
+            if (!todos) {
+              res.writeHead(200, { 'Content-Type': 'text/plain' })
+              res.end('No todos found')
+              return
+            }
+
+            const todosPath = join(homedir(), 'mckay-os', 'projects', projectId, 'TODOS.md')
+
+            // Read existing file to preserve header
+            let header = `# ${projectId} — TODOS\n> Auto-synced from Mission Control\n\n`
+            if (existsSync(todosPath)) {
+              const existing = readFileSync(todosPath, 'utf-8')
+              const headerEnd = existing.indexOf('## ')
+              if (headerEnd > 0) header = existing.substring(0, headerEnd)
+            }
+
+            const openTodos = todos.filter((t: { status: string }) => t.status !== 'done')
+            const doneTodos = todos.filter((t: { status: string }) => t.status === 'done')
+
+            let md = header
+            md += '## Active\n\n'
+            for (const t of openTodos) {
+              md += `- [ ] **${t.priority}** ${t.title}\n`
+            }
+            md += '\n## Done\n\n'
+            for (const t of doneTodos) {
+              md += `- [x] **${t.priority}** ${t.title}\n`
+            }
+
+            writeFileSync(todosPath, md)
+            res.writeHead(200, { 'Content-Type': 'text/plain' })
+            res.end('OK')
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'text/plain' })
+            res.end(`Error: ${(err as Error).message}`)
+          }
+        })
+      })
+
+      // --------------------------------------------------------
       // POST /api/kani/session-end-single — End one terminal session
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {

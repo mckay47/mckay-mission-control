@@ -59,10 +59,12 @@ export function Terminal({
     }
   }, [externalInputValue])
 
-  // Report thinking state to parent
+  // Report thinking state to parent (ref avoids re-firing on callback identity change)
+  const thinkingCbRef = useRef(onThinkingChange)
+  thinkingCbRef.current = onThinkingChange
   useEffect(() => {
-    onThinkingChange?.(stream.isThinking)
-  }, [stream.isThinking, onThinkingChange])
+    thinkingCbRef.current?.(stream.isThinking)
+  }, [stream.isThinking])
 
   // Combine lines based on mode
   const allLines = mode === 'live'

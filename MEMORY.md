@@ -4,32 +4,28 @@
 
 ---
 
-## Letzte Session: 2026-04-09 (Mehrere kurze Sessions — kein neuer Build)
+## Letzte Session: 2026-04-09 (Build: Todo-Widget + Agent Status)
 
 **Was gebaut wurde:**
 
-Keine Build-Aktivität. Alle Sessions wurden direkt beendet (nur Verbindungstests).
-Offene Änderungen im Working Directory (immer noch uncommitted):
-- src/components/pages/ProjectDetail.tsx
-- src/components/shared/Terminal.tsx
-- src/lib/data.ts
-- vite.config.ts
-→ Dringend prüfen + committen in nächster Session.
+- `useTodoActions.ts` — CRUD für Todos via Supabase (add/toggle/delete)
+- `useAgentStatus.ts` — Echtzeit Agent-Status aus Terminal-Aktivität
+- `ProjectDetail.tsx` — massiv erweitert (333 Insertions): Todo-Widget + Agent Status integriert
+- `MissionControlProvider.tsx` — erweitert für neue Hooks
+- `vite.config.ts` — 70 neue Zeilen (Proxy/Plugin-Setup)
+- `Header.tsx`, `Terminal.tsx`, `data.ts` — kleinere Anpassungen
+- `TODOS.md` — Todo-Widget ✓ + Kalender ✓ abgehakt
 
-**Letzter bekannter Build-Stand (2026-04-08):**
-Phase 2 vollständig: Live Notifications, LaunchWizard, Session Persistence,
-Feierabend-Button, Auto-Sync TODOS→Supabase, RLS Policies, TypeScript Fixes.
-
-**Commits (branch: dev):** 2349c80, 644c9e9, 952c2d5, 10881f8
+**Commits (branch: dev):** ca01aa7 + dieser Session-End Commit
 
 ---
 
 ## Next Steps
 
-1. **Offene Änderungen prüfen + committen** — ProjectDetail.tsx, Terminal.tsx, data.ts, vite.config.ts
-2. Phase 3: Personal Modules — Todo-Widget persistent (P1), Kalender (P2), Notizen (P2)
-3. Agent Status mit echten Daten befüllen (aktuell Dummy)
-4. Bottom Ticker mit echten Daten statt statischen Einträgen
+1. **Bottom Ticker** mit echten Daten statt statischen Einträgen (P2)
+2. **Notizen** — persistent in ~/mckay-os/notes/ (P2)
+3. **E-Mail** — Resend-Integration (P3)
+4. Agent Status weiter verfeinern (Live-Daten verifizieren)
 
 ---
 

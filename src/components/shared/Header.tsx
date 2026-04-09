@@ -8,9 +8,10 @@ interface HeaderProps {
   ledColor?: string
   title?: string
   toggleTheme?: () => void
+  onPowerClick?: () => void
 }
 
-export function Header({ backLink, toggleTheme }: HeaderProps) {
+export function Header({ backLink, toggleTheme, onPowerClick }: HeaderProps) {
   const navigate = useNavigate()
   const [datetime, setDatetime] = useState(() => formatDatetime())
 
@@ -75,8 +76,8 @@ export function Header({ backLink, toggleTheme }: HeaderProps) {
         <div
           className="ghost-btn"
           style={{ '--bc': 'rgba(255,61,61,0.18)', width: 38, height: 38 } as React.CSSProperties}
-          onClick={() => document.dispatchEvent(new CustomEvent('open-shutdown'))}
-          title="System herunterfahren"
+          onClick={() => onPowerClick ? onPowerClick() : document.dispatchEvent(new CustomEvent('open-shutdown'))}
+          title={onPowerClick ? 'Projekt-Session beenden' : 'System herunterfahren'}
         >
           <Power size={17} stroke="var(--tx3)" strokeWidth={1.8} />
         </div>

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Activity, Rocket, FlaskConical, ListTodo, Lightbulb, Power } from 'lucide-react'
+import { Activity, Rocket, FlaskConical, ListTodo, Lightbulb, Power, Check, Zap, RefreshCw } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText } from '../shared/PreviewPanel.tsx'
@@ -9,6 +9,8 @@ import { Terminal } from '../shared/Terminal.tsx'
 import { StatusLed } from '../ui/StatusLed.tsx'
 import { Pipeline } from '../shared/Pipeline.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
+import { useTodoActions } from '../../lib/useTodoActions.ts'
+import { useAgentStatus } from '../../lib/useAgentStatus.ts'
 
 interface Props { toggleTheme: () => void }
 
@@ -90,9 +92,9 @@ const quickActions = [
 
 export function ProjectDetail({ toggleTheme }: Props) {
   const {
-    projects, tickerData,
+    projects, tickerData, projectTickerData,
     projectPipelines, projectTodos, projectIdeas,
-    projectFeed, projectAgentStatus,
+    projectFeed, agents: allAgents,
     projectContext, projectDocuments,
   } = useMissionControl()
   const { id } = useParams<{ id: string }>()
@@ -100,8 +102,56 @@ export function ProjectDetail({ toggleTheme }: Props) {
   const [tab, setTab] = useState(0)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
   const [terminalBusy, setTerminalBusy] = useState(false)
+  const [activeTodoId, setActiveTodoId] = useState<string | null>(null)   // UI highlight on click
+  const [sentTodoId, setSentTodoId] = useState<string | null>(null)       // actually sent to terminal
+  const [sessionActive, setSessionActive] = useState(false)               // terminal lifecycle
+  const [shuttingDown, setShuttingDown] = useState(false)
+  const [sessionKey, setSessionKey] = useState(0)                         // increment to force Terminal remount
+  const { addTodo, setStatus, deleteTodo } = useTodoActions()
 
   const project = projects.find(p => p.id === id)
+
+  // All hooks must be called unconditionally — before any early return
+  const agents = useAgentStatus(project?.id || '', allAgents)
+
+  // Detect existing session on mount (e.g. user navigated away and came back)
+  useEffect(() => {
+    if (!id) return
+    const tid = `project:${id}`
+    Promise.all([
+      fetch(`/api/kani/history/${encodeURIComponent(tid)}`).then(r => r.json()).catch(() => null),
+      fetch('/api/kani/status').then(r => r.json()).catch(() => null),
+    ]).then(([historyData, statusData]) => {
+      const hasHistory = historyData?.history?.length > 0
+      const hasActiveProcess = statusData?.activeTerminals?.some((t: { terminalId: string }) => t.terminalId === tid)
+      if (hasHistory || hasActiveProcess) {
+        setSessionActive(true)
+      }
+    })
+  }, [id])
+
+  const handleActivate = useCallback(() => {
+    setSessionActive(true)
+    setPendingPrompt(
+      'Lies MEMORY.md und TODOS.md dieses Projekts. Fasse kurz zusammen: Wo sind wir stehen geblieben? Was steht als nächstes an? Zeige die offenen Todos.'
+    )
+  }, [])
+
+  const handleProjectShutdown = useCallback(() => {
+    setShuttingDown(true)
+    setPendingPrompt(
+      'Session beenden: 1) MEMORY.md aktualisieren (Letzte Session + Next Steps) 2) TODOS.md prüfen und abhaken 3) Alle Änderungen committen und pushen 4) Antworte mit [SESSION_END] ✓'
+    )
+  }, [])
+
+  // Soft reset: save state, clear conversation, fresh session
+  const [refreshing, setRefreshing] = useState(false)
+  const handleNewSession = useCallback(() => {
+    setRefreshing(true)
+    setPendingPrompt(
+      'Zwischenspeichern: 1) MEMORY.md kurz aktualisieren (aktueller Stand) 2) Antworte nur mit: [CHECKPOINT] ✓'
+    )
+  }, [])
 
   if (!project) {
     return (
@@ -120,7 +170,6 @@ export function ProjectDetail({ toggleTheme }: Props) {
   const todos = projectTodos[project.id] || []
   const pIdeas = projectIdeas[project.id] || []
   const feed = projectFeed[project.id] || []
-  const agents = projectAgentStatus[project.id] || []
   const context = projectContext[project.id]
   const docs = projectDocuments[project.id] || []
   const milestones = projectPipelines[project.id] || []
@@ -129,8 +178,10 @@ export function ProjectDetail({ toggleTheme }: Props) {
     <Pipeline label="Roadmap" milestones={milestones} summary={project.phase ?? ''} />
   ) : undefined
 
-  // Project-specific ticker
-  const projectTicker = tickerData.projects || tickerData.system || []
+  // Project-specific ticker — real data first, fallback to static
+  const projectTicker = (projectTickerData[project.id]?.length ?? 0) > 0
+    ? projectTickerData[project.id]
+    : tickerData.projects || tickerData.system || []
 
   const tabs = [
     {
@@ -195,40 +246,83 @@ export function ProjectDetail({ toggleTheme }: Props) {
     },
     {
       label: 'Todos',
-      content: (
-        <>
-          <TcLabel>Todos ({todos.length})</TcLabel>
-          {todos.length === 0 ? (
-            <TcText style={{ color: 'var(--tx3)' }}>Keine Todos</TcText>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {todos.map((t, i) => (
-                <div
-                  key={i}
-                  className="ghost-card"
-                  style={{ '--hc': 'rgba(255,255,255,0.04)', padding: '10px 14px', gap: 2, borderRadius: 14, flexDirection: 'row', alignItems: 'center', cursor: 'pointer' } as React.CSSProperties}
-                  onClick={() => setPendingPrompt(`/build ${t.title}`)}
-                >
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0,
-                    background: `${priorityColor(t.priority)}12`, color: priorityColor(t.priority),
-                    minWidth: 28, textAlign: 'center',
-                  }}>
-                    {t.priority}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, textDecoration: t.status === 'done' ? 'line-through' : 'none', opacity: t.status === 'done' ? 0.5 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
-                    <div style={{ fontSize: 10, color: 'var(--tx3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>{t.description}</div>
-                  </div>
-                  <span style={{ fontSize: 9, color: 'var(--tx3)', flexShrink: 0, marginLeft: 8, whiteSpace: 'nowrap' }}>{t.agent}</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--tx3)', flexShrink: 0, marginLeft: 8, minWidth: 28, textAlign: 'right' }}>{t.duration}</span>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: todoDotColor(t.status), flexShrink: 0, marginLeft: 8 }} />
+      content: (() => {
+        const openTodos = todos.filter(t => t.status !== 'done')
+        const doneTodos = todos.filter(t => t.status === 'done')
+        return (
+          <>
+            <TcLabel>Offen ({openTodos.length})</TcLabel>
+            {openTodos.length === 0 ? (
+              <TcText style={{ color: 'var(--tx3)' }}>Alles erledigt</TcText>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {openTodos.map((t) => {
+                  const isActive = activeTodoId === t.id
+                  const isInProgress = t.status === 'in-progress'
+                  return (
+                    <div
+                      key={t.id}
+                      className="ghost-card"
+                      style={{
+                        '--hc': isActive ? 'var(--gg)' : isInProgress ? 'var(--ag)' : 'rgba(255,255,255,0.04)',
+                        padding: '10px 14px', gap: 2, borderRadius: 14, flexDirection: 'row', alignItems: 'center',
+                        cursor: 'pointer', transition: 'all 0.25s',
+                        borderColor: isActive ? 'var(--g)' : isInProgress ? 'var(--a)' : undefined,
+                      } as React.CSSProperties}
+                      onClick={() => {
+                        setActiveTodoId(t.id)
+                        setPendingPrompt(`/build ${t.title}`)
+                      }}
+                    >
+                      {/* Status indicator */}
+                      <span style={{
+                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                        background: isInProgress ? 'var(--a)' : todoDotColor(t.status),
+                        boxShadow: isInProgress ? '0 0 8px var(--ag)' : undefined,
+                        animation: isInProgress ? 'lp 1.5s ease-in-out infinite' : undefined,
+                        '--lc': 'var(--ag)',
+                      } as React.CSSProperties} />
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, marginLeft: 8,
+                        background: `${priorityColor(t.priority)}12`, color: priorityColor(t.priority),
+                        minWidth: 28, textAlign: 'center',
+                      }}>
+                        {t.priority}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {t.title}
+                        </div>
+                        {isInProgress && (
+                          <div style={{ fontSize: 10, color: 'var(--a)', fontWeight: 600, marginTop: 2 }}>In Arbeit...</div>
+                        )}
+                      </div>
+                      {isActive && (
+                        <span style={{ fontSize: 9, color: 'var(--g)', fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>
+                          → Terminal
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {doneTodos.length > 0 && (
+              <>
+                <TcLabel>Erledigt ({doneTodos.length})</TcLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {doneTodos.slice(0, 5).map((t) => (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', opacity: 0.4 }}>
+                      <Check size={12} stroke="var(--g)" strokeWidth={2.5} />
+                      <span style={{ fontSize: 11, textDecoration: 'line-through', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      ),
+              </>
+            )}
+          </>
+        )
+      })(),
     },
     {
       label: 'Ideas',
@@ -376,48 +470,149 @@ export function ProjectDetail({ toggleTheme }: Props) {
         backLink={{ label: 'Projekte', href: '/projects' }}
         title={project.name}
         toggleTheme={toggleTheme}
+        onPowerClick={sessionActive ? handleProjectShutdown : undefined}
       />
 
       <SplitLayout
         ratio="50% 50%"
         left={
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
-            <div className="st" style={{ padding: '0 2px' }}>Terminal</div>
-            <Terminal
-              title={`${project.id} — project`}
-              statusLabel={hLabel}
-              statusColor={hColor}
-              statusGlow={hColor.replace(')', 'g)')}
-              placeholder={`kani project ${project.id} → ...`}
-              mode="live"
-              cwd={`~/mckay-os/projects/${project.id}`}
-              terminalId={`project:${project.id}`}
-              inputValue={pendingPrompt || undefined}
-              onInputChange={(v) => setPendingPrompt(v || null)}
-              onClearInput={() => setPendingPrompt(null)}
-              onSend={() => setPendingPrompt(null)}
-              onThinkingChange={setTerminalBusy}
-            />
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
-              {quickActions.map((qa, i) => {
-                const Icon = qa.icon
-                return (
+            <div className="st" style={{ padding: '0 2px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              Terminal
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: '3px 10px', borderRadius: 6, letterSpacing: 1,
+                background: sessionActive ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.04)',
+                color: sessionActive ? 'var(--g)' : 'var(--tx3)',
+              }}>
+                {shuttingDown ? 'SHUTDOWN...' : sessionActive ? 'ACTIVE' : 'DORMANT'}
+              </span>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+              <Terminal
+                key={sessionKey}
+                title={`${project.id} — project`}
+                statusLabel={sessionActive ? (terminalBusy ? 'Thinking...' : 'Active') : 'Dormant'}
+                statusColor={sessionActive ? (terminalBusy ? 'var(--a)' : 'var(--g)') : 'var(--tx3)'}
+                statusGlow={sessionActive ? (terminalBusy ? 'var(--ag)' : 'var(--gg)') : 'rgba(255,255,255,0.04)'}
+                placeholder={sessionActive ? `kani project ${project.id} → ...` : ''}
+                mode="live"
+                cwd={`~/mckay-os/projects/${project.id}`}
+                terminalId={`project:${project.id}`}
+                inputValue={pendingPrompt || undefined}
+                onInputChange={(v) => {
+                  setPendingPrompt(v || null)
+                  if (!v && activeTodoId) setActiveTodoId(null)
+                }}
+                onClearInput={() => { setPendingPrompt(null); setActiveTodoId(null) }}
+                onSend={() => {
+                  setPendingPrompt(null)
+                  if (activeTodoId && project) {
+                    setStatus(activeTodoId, 'in-progress', project.id)
+                    setSentTodoId(activeTodoId)
+                    setActiveTodoId(null)
+                  }
+                }}
+                onThinkingChange={(thinking) => {
+                  setTerminalBusy(thinking)
+                  if (!thinking && sentTodoId && project) {
+                    setStatus(sentTodoId, 'done', project.id)
+                    setSentTodoId(null)
+                  }
+                  // Detect shutdown completion — reset terminal for clean next session
+                  if (!thinking && shuttingDown) {
+                    const tid = `project:${project.id}`
+                    fetch('/api/kani/reset', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ terminalId: tid }),
+                    }).catch(() => {})
+                    setShuttingDown(false)
+                    setSessionActive(false)
+                    setSessionKey(k => k + 1)
+                  }
+                  // Detect refresh/new-session completion — reset + re-activate
+                  if (!thinking && refreshing) {
+                    const tid = `project:${project.id}`
+                    fetch('/api/kani/reset', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ terminalId: tid }),
+                    }).catch(() => {})
+                    setRefreshing(false)
+                    setSessionKey(k => k + 1)
+                    // Re-activate with fresh wake-up prompt after a tick (Terminal needs to remount)
+                    setTimeout(() => {
+                      setPendingPrompt(
+                        'Lies MEMORY.md und TODOS.md dieses Projekts. Fasse kurz zusammen: Wo sind wir stehen geblieben? Was steht als nächstes an? Zeige die offenen Todos.'
+                      )
+                    }, 100)
+                  }
+                }}
+              />
+
+              {/* Dormant overlay */}
+              {!sessionActive && !shuttingDown && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 20,
+                  background: 'rgba(10,10,15,0.85)', backdropFilter: 'blur(8px)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+                  zIndex: 10,
+                }}>
+                  <div style={{ fontSize: 13, color: 'var(--tx3)', fontWeight: 600 }}>Terminal inaktiv</div>
                   <button
-                    key={i}
                     className="qa-btn"
                     style={{
-                      borderColor: qa.border, color: qa.color, '--qc': qa.color,
-                      ...(terminalBusy ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                      borderColor: 'var(--g)', color: 'var(--g)', '--qc': 'var(--g)',
+                      padding: '14px 28px', fontSize: 13, fontWeight: 700,
                     } as React.CSSProperties}
-                    onClick={() => setPendingPrompt(qa.prompt)}
-                    disabled={terminalBusy}
+                    onClick={handleActivate}
                   >
-                    <Icon size={14} stroke={qa.color} />
-                    {qa.label}
+                    <Zap size={16} stroke="var(--g)" />
+                    Aktivieren
                   </button>
-                )
-              })}
+                </div>
+              )}
             </div>
+
+            {/* Quick actions — only when active */}
+            {sessionActive && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
+                {quickActions.map((qa, i) => {
+                  const Icon = qa.icon
+                  const isFeierabend = qa.label === 'Feierabend'
+                  const disabled = terminalBusy || shuttingDown || refreshing
+                  return (
+                    <button
+                      key={i}
+                      className="qa-btn"
+                      style={{
+                        borderColor: qa.border, color: qa.color, '--qc': qa.color,
+                        ...(disabled ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                      } as React.CSSProperties}
+                      onClick={() => isFeierabend ? handleProjectShutdown() : setPendingPrompt(qa.prompt)}
+                      disabled={disabled}
+                    >
+                      <Icon size={14} stroke={qa.color} />
+                      {qa.label}
+                    </button>
+                  )
+                })}
+                {/* Neue Session — soft reset */}
+                <button
+                  className="qa-btn"
+                  style={{
+                    borderColor: 'var(--bl)', color: 'var(--bl)', '--qc': 'var(--bl)',
+                    ...((terminalBusy || shuttingDown || refreshing) ? { opacity: 0.4, pointerEvents: 'none' as const } : {}),
+                  } as React.CSSProperties}
+                  onClick={handleNewSession}
+                  disabled={terminalBusy || shuttingDown || refreshing}
+                >
+                  <RefreshCw size={14} stroke="var(--bl)" />
+                  Neue Session
+                </button>
+              </div>
+            )}
           </div>
         }
         right={

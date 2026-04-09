@@ -110,10 +110,11 @@ interface MissionControlContextValue {
 
   // Ticker
   tickerData: Record<string, TickerItemData[]>
+  projectTickerData: Record<string, TickerItemData[]>
 
   // Project detail maps
   projectPipelines: Record<string, PipelineMilestone[]>
-  projectTodos: Record<string, { title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; agent: string }[]>
+  projectTodos: Record<string, { id: string; title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; agent: string; project_id: string }[]>
   projectIdeas: Record<string, { title: string; score: number; description: string }[]>
   projectFeed: Record<string, { time: string; type: 'success' | 'info' | 'warning' | 'error'; text: string }[]>
   projectAgentStatus: Record<string, { name: string; status: 'active' | 'waiting' | 'idle'; task: string; since: string }[]>
@@ -154,6 +155,7 @@ const emptyContext: MissionControlContextValue = {
   projects: [], ideas: [], agents: [], skills: [],
   departments: [], personalAreas: [], networkEntries: [],
   tickerData: {},
+  projectTickerData: {},
   projectPipelines: {}, projectTodos: {}, projectIdeas: {},
   projectFeed: {}, projectAgentStatus: {},
   projectLastUpdate: {}, projectNextMilestone: {},
@@ -352,6 +354,7 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         { data: tickerRows },
         { data: notifRows },
         { data: launchRows },
+        { data: activityRows },
       ] = await Promise.all([
         supabase.from('projects').select('*'),
         supabase.from('ideas').select('*').order('score', { ascending: false }),
@@ -369,6 +372,7 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         supabase.from('ticker_items').select('*').order('sort_order'),
         supabase.from('notifications').select('*').eq('dismissed', false).order('created_at', { ascending: false }).limit(50),
         supabase.from('launch_sessions').select('*').in('status', ['describe','research','brief','review']).order('created_at', { ascending: false }),
+        supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(20),
       ])
 
       if (!mounted) return
@@ -396,17 +400,19 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
       }
 
       // Group todos by project_id
-      const projectTodos: Record<string, { title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; agent: string }[]> = {}
+      const projectTodos: Record<string, { id: string; title: string; priority: 'P1' | 'P2' | 'P3'; duration: string; status: 'open' | 'in-progress' | 'done'; description: string; agent: string; project_id: string }[]> = {}
       for (const row of todoRows || []) {
         const pid = row.project_id
         if (!projectTodos[pid]) projectTodos[pid] = []
         projectTodos[pid].push({
+          id: row.id,
           title: row.title,
           priority: row.priority,
-          duration: row.duration,
+          duration: row.duration || '',
           status: row.status,
-          description: row.description,
-          agent: row.agent,
+          description: row.description || '',
+          agent: row.agent || '',
+          project_id: pid,
         })
       }
 
@@ -495,11 +501,38 @@ export function MissionControlProvider({ children }: { children: ReactNode }) {
         error: r.error, created_at: r.created_at, updated_at: r.updated_at,
       }))
 
+      // Compute project ticker from activity_log + feed + notifications
+      const projectTickerData: Record<string, TickerItemData[]> = {}
+      const activityColorMap: Record<string, string> = { prompt: 'var(--bl)', session_end: 'var(--g)', error: 'var(--r)' }
+      const notifColorMap: Record<string, string> = { wichtig: 'var(--r)', sofort: 'var(--o)', info: 'var(--bl)', review: 'var(--p)' }
+      const feedColorMap: Record<string, string> = { success: 'var(--g)', info: 'var(--bl)', warning: 'var(--a)', error: 'var(--r)' }
+
+      for (const p of projects) {
+        const items: TickerItemData[] = []
+        // From activity_log
+        for (const row of activityRows || []) {
+          if (row.project_id === p.id) {
+            items.push({ color: activityColorMap[row.type] || 'var(--bl)', label: row.type || 'KANI', labelColor: activityColorMap[row.type] || 'var(--bl)', text: (row.text || '').substring(0, 80) })
+          }
+        }
+        // From project feed JSONB
+        for (const f of projectFeed[p.id] || []) {
+          items.push({ color: feedColorMap[f.type] || 'var(--bl)', label: f.type, labelColor: feedColorMap[f.type] || 'var(--bl)', text: f.text })
+        }
+        // From notifications
+        for (const n of notifications) {
+          if (n.project_id === p.id) {
+            items.push({ color: notifColorMap[n.typ] || 'var(--bl)', label: n.typ, labelColor: notifColorMap[n.typ] || 'var(--bl)', text: n.title })
+          }
+        }
+        if (items.length > 0) projectTickerData[p.id] = items.slice(0, 10)
+      }
+
       setData({
         loading: false,
         projects, ideas, agents, skills,
         departments, personalAreas, networkEntries,
-        tickerData,
+        tickerData, projectTickerData,
         projectPipelines, projectTodos, projectIdeas,
         projectFeed, projectAgentStatus,
         projectLastUpdate, projectNextMilestone,
