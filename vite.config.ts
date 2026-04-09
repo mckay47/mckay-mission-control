@@ -6,7 +6,7 @@ import mckayPlugin from './scripts/vite-mckay-plugin.mjs'
 import { spawn, type ChildProcess } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync } from 'fs'
+import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, readdirSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 
@@ -584,20 +584,78 @@ function kaniTerminal(): Plugin {
       })
 
       // --------------------------------------------------------
-      // GET /api/kani/status — List active terminal processes
+      // GET /api/kani/status — List all terminal sessions with thinking state
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {
         if (req.method !== 'GET' || req.url !== '/api/kani/status') return next()
 
         const now = Date.now()
-        const activeTerminals = Array.from(activeProcesses.values()).map(p => ({
-          terminalId: p.terminalId,
-          cwd: p.cwd,
-          runningFor: Math.round((now - p.startedAt) / 1000),
-        }))
+
+        // Discover terminals with persisted history on disk (survives server restart)
+        try {
+          const projectsDir = join(homedir(), 'mckay-os', 'projects')
+          if (existsSync(projectsDir)) {
+            for (const name of readdirSync(projectsDir)) {
+              const logPath = join(projectsDir, name, '.terminal-log.jsonl')
+              if (existsSync(logPath)) {
+                const tid = `project:${name}`
+                // Load history into memory if not already there
+                if (!sessionHistory.has(tid)) getHistory(tid)
+                // Mark as having a session so it shows up
+                if (sessionHistory.has(tid) && sessionHistory.get(tid)!.length > 0) {
+                  sessionStarted.add(tid)
+                }
+              }
+            }
+          }
+        } catch { /* non-critical scan */ }
+
+        // Return ALL terminals that have an active session, not just currently running ones
+        const allTerminals = Array.from(sessionStarted).map(terminalId => {
+          const proc = activeProcesses.get(terminalId)
+          const isThinking = !!proc
+          const runningFor = proc ? Math.round((now - proc.startedAt) / 1000) : 0
+          const cwd = proc?.cwd || ''
+
+          // Extract last non-empty output line from session history
+          let lastOutputLine = ''
+          const history = sessionHistory.get(terminalId)
+          if (history && history.length > 0) {
+            // Walk backwards through history to find the last assistant message
+            for (let i = history.length - 1; i >= 0; i--) {
+              if (history[i].role === 'assistant' && history[i].text.trim()) {
+                // Get last non-empty, non-signal line from the response
+                const lines = history[i].text.split('\n')
+                for (let j = lines.length - 1; j >= 0; j--) {
+                  const line = lines[j].trim()
+                  if (line && !line.startsWith('[SIGNAL]')) {
+                    lastOutputLine = line
+                    break
+                  }
+                }
+                break
+              }
+            }
+          }
+
+          return { terminalId, cwd, runningFor, isThinking, lastOutputLine }
+        })
+
+        // Also include actively running processes that might not be in sessionStarted yet
+        for (const [terminalId, proc] of activeProcesses) {
+          if (!sessionStarted.has(terminalId)) {
+            allTerminals.push({
+              terminalId,
+              cwd: proc.cwd,
+              runningFor: Math.round((now - proc.startedAt) / 1000),
+              isThinking: true,
+              lastOutputLine: '',
+            })
+          }
+        }
 
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ activeTerminals }))
+        res.end(JSON.stringify({ activeTerminals: allTerminals }))
       })
 
       // --------------------------------------------------------

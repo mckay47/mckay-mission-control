@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { Users, Activity, Clock as ClockIcon, Lock, Settings, Briefcase, Monitor } from 'lucide-react'
+import { Users, Activity, Clock as ClockIcon, Lock, Settings, Briefcase } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { StatusLed } from '../ui/StatusLed.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
-import { openOrFocus } from '../../lib/windowManager'
 
 interface Props { toggleTheme: () => void }
 
@@ -58,19 +57,6 @@ export function System({ toggleTheme }: Props) {
           })}
         </div>
 
-        <button
-          onClick={() => openOrFocus('/terminals', 'width=3440,height=1440,menubar=no,toolbar=no')}
-          style={{
-            padding: '16px 32px', borderRadius: 16, fontSize: 14, fontWeight: 700,
-            cursor: 'pointer', border: '2px solid var(--o)', color: 'var(--o)',
-            background: 'linear-gradient(145deg, var(--sft), var(--sf))',
-            boxShadow: '4px 4px 10px var(--shd), -3px -3px 8px var(--shl)',
-            display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit'
-          }}
-        >
-          <Monitor size={20} strokeWidth={1.8} />
-          Alle Terminals anzeigen
-        </button>
       </div>
 
       <BottomTicker
