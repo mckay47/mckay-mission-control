@@ -25,10 +25,10 @@ const statusLabel = (s: string) => s === 'active' ? 'Aktiv' : s === 'idle' ? 'Id
 const statusColor = (s: string) => s === 'active' ? 'var(--g)' : s === 'idle' ? 'var(--a)' : 'var(--t)'
 
 const quickActions = [
-  { label: 'Ausfuehren', icon: Play, color: 'var(--g)', border: 'var(--g)' },
-  { label: 'Testen', icon: FlaskConical, color: 'var(--bl)', border: 'var(--bl)' },
-  { label: 'Bearbeiten', icon: Pencil, color: 'var(--a)', border: 'var(--a)' },
-  { label: 'History', icon: History, color: 'var(--p)', border: 'var(--p)' },
+  { label: 'Ausfuehren', icon: Play, color: 'var(--g)', border: 'var(--g)', prompt: 'Führe diesen Workflow jetzt aus. Zeige jeden Schritt und das Ergebnis.' },
+  { label: 'Testen', icon: FlaskConical, color: 'var(--bl)', border: 'var(--bl)', prompt: 'Teste diesen Workflow mit Testdaten. Zeige ob alle Steps korrekt durchlaufen.' },
+  { label: 'Bearbeiten', icon: Pencil, color: 'var(--a)', border: 'var(--a)', prompt: 'Zeige die aktuelle Workflow-Definition und schlage Verbesserungen vor.' },
+  { label: 'History', icon: History, color: 'var(--p)', border: 'var(--p)', prompt: 'Zeige die letzten Ausführungen dieses Workflows: Datum, Dauer, Ergebnis, Fehler.' },
 ]
 
 export function WorkflowDetail({ toggleTheme }: Props) {
@@ -202,6 +202,7 @@ export function WorkflowDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    onClick={() => setPendingPrompt(qa.prompt)}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

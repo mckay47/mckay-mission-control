@@ -49,10 +49,10 @@ const logLevelColor = (l: string) => l === 'info' ? 'var(--bl)' : l === 'warn' ?
 const severityColor = (s: string) => s === 'low' ? 'var(--g)' : s === 'medium' ? 'var(--a)' : 'var(--r)'
 
 const quickActions = [
-  { label: 'Testen', icon: FlaskConical, color: 'var(--g)', border: 'var(--g)' },
-  { label: 'Config', icon: Settings, color: 'var(--bl)', border: 'var(--bl)' },
-  { label: 'Logs', icon: FileText, color: 'var(--a)', border: 'var(--a)' },
-  { label: 'Toggle', icon: ToggleRight, color: 'var(--p)', border: 'var(--p)' },
+  { label: 'Testen', icon: FlaskConical, color: 'var(--g)', border: 'var(--g)', prompt: 'Führe einen Security-Check für dieses Feature durch. Prüfe auf Schwachstellen.' },
+  { label: 'Config', icon: Settings, color: 'var(--bl)', border: 'var(--bl)', prompt: 'Zeige die aktuelle Security-Konfiguration. Was ist aktiv, was ist deaktiviert?' },
+  { label: 'Logs', icon: FileText, color: 'var(--a)', border: 'var(--a)', prompt: 'Zeige die letzten Security-Events und Audit-Logs für dieses Feature.' },
+  { label: 'Toggle', icon: ToggleRight, color: 'var(--p)', border: 'var(--p)', prompt: 'Aktiviere oder deaktiviere dieses Security-Feature. Zeige die Auswirkungen.' },
 ]
 
 export function SecurityDetail({ toggleTheme }: Props) {
@@ -216,6 +216,7 @@ export function SecurityDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    onClick={() => setPendingPrompt(qa.prompt)}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

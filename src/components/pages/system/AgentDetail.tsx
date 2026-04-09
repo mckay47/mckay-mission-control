@@ -48,11 +48,11 @@ function getAgentPipeline(status: string | undefined, color: string): PipelineMi
 }
 
 const quickActions = [
-  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)' },
-  { label: 'Tasks zuweisen', icon: ListTodo, color: 'var(--bl)', border: 'var(--bl)' },
-  { label: 'Config', icon: Settings, color: 'var(--a)', border: 'var(--a)' },
-  { label: 'Logs', icon: FileText, color: 'var(--p)', border: 'var(--p)' },
-  { label: 'Neustart', icon: RotateCcw, color: 'var(--r)', border: 'var(--r)' },
+  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)', prompt: 'Zeige den aktuellen Status dieses Agents: Was macht er gerade, welche Tasks sind zugewiesen, Performance-Metriken.' },
+  { label: 'Tasks zuweisen', icon: ListTodo, color: 'var(--bl)', border: 'var(--bl)', prompt: 'Welche offenen Tasks gibt es, die diesem Agent zugewiesen werden können? Zeige Optionen.' },
+  { label: 'Config', icon: Settings, color: 'var(--a)', border: 'var(--a)', prompt: 'Zeige die aktuelle Konfiguration dieses Agents: Modell, Temperatur, Skills, Trigger-Bedingungen.' },
+  { label: 'Logs', icon: FileText, color: 'var(--p)', border: 'var(--p)', prompt: 'Zeige die letzten Aktivitäten und Logs dieses Agents. Was hat er zuletzt gemacht?' },
+  { label: 'Neustart', icon: RotateCcw, color: 'var(--r)', border: 'var(--r)', prompt: 'Setze diesen Agent zurück und starte ihn neu mit frischer Konfiguration.' },
 ]
 
 const statusColor = (s: string | undefined) => s === 'active' ? 'var(--g)' : s === 'idle' ? 'var(--a)' : 'var(--tx3)'
@@ -230,6 +230,7 @@ export function AgentDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    onClick={() => setPendingPrompt(qa.prompt)}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}

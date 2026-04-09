@@ -58,11 +58,11 @@ const deptConfig: Record<string, { key: string; value: string }[]> = {
 
 
 const quickActions = [
-  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)' },
-  { label: 'Agents', icon: Bot, color: 'var(--bl)', border: 'var(--bl)' },
-  { label: 'Skills', icon: Puzzle, color: 'var(--a)', border: 'var(--a)' },
-  { label: 'Config', icon: Settings, color: 'var(--p)', border: 'var(--p)' },
-  { label: 'Report', icon: FileText, color: 'var(--t)', border: 'var(--t)' },
+  { label: 'Status', icon: Activity, color: 'var(--g)', border: 'var(--g)', prompt: 'Zeige den aktuellen Status dieser Abteilung: offene Tasks, aktive Agents, KPIs.' },
+  { label: 'Agents', icon: Bot, color: 'var(--bl)', border: 'var(--bl)', prompt: 'Welche Agents sind dieser Abteilung zugeordnet? Zeige Status und Auslastung.' },
+  { label: 'Skills', icon: Puzzle, color: 'var(--a)', border: 'var(--a)', prompt: 'Welche Skills sind in dieser Abteilung aktiv? Zeige Abhängigkeiten und Konfiguration.' },
+  { label: 'Config', icon: Settings, color: 'var(--p)', border: 'var(--p)', prompt: 'Zeige die Konfiguration dieser Abteilung: Zuweisungen, Prioritäten, Workflows.' },
+  { label: 'Report', icon: FileText, color: 'var(--t)', border: 'var(--t)', prompt: 'Erstelle einen Report für diese Abteilung: Performance, offene Themen, Empfehlungen.' },
 ]
 
 export function DepartmentDetail({ toggleTheme }: Props) {
@@ -223,6 +223,7 @@ export function DepartmentDetail({ toggleTheme }: Props) {
                     key={i}
                     className="qa-btn"
                     style={{ borderColor: qa.border, color: qa.color, '--qc': qa.color } as React.CSSProperties}
+                    onClick={() => setPendingPrompt(qa.prompt)}
                   >
                     <Icon size={14} stroke={qa.color} />
                     {qa.label}
