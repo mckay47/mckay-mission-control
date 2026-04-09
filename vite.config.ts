@@ -314,10 +314,9 @@ function kaniTerminal(): Plugin {
           let resEnded = false
           res.on('close', () => {
             resEnded = true
-            // Kill Claude CLI process when browser disconnects (user pressed abort)
-            if (activeProcesses.has(terminalId)) {
-              proc.kill('SIGTERM')
-            }
+            // Don't kill the process on browser disconnect — it should continue in background.
+            // The process is only killed explicitly via the abort button (which sends a separate request)
+            // or when a new prompt is sent to the same terminal (existing process is replaced).
           })
 
           proc.on('error', (err) => {
@@ -721,6 +720,31 @@ function kaniTerminal(): Plugin {
       })
 
       // --------------------------------------------------------
+      // POST /api/kani/abort — Kill active process for a terminal (Stop button)
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/kani/abort') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const { terminalId } = JSON.parse(body)
+            const existing = activeProcesses.get(terminalId)
+            if (existing) {
+              existing.proc.kill('SIGTERM')
+              activeProcesses.delete(terminalId)
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true, killed: !!existing }))
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'text/plain' })
+            res.end('Invalid JSON')
+          }
+        })
+      })
+
+      // --------------------------------------------------------
       // POST /api/kani/reset — Clear session state for a terminal
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {
@@ -731,9 +755,14 @@ function kaniTerminal(): Plugin {
         req.on('end', () => {
           try {
             const { terminalId } = JSON.parse(body)
-            if (terminalId) sessionStarted.delete(terminalId)
-            else sessionStarted.clear()
-          } catch { sessionStarted.clear() }
+            if (terminalId) {
+              sessionStarted.delete(terminalId)
+              clearHistory(terminalId)
+            } else {
+              sessionStarted.clear()
+              sessionHistory.clear()
+            }
+          } catch { sessionStarted.clear(); sessionHistory.clear() }
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: true }))
         })

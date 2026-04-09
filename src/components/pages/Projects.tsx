@@ -5,6 +5,7 @@ import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { StatusLed } from '../ui/StatusLed.tsx'
 import { Pipeline } from '../shared/Pipeline.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
+import { openOrFocus as openOrFocusWindow } from '../../lib/windowManager.ts'
 
 interface Props { toggleTheme: () => void }
 
@@ -178,7 +179,7 @@ export function Projects({ toggleTheme }: Props) {
   const nextMilestone = p ? (projectNextMilestone[p.id] || '—') : '—'
 
   const openProject = (id: string) => {
-    window.open(`/project/${id}`, '_blank', 'width=1440,height=900,menubar=no,toolbar=no')
+    openOrFocusWindow(`/project/${id}`)
   }
 
   const tabs = ['Live', 'Todos', 'Ideas', 'Reports', 'Briefing']

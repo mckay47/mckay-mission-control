@@ -141,11 +141,18 @@ export function useKaniStream({ cwd, terminalId }: UseKaniStreamOptions) {
   }, [cwd, terminalId])
 
   const abort = useCallback(() => {
+    // Abort the client-side fetch
     if (abortRef.current) {
       abortRef.current.abort()
       abortRef.current = null
     }
-  }, [])
+    // Kill the server-side Claude CLI process
+    fetch('/api/kani/abort', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ terminalId }),
+    }).catch(() => {})
+  }, [terminalId])
 
   const clearLines = useCallback(() => {
     setLines([])

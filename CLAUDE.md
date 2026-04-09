@@ -164,7 +164,7 @@ integrations/ui-design            -- design system, components, patterns
 
 <!-- AUTO-CONTEXT:START -->
 ## Auto-Generated Context
-> Updated: 2026-04-09 10:45
+> Updated: 2026-04-09 12:57
 
 **Project:** mission-control
 **Status:** **Live** ✓
@@ -172,12 +172,10 @@ integrations/ui-design            -- design system, components, patterns
 **Repo:** ~/mckay-os/projects/mission-control
 
 **Open Todos:**
-- [ ] **P1** Todo-Widget funktional machen (persistent, schreibt in Dateien)
 - [ ] **P2** Kalender
 - [ ] **P2** Notizen
 - [ ] **P3** E-Mail
-- [ ] **P2** Agent Status mit echten Daten befüllen (aktuell Dummy)
-- [ ] **P2** Bottom Ticker mit echten Daten statt Dummy
+- [ ] **P2** Ideas-Terminal mit gleichem Pattern wie Projects
 
 **KANI Working Rules:**
 1. When editing code: use the **Repo** path above for all file operations
