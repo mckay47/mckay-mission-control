@@ -2,17 +2,79 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 
 const IDLE_MS = 5 * 60 * 1000 // 5 minutes
 const COUNTDOWN_S = 10
+const LS_WORKDAY = 'mckay-workday'
+const LS_HISTORY = 'mckay-workday-history'
 
 type ZoneMode = 'zone' | 'matrix'
 
-interface ZoneCtx {
-  mode: ZoneMode
-  elapsed: number // seconds since Zone start
-  goZone: () => void
-  goMatrix: () => void
+interface WorkdayData {
+  date: string
+  totalSeconds: number
 }
 
-const ZoneContext = createContext<ZoneCtx>({ mode: 'matrix', elapsed: 0, goZone: () => {}, goMatrix: () => {} })
+interface WorkdayHistoryEntry {
+  date: string
+  totalSeconds: number
+}
+
+interface ZoneCtx {
+  mode: ZoneMode
+  elapsed: number        // cumulative seconds (todayTotal + current session if active)
+  todayTotal: number     // saved total (without current running session)
+  goZone: () => void
+  goMatrix: () => void
+  resetDay: () => void   // called on shutdown to reset the counter
+}
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function loadTodayTotal(): number {
+  try {
+    const raw = localStorage.getItem(LS_WORKDAY)
+    if (!raw) return 0
+    const data: WorkdayData = JSON.parse(raw)
+    if (data.date === todayKey()) return data.totalSeconds
+    return 0
+  } catch { return 0 }
+}
+
+function saveTodayTotal(seconds: number): void {
+  const data: WorkdayData = { date: todayKey(), totalSeconds: seconds }
+  localStorage.setItem(LS_WORKDAY, JSON.stringify(data))
+}
+
+export function saveToHistory(seconds: number): void {
+  try {
+    const raw = localStorage.getItem(LS_HISTORY)
+    const history: WorkdayHistoryEntry[] = raw ? JSON.parse(raw) : []
+    const today = todayKey()
+    // Update existing entry for today or add new one
+    const idx = history.findIndex(e => e.date === today)
+    if (idx >= 0) {
+      history[idx].totalSeconds = seconds
+    } else {
+      history.push({ date: today, totalSeconds: seconds })
+    }
+    // Keep last 30 days only
+    history.sort((a, b) => b.date.localeCompare(a.date))
+    const trimmed = history.slice(0, 30)
+    localStorage.setItem(LS_HISTORY, JSON.stringify(trimmed))
+  } catch { /* silent */ }
+}
+
+export function getWorkdayHistory(): WorkdayHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(LS_HISTORY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+const ZoneContext = createContext<ZoneCtx>({
+  mode: 'matrix', elapsed: 0, todayTotal: 0,
+  goZone: () => {}, goMatrix: () => {}, resetDay: () => {},
+})
 export const useZone = () => useContext(ZoneContext)
 
 export function ZoneProvider({ children }: { children: React.ReactNode }) {
@@ -20,6 +82,7 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     (localStorage.getItem('mckay-zone') as ZoneMode) ?? 'matrix'
   )
   const [elapsed, setElapsed] = useState(0)
+  const [todayTotal, setTodayTotal] = useState<number>(() => loadTodayTotal())
   const [popup, setPopup] = useState(false)
   const [countdown, setCountdown] = useState(COUNTDOWN_S)
 
@@ -29,6 +92,10 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
   const cdRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const elRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const zoneStartRef = useRef<number>(0)
+  const todayTotalRef = useRef<number>(todayTotal)
+
+  // Keep ref in sync with state
+  todayTotalRef.current = todayTotal
 
   // Stable fn refs — body is reassigned each render but identity never changes
   const goMatrixFn = useRef<() => void>(() => {})
@@ -41,7 +108,20 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     if (elRef.current) { clearInterval(elRef.current); elRef.current = null }
     setPopup(false)
     setCountdown(COUNTDOWN_S)
-    setElapsed(0)
+
+    // Accumulate current session into todayTotal
+    if (modeRef.current === 'zone' && zoneStartRef.current > 0) {
+      const sessionSeconds = Math.floor((Date.now() - zoneStartRef.current) / 1000)
+      const newTotal = todayTotalRef.current + sessionSeconds
+      todayTotalRef.current = newTotal
+      setTodayTotal(newTotal)
+      saveTodayTotal(newTotal)
+      zoneStartRef.current = 0
+    }
+
+    // elapsed = todayTotal (no running session)
+    setElapsed(todayTotalRef.current)
+
     modeRef.current = 'matrix'
     setMode('matrix')
     localStorage.setItem('mckay-zone', 'matrix')
@@ -76,12 +156,13 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     modeRef.current = 'zone'
     setMode('zone')
     localStorage.setItem('mckay-zone', 'zone')
-    // Start elapsed timer from zero
+    // Start new session — elapsed will be todayTotal + running session
     zoneStartRef.current = Date.now()
-    setElapsed(0)
+    setElapsed(todayTotalRef.current)
     if (elRef.current) clearInterval(elRef.current)
     elRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - zoneStartRef.current) / 1000))
+      const sessionSeconds = Math.floor((Date.now() - zoneStartRef.current) / 1000)
+      setElapsed(todayTotalRef.current + sessionSeconds)
     }, 1000)
     resetIdleFn.current()
   }
@@ -103,15 +184,19 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // On mount: if zone was persisted in localStorage, start elapsed + idle
+  // On mount: if zone was persisted in localStorage, start cumulative elapsed + idle
   useEffect(() => {
     if (modeRef.current === 'zone') {
       zoneStartRef.current = Date.now()
-      setElapsed(0)
+      setElapsed(todayTotalRef.current)
       elRef.current = setInterval(() => {
-        setElapsed(Math.floor((Date.now() - zoneStartRef.current) / 1000))
+        const sessionSeconds = Math.floor((Date.now() - zoneStartRef.current) / 1000)
+        setElapsed(todayTotalRef.current + sessionSeconds)
       }, 1000)
       resetIdleFn.current()
+    } else {
+      // In matrix — show accumulated total
+      setElapsed(todayTotalRef.current)
     }
     return () => {
       if (idleRef.current) clearTimeout(idleRef.current)
@@ -120,12 +205,33 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // resetDay: save to history, then clear today's counter
+  const resetDayFn = useRef<() => void>(() => {})
+  resetDayFn.current = () => {
+    // Finalize current session if in zone
+    if (modeRef.current === 'zone' && zoneStartRef.current > 0) {
+      const sessionSeconds = Math.floor((Date.now() - zoneStartRef.current) / 1000)
+      const newTotal = todayTotalRef.current + sessionSeconds
+      todayTotalRef.current = newTotal
+      setTodayTotal(newTotal)
+      zoneStartRef.current = 0
+    }
+    // Save to history before resetting
+    saveToHistory(todayTotalRef.current)
+    // Reset
+    todayTotalRef.current = 0
+    setTodayTotal(0)
+    setElapsed(0)
+    saveTodayTotal(0)
+  }
+
   const goZone = useCallback(() => goZoneFn.current(), [])
   const goMatrix = useCallback(() => goMatrixFn.current(), [])
+  const resetDay = useCallback(() => resetDayFn.current(), [])
   const handleStillHere = useCallback(() => resetIdleFn.current(), [])
 
   return (
-    <ZoneContext.Provider value={{ mode, elapsed, goZone, goMatrix }}>
+    <ZoneContext.Provider value={{ mode, elapsed, todayTotal, goZone, goMatrix, resetDay }}>
       {children}
       {popup && (
         <IdlePopup countdown={countdown} onStillHere={handleStillHere} onMatrix={goMatrix} />

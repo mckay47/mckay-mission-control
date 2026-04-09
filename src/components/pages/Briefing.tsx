@@ -2,6 +2,7 @@ import { Header } from '../shared/Header.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { StatusLed } from '../ui/StatusLed.tsx'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
+import { useZone, getWorkdayHistory } from '../ZoneProvider.tsx'
 
 interface Props { toggleTheme: () => void }
 
@@ -25,11 +26,28 @@ const healthLabel = (h: string | undefined) => {
   }
 }
 
+function formatWorkTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  return `${h}h ${m}min`
+}
+
 export function Briefing({ toggleTheme }: Props) {
   const {
     projects, ideas, agents, tickerData,
     projectTodos, projectNextMilestone,
   } = useMissionControl()
+  const { elapsed } = useZone()
+
+  // Yesterday's work time from history
+  const yesterdayWork = (() => {
+    const history = getWorkdayHistory()
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yKey = yesterday.toISOString().slice(0, 10)
+    const entry = history.find(e => e.date === yKey)
+    return entry ? entry.totalSeconds : null
+  })()
 
   // Aggregate stats
   const activeProjects = projects.filter(p => p.health === 'active' || p.health === 'live')
@@ -111,6 +129,38 @@ export function Briefing({ toggleTheme }: Props) {
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>
               {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
             </span>
+          </div>
+
+          {/* Work time */}
+          <div
+            className="ghost-card"
+            style={{
+              '--hc': 'var(--gg)',
+              padding: '14px 18px',
+              gap: 6,
+              borderRadius: 14,
+              flexShrink: 0,
+            } as React.CSSProperties}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)' }}>
+                Arbeitszeit heute
+              </span>
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 16,
+                fontWeight: 700,
+                color: 'var(--g)',
+                textShadow: '0 0 10px rgba(0,255,136,0.3)',
+              }}>
+                {formatWorkTime(elapsed)}
+              </span>
+            </div>
+            {yesterdayWork !== null && (
+              <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
+                Gestern: {formatWorkTime(yesterdayWork)}
+              </div>
+            )}
           </div>
 
           {/* Summary stats */}

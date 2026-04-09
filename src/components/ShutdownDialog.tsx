@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Zap, CheckCircle, Loader2 } from 'lucide-react'
+import { useZone } from './ZoneProvider'
 
 interface TerminalStatus {
   id: string
@@ -19,6 +20,12 @@ function terminalLabel(id: string): string {
   return id
 }
 
+function formatWorkTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  return `${h}h ${m}min`
+}
+
 export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDialogProps) {
   // phase: 0 = confirm, 1 = syncing, 2 = done
   const [phase, setPhase] = useState(0)
@@ -26,6 +33,7 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
   const [activeCount, setActiveCount] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { elapsed, resetDay } = useZone()
 
   // Fetch active terminal count on open
   useEffect(() => {
@@ -102,7 +110,10 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
 
   const handleConfirm = () => {
     if (phase === 0) startSessionEnd()
-    else if (phase === 2) onShutdown()
+    else if (phase === 2) {
+      resetDay()
+      onShutdown()
+    }
   }
 
   const btnLabel =
@@ -155,6 +166,30 @@ export default function ShutdownDialog({ open, onClose, onShutdown }: ShutdownDi
             System herunterfahren?
           </span>
         </div>
+
+        {/* Work time display (phase 0) */}
+        {phase === 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'rgba(0,255,136,0.04)',
+            border: '1px solid rgba(0,255,136,0.08)',
+          }}>
+            <span style={{ fontSize: 12, color: 'var(--tx2)' }}>Deine heutige Arbeitszeit:</span>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13,
+              fontWeight: 700,
+              color: 'var(--g)',
+              textShadow: '0 0 8px rgba(0,255,136,0.3)',
+            }}>
+              {formatWorkTime(elapsed)}
+            </span>
+          </div>
+        )}
 
         {/* Active terminals section (phase 0 only) */}
         {phase === 0 && (
