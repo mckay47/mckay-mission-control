@@ -4,51 +4,50 @@
 
 ---
 
-## Letzte Session: 2026-04-09 (Phase 3 — Große Session, 4 Commits)
+## Letzte Session: 2026-04-09 (Phase 3 — Session 2, 1 Commit)
 
 **Was gebaut wurde:**
 
-`[SIGNAL]`-Filter im Terminal (`useKaniStream.ts`):
-- `[SIGNAL]`-Zeilen werden beim Restore aus History gefiltert
-- `[SIGNAL]`-Zeilen werden beim Live-Streaming gefiltert
-- Sauberere Terminal-Ausgabe — Signale gehen nur ans Dashboard
+useTerminalSession Hook (`src/hooks/useTerminalSession.ts`):
+- Terminal-Lifecycle-Pattern aus ProjectDetail extrahiert
+- State: sessionActive, terminalBusy, shuttingDown, sessionKey, pendingPrompt
+- Mount-Detection, Activate, Shutdown, New Session, onThinkingChange
+- Wiederverwendbar für alle Bereiche
 
-Shutdown/Refresh Race-Fix (`ProjectDetail.tsx`):
-- `.catch(() => {})` → `.finally()` bei beiden fetch-Aufrufen (reset endpoint)
-- State-Updates (setShuttingDown, setSessionActive, setSessionKey) erst nach Reset-Response
-- Refresh-Delay 100ms → 200ms für sicheres Remount
+ProjectDetail Refactor:
+- Inline-State + Callbacks durch useTerminalSession Hook ersetzt
+- Todo-Integration bleibt lokal (handleThinkingChange/handleSend wrappen Hook)
+- ~160 Zeilen entfernt, gleiche Funktionalität
 
-**Commits (branch: dev):** ca01aa7, 1ab4bd3, 81e66f9, f567305
+IdeaDetail Upgrade:
+- Vollständiges Terminal-Lifecycle via useTerminalSession
+- Dormant-Overlay + Aktivierung (gleiches Pattern wie ProjectDetail)
+- Session-Persistenz, Shutdown, Neue Session
+- terminalId: idea:{id}, cwd: ~/mckay-os
 
-**Was gebaut wurde (vollständig):**
-- Feierabend-Button Fix: shell:true entfernt (Node 25 DEP0190), Error-Handler, Header-Flush
-- Todo-Widget persistent: Terminal-getrieben (Klick → in-progress → done), useTodoActions, Supabase + TODOS.md Sync
-- Agent Status mit echten Daten: useAgentStatus Hook, /api/kani/status Polling
-- Bottom Ticker mit echten Daten: activity_log + feed + notifications
-- Terminal-Lifecycle: Dormant → Active → Shutdown, Session-Detection, Neue Session Button
-- /api/kani/reset Fix: clearHistory() wurde nie aufgerufen (Root Cause für persistente History)
-- /api/kani/abort: separater Endpoint für Stop-Button (Prozess killen ohne Browser-Disconnect)
-- Browser-Disconnect killt Prozess NICHT mehr — Claude arbeitet im Hintergrund weiter
-- [SIGNAL]-Zeilen aus Terminal-Output gefiltert
-- windowManager.ts: fokussiert bestehende Fenster statt Duplikate zu öffnen
-- Header Power-Button: projekt-spezifisch statt global
+WindowManager überall:
+- 11 direkte window.open Calls → openOrFocus() in 6 System-Seiten
+- Kein window.open mehr im src/ außer windowManager.ts selbst
+
+**Commits (branch: dev):** 7f386de
 
 ---
 
 ## Next Steps
 
-1. **Terminal-Refactor**: useTerminalSession Hook + TerminalWorkspace Component extrahieren
-2. **IdeaDetail**: Terminal + Lifecycle für Thinktank-Ideen (gleiches Pattern wie Projects)
-3. **WindowManager überall**: alle window.open Calls auf openOrFocus umstellen
-4. **Kalender** — Google Calendar Anbindung (P2)
-5. **Notizen** — persistent (P2)
+1. **Kalender** — Google Calendar Anbindung (P2)
+2. **Notizen** — persistent in ~/mckay-os/notes/ (P2)
+3. **Action Buttons** — individuelle Quick Actions pro Bereich (P2)
+4. **E-Mail** — Resend-Integration (P3)
+5. **TerminalGrid** — /terminals Seite bauen (P3)
+6. **Personal/Backoffice/Network** — editierbare Inhalte (P3)
 
 ---
 
 ## Bekannte Issues
 
 - Terminal Startup: 5-15s bei Kaltstart (normal, kein Bug)
-- Feierabend/Shutdown-Sequenz dauert ~60-80s bei Kaltstart (Claude lädt Kontext)
+- Feierabend/Shutdown-Sequenz dauert ~60-80s bei Kaltstart (Claude laedt Kontext)
 - Claude CLI erkennt Nachrichten in MEMORY.md als "Prompt Injection" wenn zu befehlsartig formuliert
 
 ---
@@ -56,9 +55,8 @@ Shutdown/Refresh Race-Fix (`ProjectDetail.tsx`):
 ## Technischer Stand
 
 - **URL lokal:** localhost:5173 (dev, via launchd)
-- **Branch:** dev (4 neue Commits heute)
+- **Branch:** dev (5 Commits heute)
 - **Supabase:** 17+ Tabellen, Realtime aktiv
 - **launchd:** aktiv (com.mckay.mission-control.plist)
-- **Terminal-Lifecycle:** Dormant → Active → Shutdown mit Session-Detection + Background-Processing
-- **Neue Dateien:** useAgentStatus.ts, useTodoActions.ts, windowManager.ts
-- **Terminal-Lifecycle:** Dormant → Active → Shutdown mit Session-Detection
+- **Terminal-Lifecycle:** useTerminalSession Hook — wiederverwendbar in allen Bereichen
+- **Pattern-Status:** Projects ✅ Thinktank ✅ System (info-only) ✅ Rest: visuell

@@ -8,11 +8,16 @@ updated: 2026-04-09
 
 - [ ] **P2** Kalender — Google Calendar Anbindung
 - [ ] **P2** Notizen — persistent in ~/mckay-os/notes/
+- [ ] **P2** Individuelle Action Buttons pro Bereich (Projects, Thinktank, etc.)
 - [ ] **P3** E-Mail — Resend-Integration
-- [ ] **P2** Ideas-Terminal mit gleichem Pattern wie Projects
+- [ ] **P3** TerminalGrid Seite (/terminals) — Component bauen
+- [ ] **P3** Personal/Backoffice/Network — editierbare Inhalte + ggf. Terminals
 
 ## Done
 
+- [x] **P1** useTerminalSession Hook — Lifecycle-Pattern aus ProjectDetail extrahiert
+- [x] **P1** IdeaDetail Terminal-Lifecycle (Dormant/Active/Shutdown, gleiches Pattern wie Projects)
+- [x] **P2** WindowManager überall — alle 11 window.open → openOrFocus in 6 Files
 - [x] **P1** Todo-Widget persistent (Terminal-getrieben, auto in-progress/done)
 - [x] **P2** Agent Status mit echten Daten (useAgentStatus + Polling)
 - [x] **P2** Bottom Ticker mit echten Daten (activity_log + feed + notifications)
