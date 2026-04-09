@@ -3,52 +3,40 @@ import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
-import { networkCategories } from '../../lib/data.ts'
+import { hubCategories } from '../../lib/data.ts'
 
 interface Props { toggleTheme: () => void }
 
 const categoryTabs: Record<string, string[]> = {
-  kontakte: ['Uebersicht', 'Kunden', 'Dienstleister'],
-  events: ['Uebersicht', 'Geplant', 'Vergangen'],
-  portale: ['Uebersicht', 'Aktiv', 'Abgeschlossen'],
-  partner: ['Uebersicht', 'Aktiv', 'Potentiell'],
-  opportunities: ['Uebersicht', 'Pipeline', 'Heiss'],
+  kalender: ['Heute', 'Woche', 'Monat'],
+  todos: ['Alle', 'Heute faellig', 'Diese Woche'],
+  'email-hub': ['Alle', 'Ungelesen', 'Dringend'],
 }
 
 const tabPlaceholders: Record<string, Record<string, string>> = {
-  kontakte: {
-    Uebersicht: '45 Kontakte insgesamt — Kunden, Partner, Dienstleister im CRM.',
-    Kunden: '15 aktive Kunden — Hebam Agency, HebamBuero, weitere Projekte.',
-    Dienstleister: 'Steuerberaterin, Rechtsanwalt, Designer, Freelancer — alle Kontakte.',
+  kalender: {
+    Heute: '2 Termine heute — 10:00 Daily Standup, 14:00 Hebammenbuero Validation Call.',
+    Woche: '7 Termine diese Woche — Business + Privat zusammengefasst.',
+    Monat: 'Monatsansicht mit allen Terminen aus Google Calendar.',
   },
-  events: {
-    Uebersicht: '3 geplante Events — Meetups, Konferenzen, Networking-Termine.',
-    Geplant: 'Naechstes Event: 15. April — Gruendertreffen Stuttgart.',
-    Vergangen: 'Vergangene Events mit Kontakt-Notizen und Follow-ups.',
+  todos: {
+    Alle: '8 offene Todos — Business und Privat zusammen, sortiert nach Prioritaet.',
+    'Heute faellig': '2 Todos heute faellig — Bank-Ueberweisung, Steuerberater anrufen.',
+    'Diese Woche': '5 Todos diese Woche — inklusive 2 die heute faellig sind.',
   },
-  portale: {
-    Uebersicht: '4 aktive Portale und Kurse — Voice Agent, Marketing, Weiterbildung.',
-    Aktiv: '2 aktive Kurse — AI Voice Agent Workshop, Growth Marketing Kurs.',
-    Abgeschlossen: '1 abgeschlossener Kurs — React Advanced Patterns.',
-  },
-  partner: {
-    Uebersicht: '6 aktive Business-Partner — Agenturen, Freelancer, Kooperationen.',
-    Aktiv: '6 aktive Partnerschaften — regelmaessiger Austausch und Projekte.',
-    Potentiell: '3 potentielle Partner — in Gespraechen oder Evaluierung.',
-  },
-  opportunities: {
-    Uebersicht: 'Opportunity-Pipeline: 5 Leads, 2 davon heiss.',
-    Pipeline: '5 Opportunities in der Pipeline — verschiedene Stadien.',
-    Heiss: '2 heisse Opportunities — sofortige Aufmerksamkeit erforderlich.',
+  'email-hub': {
+    Alle: 'Alle 5 Postfaecher auf einen Blick — 17 ungelesene Mails gesamt.',
+    Ungelesen: '17 ungelesene E-Mails — sortiert nach Postfach und Eingang.',
+    Dringend: '3 dringende E-Mails die sofortige Aufmerksamkeit brauchen.',
   },
 }
 
-export function Network({ toggleTheme }: Props) {
+export function Hub({ toggleTheme }: Props) {
   const [sel, setSel] = useState(0)
   const [tab, setTab] = useState(0)
 
-  const cat = networkCategories[sel]
-  const tabLabels = categoryTabs[cat.id] || ['Uebersicht']
+  const cat = hubCategories[sel]
+  const tabLabels = categoryTabs[cat.id] || ['Alle']
 
   const tabs = tabLabels.map((label) => ({
     label,
@@ -56,7 +44,7 @@ export function Network({ toggleTheme }: Props) {
       <>
         <TcLabel>{label}</TcLabel>
         <TcText>{tabPlaceholders[cat.id]?.[label] || 'Inhalt wird in Phase 2 eingebaut.'}</TcText>
-        {label === 'Uebersicht' && (
+        {label === tabLabels[0] && (
           <>
             <TcLabel>Statistiken</TcLabel>
             <TcStatRow>
@@ -74,7 +62,7 @@ export function Network({ toggleTheme }: Props) {
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header
         backLink={{ label: 'Cockpit', href: '/' }}
-        title="Network"
+        title="Hub"
         toggleTheme={toggleTheme}
       />
 
@@ -86,13 +74,13 @@ export function Network({ toggleTheme }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <span className="st" style={{ padding: '0 2px' }}>Bereiche</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>
-                {networkCategories.length} Bereiche
+                {hubCategories.length} Bereiche
               </span>
             </div>
 
             {/* Category cards grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-              {networkCategories.map((c, i) => (
+              {hubCategories.map((c, i) => (
                 <div
                   key={c.id}
                   className="ghost-card"
@@ -146,14 +134,13 @@ export function Network({ toggleTheme }: Props) {
       />
 
       <BottomTicker
-        label="NETWORK"
+        label="HUB"
         ledColor="var(--t)"
         ledGlow="var(--tg)"
         items={[
-          { color: 'var(--t)', label: 'KONTAKTE', labelColor: 'var(--t)', text: '45 Kontakte im CRM — 15 Kunden, 8 Partner' },
-          { color: 'var(--p)', label: 'EVENTS', labelColor: 'var(--p)', text: 'Naechstes Event: 15. April — Gruendertreffen' },
-          { color: 'var(--g)', label: 'OPPORTUNITIES', labelColor: 'var(--g)', text: '2 heisse Leads in der Pipeline' },
-          { color: 'var(--bl)', label: 'PARTNER', labelColor: 'var(--bl)', text: '6 aktive Partnerschaften' },
+          { color: 'var(--g)', label: 'KALENDER', labelColor: 'var(--g)', text: '2 Termine heute — 7 diese Woche' },
+          { color: 'var(--o)', label: 'TODOS', labelColor: 'var(--o)', text: '8 offene Todos — 2 heute faellig' },
+          { color: 'var(--bl)', label: 'EMAIL', labelColor: 'var(--bl)', text: '17 ungelesene Mails — 3 dringend' },
         ]}
       />
     </div>

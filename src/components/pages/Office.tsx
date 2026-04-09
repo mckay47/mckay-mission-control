@@ -3,51 +3,51 @@ import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
-import { networkCategories } from '../../lib/data.ts'
+import { officeCategories } from '../../lib/data.ts'
 
 interface Props { toggleTheme: () => void }
 
 const categoryTabs: Record<string, string[]> = {
-  kontakte: ['Uebersicht', 'Kunden', 'Dienstleister'],
-  events: ['Uebersicht', 'Geplant', 'Vergangen'],
-  portale: ['Uebersicht', 'Aktiv', 'Abgeschlossen'],
-  partner: ['Uebersicht', 'Aktiv', 'Potentiell'],
-  opportunities: ['Uebersicht', 'Pipeline', 'Heiss'],
+  buchhaltung: ['Uebersicht', 'Belege', 'Datev'],
+  subscriptions: ['Uebersicht', 'Services', 'Kosten'],
+  vertraege: ['Uebersicht', 'Aktiv', 'Auslaufend'],
+  kunden: ['Uebersicht', 'Hebam Agency', 'HebamBuero'],
+  'business-email': ['Uebersicht', 'Postfaecher', 'Ungelesen'],
 }
 
 const tabPlaceholders: Record<string, Record<string, string>> = {
-  kontakte: {
-    Uebersicht: '45 Kontakte insgesamt — Kunden, Partner, Dienstleister im CRM.',
-    Kunden: '15 aktive Kunden — Hebam Agency, HebamBuero, weitere Projekte.',
-    Dienstleister: 'Steuerberaterin, Rechtsanwalt, Designer, Freelancer — alle Kontakte.',
+  buchhaltung: {
+    Uebersicht: 'Buchhaltungs-Dashboard mit Monatsueberblick wird in Phase 2 eingebaut.',
+    Belege: 'Belege-Upload und Kategorisierung wird in Phase 2 eingebaut.',
+    Datev: 'Datev-Export und Steuerberaterin-Schnittstelle wird in Phase 2 eingebaut.',
   },
-  events: {
-    Uebersicht: '3 geplante Events — Meetups, Konferenzen, Networking-Termine.',
-    Geplant: 'Naechstes Event: 15. April — Gruendertreffen Stuttgart.',
-    Vergangen: 'Vergangene Events mit Kontakt-Notizen und Follow-ups.',
+  subscriptions: {
+    Uebersicht: 'Alle aktiven Subscriptions mit monatlichen Kosten auf einen Blick.',
+    Services: 'Detailliste aller SaaS-Services, Lizenzen und API-Kosten.',
+    Kosten: 'Kostenentwicklung und Optimierungspotenziale werden hier angezeigt.',
   },
-  portale: {
-    Uebersicht: '4 aktive Portale und Kurse — Voice Agent, Marketing, Weiterbildung.',
-    Aktiv: '2 aktive Kurse — AI Voice Agent Workshop, Growth Marketing Kurs.',
-    Abgeschlossen: '1 abgeschlossener Kurs — React Advanced Patterns.',
+  vertraege: {
+    Uebersicht: 'Alle laufenden Vertraege mit Kuendigungsfristen im Ueberblick.',
+    Aktiv: '7 aktive Vertraege — Handy, Auto, Lizenzen, Hosting.',
+    Auslaufend: 'Vertraege die in den naechsten 90 Tagen auslaufen.',
   },
-  partner: {
-    Uebersicht: '6 aktive Business-Partner — Agenturen, Freelancer, Kooperationen.',
-    Aktiv: '6 aktive Partnerschaften — regelmaessiger Austausch und Projekte.',
-    Potentiell: '3 potentielle Partner — in Gespraechen oder Evaluierung.',
+  kunden: {
+    Uebersicht: 'Kunden-Dashboard fuer alle Businesses.',
+    'Hebam Agency': 'findemeinehebamme.de — ca. 100 Bestellungen in 10 Wochen.',
+    HebamBuero: 'HebamBuero SaaS — 12 aktive Kunden im Pilotbetrieb.',
   },
-  opportunities: {
-    Uebersicht: 'Opportunity-Pipeline: 5 Leads, 2 davon heiss.',
-    Pipeline: '5 Opportunities in der Pipeline — verschiedene Stadien.',
-    Heiss: '2 heisse Opportunities — sofortige Aufmerksamkeit erforderlich.',
+  'business-email': {
+    Uebersicht: 'Alle Business-Postfaecher auf einen Blick.',
+    Postfaecher: '3 Postfaecher: support@, info@, mehti@ — Uebersicht pro Postfach.',
+    Ungelesen: '5 ungelesene E-Mails — sortiert nach Prioritaet.',
   },
 }
 
-export function Network({ toggleTheme }: Props) {
+export function Office({ toggleTheme }: Props) {
   const [sel, setSel] = useState(0)
   const [tab, setTab] = useState(0)
 
-  const cat = networkCategories[sel]
+  const cat = officeCategories[sel]
   const tabLabels = categoryTabs[cat.id] || ['Uebersicht']
 
   const tabs = tabLabels.map((label) => ({
@@ -74,7 +74,7 @@ export function Network({ toggleTheme }: Props) {
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header
         backLink={{ label: 'Cockpit', href: '/' }}
-        title="Network"
+        title="Office"
         toggleTheme={toggleTheme}
       />
 
@@ -86,13 +86,13 @@ export function Network({ toggleTheme }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <span className="st" style={{ padding: '0 2px' }}>Bereiche</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>
-                {networkCategories.length} Bereiche
+                {officeCategories.length} Bereiche
               </span>
             </div>
 
             {/* Category cards grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-              {networkCategories.map((c, i) => (
+              {officeCategories.map((c, i) => (
                 <div
                   key={c.id}
                   className="ghost-card"
@@ -146,14 +146,14 @@ export function Network({ toggleTheme }: Props) {
       />
 
       <BottomTicker
-        label="NETWORK"
-        ledColor="var(--t)"
-        ledGlow="var(--tg)"
+        label="OFFICE"
+        ledColor="var(--bl)"
+        ledGlow="var(--blg)"
         items={[
-          { color: 'var(--t)', label: 'KONTAKTE', labelColor: 'var(--t)', text: '45 Kontakte im CRM — 15 Kunden, 8 Partner' },
-          { color: 'var(--p)', label: 'EVENTS', labelColor: 'var(--p)', text: 'Naechstes Event: 15. April — Gruendertreffen' },
-          { color: 'var(--g)', label: 'OPPORTUNITIES', labelColor: 'var(--g)', text: '2 heisse Leads in der Pipeline' },
-          { color: 'var(--bl)', label: 'PARTNER', labelColor: 'var(--bl)', text: '6 aktive Partnerschaften' },
+          { color: 'var(--bl)', label: 'BUCHHALTUNG', labelColor: 'var(--bl)', text: 'Letzter Beleg-Upload: 28. Maerz 2026' },
+          { color: 'var(--p)', label: 'SUBSCRIPTIONS', labelColor: 'var(--p)', text: '9 aktive Services — Monatlich EUR 347' },
+          { color: 'var(--g)', label: 'KUNDEN', labelColor: 'var(--g)', text: 'Hebam Agency: ~100 Bestellungen' },
+          { color: 'var(--o)', label: 'EMAIL', labelColor: 'var(--o)', text: '5 ungelesene Business-Mails' },
         ]}
       />
     </div>

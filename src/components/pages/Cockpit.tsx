@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, Lightbulb, Settings, Monitor, Users, Users2, FileText, Flame } from 'lucide-react'
+import { CheckCircle, Lightbulb, Settings, Briefcase, Heart, LayoutDashboard, Users2, FileText, Flame } from 'lucide-react'
 import { Header } from '../shared/Header.tsx'
 import { openOrFocus } from '../../lib/windowManager'
 import { useMissionControl } from '../../lib/MissionControlProvider.tsx'
@@ -12,14 +12,15 @@ interface Props {
 }
 
 const tiles = [
-  { label: 'Projects',   desc: 'Alle Projekte, Status, Agents.',    color: 'var(--g)',  glow: 'var(--gg)',  icon: CheckCircle, route: '/projects',   countKey: 'projects' as const, openWindow: false },
-  { label: 'Thinktank',  desc: 'Ideen sammeln, bewerten, pushen.',  color: 'var(--p)',  glow: 'var(--pg)',  icon: Lightbulb,   route: '/thinktank',  countKey: 'ideas' as const, openWindow: false },
-  { label: 'System',     desc: 'Agents, Skills, MCPs, Workflows.',  color: 'var(--o)',  glow: 'var(--og)',  icon: Settings,    route: '/system',     countKey: null, openWindow: false },
-  { label: 'Backoffice', desc: 'Finanzen, Verträge, Rechnungen.',   color: 'var(--bl)', glow: 'var(--blg)', icon: Monitor,     route: '/backoffice', countKey: null, openWindow: false },
-  { label: 'Personal',   desc: 'Todos, Notizen, Kalender.',         color: 'var(--pk)', glow: 'var(--pkg)', icon: Users,       route: '/personal',   countKey: null, openWindow: false },
-  { label: 'Network',    desc: 'Kontakte, Partner, Leads.',         color: 'var(--t)',  glow: 'var(--tg)',  icon: Users2,      route: '/network',    countKey: null, openWindow: false },
-  { label: 'Briefing',   desc: 'Tägliches Briefing, Reports.',      color: 'var(--a)',  glow: 'var(--ag)',  icon: FileText,    route: '/briefing',   countKey: null, openWindow: false },
-  { label: 'Kitchen',    desc: 'Hier wird gekocht. Alle Terminals.',  color: '#FF4500',   glow: 'rgba(255,69,0,0.35)', icon: Flame, route: '/terminals', countKey: null, openWindow: true },
+  { label: 'Projects',   desc: 'Alle Projekte, Status, Agents.',        color: 'var(--g)',  glow: 'var(--gg)',  icon: CheckCircle,      route: '/projects',   countKey: 'projects' as const, openWindow: false },
+  { label: 'Thinktank',  desc: 'Ideen sammeln, bewerten, pushen.',      color: 'var(--p)',  glow: 'var(--pg)',  icon: Lightbulb,        route: '/thinktank',  countKey: 'ideas' as const, openWindow: false },
+  { label: 'System',     desc: 'Agents, Skills, MCPs, Workflows.',      color: 'var(--o)',  glow: 'var(--og)',  icon: Settings,         route: '/system',     countKey: null, openWindow: false },
+  { label: 'Office',     desc: 'Buchhaltung, Subscriptions, Kunden.',   color: 'var(--bl)', glow: 'var(--blg)', icon: Briefcase,        route: '/office',     countKey: null, openWindow: false },
+  { label: 'Life',       desc: 'Wohnung, Familie, Gesundheit.',         color: 'var(--pk)', glow: 'var(--pkg)', icon: Heart,            route: '/life',       countKey: null, openWindow: false },
+  { label: 'Hub',        desc: 'Kalender, Todos, E-Mails.',             color: 'var(--t)',  glow: 'var(--tg)',  icon: LayoutDashboard,  route: '/hub',        countKey: null, openWindow: false },
+  { label: 'Network',    desc: 'Kontakte, Events, Opportunities.',      color: 'var(--g)',  glow: 'var(--gg)',  icon: Users2,           route: '/network',    countKey: null, openWindow: false },
+  { label: 'Briefing',   desc: 'T\u00E4gliches Briefing, Reports.',     color: 'var(--a)',  glow: 'var(--ag)',  icon: FileText,         route: '/briefing',   countKey: null, openWindow: false },
+  { label: 'Kitchen',    desc: 'Hier wird gekocht. Alle Terminals.',    color: '#FF4500',   glow: 'rgba(255,69,0,0.35)', icon: Flame,  route: '/terminals',  countKey: null, openWindow: true },
 ]
 
 export function Cockpit({ toggleTheme, kaniStream }: Props) {
@@ -37,7 +38,7 @@ export function Cockpit({ toggleTheme, kaniStream }: Props) {
   const [showLogo, setShowLogo] = useState(() => sessionStorage.getItem('mckay-launching') !== '1')
   const [showSubtitle, setShowSubtitle] = useState(() => sessionStorage.getItem('mckay-launching') !== '1')
   const [triggeredTiles, setTriggeredTiles] = useState<Set<number>>(() =>
-    sessionStorage.getItem('mckay-launching') === '1' ? new Set<number>() : new Set<number>([0,1,2,3,4,5,6,7])
+    sessionStorage.getItem('mckay-launching') === '1' ? new Set<number>() : new Set<number>([0,1,2,3,4,5,6,7,8])
   )
   const [showInput, setShowInput] = useState(() => sessionStorage.getItem('mckay-launching') !== '1')
   const [typedPlaceholder, setTypedPlaceholder] = useState(() =>

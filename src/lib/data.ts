@@ -654,3 +654,48 @@ export const MTRIX: Record<string, number[]> = {
     1
   ]
 }
+
+// ============================================================
+// Category data for Office / Life / Hub / Network pages
+// ============================================================
+
+export interface CategoryItem {
+  id: string
+  name: string
+  desc: string
+  color: string
+  glow: string
+  badge: string
+  emoji: string
+  stats: { label: string; value: string }[]
+}
+
+export const officeCategories: CategoryItem[] = [
+  { id: 'buchhaltung', name: 'Buchhaltung', desc: 'Belege, Datev, Steuerberaterin', color: 'var(--bl)', glow: 'var(--blg)', badge: 'Monatlich', emoji: '\u{1F4CA}', stats: [{ label: 'Letzter Upload', value: '2026-03-28' }, { label: 'Belege', value: '42' }] },
+  { id: 'subscriptions', name: 'Subscriptions', desc: 'SaaS, Lizenzen, API-Kosten', color: 'var(--p)', glow: 'var(--pg)', badge: '9 aktiv', emoji: '\u{1F511}', stats: [{ label: 'Monatlich', value: '\u20AC347' }, { label: 'Services', value: '9' }] },
+  { id: 'vertraege', name: 'Vertr\u00E4ge', desc: 'Handy, Auto, Lizenzen, Laufzeiten', color: 'var(--a)', glow: 'var(--ag)', badge: '7 aktiv', emoji: '\u{1F4C4}', stats: [{ label: 'Aktiv', value: '7' }, { label: 'N\u00E4chste K\u00FCndigung', value: '2026-06-15' }] },
+  { id: 'kunden', name: 'Kunden', desc: 'Hebam Agency, HebamB\u00FCro, aktive Kunden', color: 'var(--g)', glow: 'var(--gg)', badge: '2 Businesses', emoji: '\u{1F465}', stats: [{ label: 'Hebam Agency', value: '~100' }, { label: 'HebamB\u00FCro', value: '12' }] },
+  { id: 'business-email', name: 'Business E-Mails', desc: 'Support, Anfragen, R\u00FCckmeldungen', color: 'var(--o)', glow: 'var(--og)', badge: '3 Postf\u00E4cher', emoji: '\u{1F4E7}', stats: [{ label: 'Ungelesen', value: '5' }, { label: 'Heute', value: '2' }] },
+]
+
+export const lifeCategories: CategoryItem[] = [
+  { id: 'wohnung', name: 'Wohnung', desc: 'Mieter, Hausverwaltung, Nebenkosten', color: 'var(--bl)', glow: 'var(--blg)', badge: 'Vermietet', emoji: '\u{1F3E0}', stats: [{ label: 'Mieter', value: '1' }, { label: 'Kaltmiete', value: '\u20AC750' }] },
+  { id: 'familie', name: 'Familie', desc: 'Kinder, Termine, Organisation', color: 'var(--pk)', glow: 'var(--pkg)', badge: '4 Personen', emoji: '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}', stats: [{ label: 'N\u00E4chster Termin', value: 'Heute' }, { label: 'Offene Todos', value: '3' }] },
+  { id: 'gesundheit', name: 'Gesundheit', desc: 'Fitness, Arzttermine, Wellness', color: 'var(--g)', glow: 'var(--gg)', badge: 'Aktiv', emoji: '\u{1F4AA}', stats: [{ label: 'Gym/Woche', value: '3x' }, { label: 'Streak', value: '12 Tage' }] },
+  { id: 'private-todos', name: 'Private Todos', desc: 'Bank, Steuerberater, Erledigungen', color: 'var(--a)', glow: 'var(--ag)', badge: '5 offen', emoji: '\u2705', stats: [{ label: 'Offen', value: '5' }, { label: 'Diese Woche', value: '2' }] },
+  { id: 'private-email', name: 'Private E-Mails', desc: 'Pers\u00F6nliche Postf\u00E4cher', color: 'var(--t)', glow: 'var(--tg)', badge: '2 Postf\u00E4cher', emoji: '\u2709\uFE0F', stats: [{ label: 'Ungelesen', value: '12' }, { label: 'Heute', value: '4' }] },
+]
+
+export const hubCategories: CategoryItem[] = [
+  { id: 'kalender', name: 'Kalender', desc: 'Privat + Business, alle Termine', color: 'var(--g)', glow: 'var(--gg)', badge: 'Google Calendar', emoji: '\u{1F4C5}', stats: [{ label: 'Heute', value: '2 Termine' }, { label: 'Diese Woche', value: '7' }] },
+  { id: 'todos', name: 'Todos', desc: 'Alles nicht-Projekt: Bank, Arzt, Admin', color: 'var(--o)', glow: 'var(--og)', badge: '8 offen', emoji: '\u{1F4CB}', stats: [{ label: 'Offen', value: '8' }, { label: 'Heute f\u00E4llig', value: '2' }] },
+  { id: 'email-hub', name: 'E-Mail \u00DCbersicht', desc: 'Alle Postf\u00E4cher auf einen Blick', color: 'var(--bl)', glow: 'var(--blg)', badge: '5 Postf\u00E4cher', emoji: '\u{1F4EC}', stats: [{ label: 'Ungelesen gesamt', value: '17' }, { label: 'Dringend', value: '3' }] },
+]
+
+export const networkCategories: CategoryItem[] = [
+  { id: 'kontakte', name: 'Kontakte', desc: 'Kunden, Partner, Dienstleister', color: 'var(--t)', glow: 'var(--tg)', badge: '45 Kontakte', emoji: '\u{1F464}', stats: [{ label: 'Kunden', value: '15' }, { label: 'Partner', value: '8' }] },
+  { id: 'events', name: 'Events', desc: 'Meetups, Konferenzen, Termine', color: 'var(--p)', glow: 'var(--pg)', badge: '3 geplant', emoji: '\u{1F3A4}', stats: [{ label: 'Diesen Monat', value: '1' }, { label: 'N\u00E4chstes', value: '15. Apr' }] },
+  { id: 'portale', name: 'Portale & Kurse', desc: 'Voice Agent, Marketing, Weiterbildung', color: 'var(--o)', glow: 'var(--og)', badge: '4 aktiv', emoji: '\u{1F393}', stats: [{ label: 'Aktive Kurse', value: '2' }, { label: 'Abgeschlossen', value: '1' }] },
+  { id: 'partner', name: 'Partner', desc: 'Business-Partner, Agenturen, Freelancer', color: 'var(--bl)', glow: 'var(--blg)', badge: '6 aktiv', emoji: '\u{1F91D}', stats: [{ label: 'Aktiv', value: '6' }, { label: 'Potentiell', value: '3' }] },
+  { id: 'opportunities', name: 'Opportunities', desc: 'Leads, Anfragen, Chancen', color: 'var(--g)', glow: 'var(--gg)', badge: '2 hei\u00DF', emoji: '\u{1F525}', stats: [{ label: 'Pipeline', value: '5' }, { label: 'Hei\u00DF', value: '2' }] },
+]

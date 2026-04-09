@@ -13,8 +13,9 @@ import { Thinktank } from './components/pages/Thinktank'
 import { IdeaDetail } from './components/pages/IdeaDetail'
 import { ProjectDetail } from './components/pages/ProjectDetail'
 import { System } from './components/pages/System'
-import { Backoffice } from './components/pages/Backoffice'
-import { Personal } from './components/pages/Personal'
+import { Office } from './components/pages/Office'
+import { Life } from './components/pages/Life'
+import { Hub } from './components/pages/Hub'
 import { Network } from './components/pages/Network'
 import { Briefing } from './components/pages/Briefing'
 
@@ -78,8 +79,9 @@ export default function App() {
           <Route path="/thinktank" element={<Thinktank toggleTheme={toggleTheme} />} />
           <Route path="/idea/:id" element={<IdeaDetail toggleTheme={toggleTheme} />} />
           <Route path="/system" element={<System toggleTheme={toggleTheme} />} />
-          <Route path="/backoffice" element={<Backoffice toggleTheme={toggleTheme} />} />
-          <Route path="/personal" element={<Personal toggleTheme={toggleTheme} />} />
+          <Route path="/office" element={<Office toggleTheme={toggleTheme} />} />
+          <Route path="/life" element={<Life toggleTheme={toggleTheme} />} />
+          <Route path="/hub" element={<Hub toggleTheme={toggleTheme} />} />
           <Route path="/network" element={<Network toggleTheme={toggleTheme} />} />
           <Route path="/briefing" element={<Briefing toggleTheme={toggleTheme} />} />
 

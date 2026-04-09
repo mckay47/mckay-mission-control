@@ -3,51 +3,50 @@ import { Header } from '../shared/Header.tsx'
 import { SplitLayout } from '../shared/SplitLayout.tsx'
 import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/PreviewPanel.tsx'
 import { BottomTicker } from '../shared/BottomTicker.tsx'
-import { networkCategories } from '../../lib/data.ts'
+import { lifeCategories } from '../../lib/data.ts'
 
 interface Props { toggleTheme: () => void }
 
 const categoryTabs: Record<string, string[]> = {
-  kontakte: ['Uebersicht', 'Kunden', 'Dienstleister'],
-  events: ['Uebersicht', 'Geplant', 'Vergangen'],
-  portale: ['Uebersicht', 'Aktiv', 'Abgeschlossen'],
-  partner: ['Uebersicht', 'Aktiv', 'Potentiell'],
-  opportunities: ['Uebersicht', 'Pipeline', 'Heiss'],
+  wohnung: ['Uebersicht', 'Mieter', 'Hausverwaltung'],
+  familie: ['Uebersicht', 'Termine', 'Organisation'],
+  gesundheit: ['Uebersicht', 'Fitness', 'Arzttermine'],
+  'private-todos': ['Uebersicht', 'Offen', 'Erledigt'],
+  'private-email': ['Uebersicht', 'Postfaecher'],
 }
 
 const tabPlaceholders: Record<string, Record<string, string>> = {
-  kontakte: {
-    Uebersicht: '45 Kontakte insgesamt — Kunden, Partner, Dienstleister im CRM.',
-    Kunden: '15 aktive Kunden — Hebam Agency, HebamBuero, weitere Projekte.',
-    Dienstleister: 'Steuerberaterin, Rechtsanwalt, Designer, Freelancer — alle Kontakte.',
+  wohnung: {
+    Uebersicht: 'Wohnungs-Dashboard: Mieteinnahmen, Nebenkosten, Hausverwaltung.',
+    Mieter: 'Aktueller Mieter — Vertragslaufzeit, Zahlungsstatus, Kontaktdaten.',
+    Hausverwaltung: 'Hausverwaltungs-Kontakt, Nebenkostenabrechnungen, Reparaturen.',
   },
-  events: {
-    Uebersicht: '3 geplante Events — Meetups, Konferenzen, Networking-Termine.',
-    Geplant: 'Naechstes Event: 15. April — Gruendertreffen Stuttgart.',
-    Vergangen: 'Vergangene Events mit Kontakt-Notizen und Follow-ups.',
+  familie: {
+    Uebersicht: 'Familien-Hub: Naechste Termine, offene Aufgaben, wichtige Infos.',
+    Termine: 'Gemeinsame Familien-Termine — Schule, Arzt, Aktivitaeten.',
+    Organisation: 'Einkaufslisten, Urlaubsplanung, gemeinsame Projekte.',
   },
-  portale: {
-    Uebersicht: '4 aktive Portale und Kurse — Voice Agent, Marketing, Weiterbildung.',
-    Aktiv: '2 aktive Kurse — AI Voice Agent Workshop, Growth Marketing Kurs.',
-    Abgeschlossen: '1 abgeschlossener Kurs — React Advanced Patterns.',
+  gesundheit: {
+    Uebersicht: 'Gesundheits-Tracker: Fitness-Streak, naechste Arzttermine.',
+    Fitness: 'Gym 3x pro Woche — aktueller Streak: 12 Tage. Trainingsplan-Update faellig.',
+    Arzttermine: 'Naechster Termin: 15.04. — Blutbild-Ergebnisse abholen.',
   },
-  partner: {
-    Uebersicht: '6 aktive Business-Partner — Agenturen, Freelancer, Kooperationen.',
-    Aktiv: '6 aktive Partnerschaften — regelmaessiger Austausch und Projekte.',
-    Potentiell: '3 potentielle Partner — in Gespraechen oder Evaluierung.',
+  'private-todos': {
+    Uebersicht: 'Alle privaten Aufgaben — Bank, Steuerberater, Erledigungen.',
+    Offen: '5 offene Todos — 2 davon diese Woche faellig.',
+    Erledigt: 'Abgeschlossene private Aufgaben der letzten 30 Tage.',
   },
-  opportunities: {
-    Uebersicht: 'Opportunity-Pipeline: 5 Leads, 2 davon heiss.',
-    Pipeline: '5 Opportunities in der Pipeline — verschiedene Stadien.',
-    Heiss: '2 heisse Opportunities — sofortige Aufmerksamkeit erforderlich.',
+  'private-email': {
+    Uebersicht: 'Private Postfaecher — 12 ungelesene Mails, 4 davon heute.',
+    Postfaecher: '2 Postfaecher: Gmail privat, iCloud — sortiert nach Relevanz.',
   },
 }
 
-export function Network({ toggleTheme }: Props) {
+export function Life({ toggleTheme }: Props) {
   const [sel, setSel] = useState(0)
   const [tab, setTab] = useState(0)
 
-  const cat = networkCategories[sel]
+  const cat = lifeCategories[sel]
   const tabLabels = categoryTabs[cat.id] || ['Uebersicht']
 
   const tabs = tabLabels.map((label) => ({
@@ -74,7 +73,7 @@ export function Network({ toggleTheme }: Props) {
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header
         backLink={{ label: 'Cockpit', href: '/' }}
-        title="Network"
+        title="Life"
         toggleTheme={toggleTheme}
       />
 
@@ -86,13 +85,13 @@ export function Network({ toggleTheme }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <span className="st" style={{ padding: '0 2px' }}>Bereiche</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>
-                {networkCategories.length} Bereiche
+                {lifeCategories.length} Bereiche
               </span>
             </div>
 
             {/* Category cards grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-              {networkCategories.map((c, i) => (
+              {lifeCategories.map((c, i) => (
                 <div
                   key={c.id}
                   className="ghost-card"
@@ -146,14 +145,14 @@ export function Network({ toggleTheme }: Props) {
       />
 
       <BottomTicker
-        label="NETWORK"
-        ledColor="var(--t)"
-        ledGlow="var(--tg)"
+        label="LIFE"
+        ledColor="var(--pk)"
+        ledGlow="var(--pkg)"
         items={[
-          { color: 'var(--t)', label: 'KONTAKTE', labelColor: 'var(--t)', text: '45 Kontakte im CRM — 15 Kunden, 8 Partner' },
-          { color: 'var(--p)', label: 'EVENTS', labelColor: 'var(--p)', text: 'Naechstes Event: 15. April — Gruendertreffen' },
-          { color: 'var(--g)', label: 'OPPORTUNITIES', labelColor: 'var(--g)', text: '2 heisse Leads in der Pipeline' },
-          { color: 'var(--bl)', label: 'PARTNER', labelColor: 'var(--bl)', text: '6 aktive Partnerschaften' },
+          { color: 'var(--pk)', label: 'FAMILIE', labelColor: 'var(--pk)', text: 'Naechster Familientermin: Heute' },
+          { color: 'var(--g)', label: 'GESUNDHEIT', labelColor: 'var(--g)', text: 'Gym-Streak: 12 Tage — weiter so!' },
+          { color: 'var(--a)', label: 'TODOS', labelColor: 'var(--a)', text: '5 private Todos offen — 2 diese Woche' },
+          { color: 'var(--t)', label: 'EMAIL', labelColor: 'var(--t)', text: '12 ungelesene private Mails' },
         ]}
       />
     </div>
