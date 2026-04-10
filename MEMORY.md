@@ -1,27 +1,18 @@
 # Mission Control — Project Memory
-> Ebene 1: Pro-Projekt Memory · Updated: 2026-04-09
+> Ebene 1: Pro-Projekt Memory · Updated: 2026-04-10
 > Wird bei jedem Session-Ende von KANI aktualisiert.
 
 ---
 
-## Letzte Session: 2026-04-09 Spaetschicht
+## Letzte Session: 2026-04-10 (Kurz — kein Build)
 
 **Was gebaut wurde:**
-- Hub Rebuild: 8 Kategorien (Kalender, Todos, E-Mail Uebersicht + 5 Postfach-Gruppen)
-- Google Calendar API: OAuth2 Setup, /api/calendar/events, useCalendarEvents Hook, 3 Views (Heute/Woche/Monat)
-- Non-Projekt Todos CRUD: hubTodos (project_id=null), Add/Check/Delete
-- E-Mail IMAP Integration: 17/20 Konten live via imapflow, /api/email/unread Endpoint, 5-Min Cache
-- 20 Konten in 5 Gruppen mit echten Unread-Counts im Hub
-- categories.ts: Eigene Datei fuer Category-Daten (sicher vor Auto-Generation)
 
-**Commits (branch: dev):** 28982b7, 4cfed29
+Keine Build-Aktivität. Kurze Session — nur Verbindungstest + auto-generierte Datei-Updates (CLAUDE.md Timestamps, data.ts Todo-Count).
 
-**Learnings:**
-- data.ts wird von generate-data.mjs ueberschrieben — manuelle Daten in categories.ts
-- Google OAuth: Testnutzer muss im Consent Screen stehen, sonst 403
-- Strato Umlaut-Domains brauchen Punycode (xn--hebammenbro-1hb.de)
-- Gmail App-Passwoerter brauchen 2FA — 3 Konten ohne 2FA uebersprungen
-- Credentials NIE im Chat — immer via nano direkt in Datei
+**Letzter Build-Stand (2026-04-09 Spätschicht):**
+- Hub Rebuild: 8 Kategorien, Google Calendar OAuth2, IMAP 17/20 Konten, Todo CRUD
+- Commits: 28982b7, 4cfed29, 91fa9bc
 
 ---
 

@@ -164,7 +164,7 @@ integrations/ui-design            -- design system, components, patterns
 
 <!-- AUTO-CONTEXT:START -->
 ## Auto-Generated Context
-> Updated: 2026-04-09 12:57
+> Updated: 2026-04-09 20:17
 
 **Project:** mission-control
 **Status:** **Live** ✓
@@ -172,10 +172,12 @@ integrations/ui-design            -- design system, components, patterns
 **Repo:** ~/mckay-os/projects/mission-control
 
 **Open Todos:**
-- [ ] **P2** Kalender
-- [ ] **P2** Notizen
-- [ ] **P3** E-Mail
-- [ ] **P2** Ideas-Terminal mit gleichem Pattern wie Projects
+- [ ] **P1** Buchhaltung: Belege-Upload, Auto-Rename, KPIs
+- [ ] **P2** Subscriptions: Provider-Liste, Kosten, API-Key-Datei-Links
+- [ ] **P2** Verträge: Laufzeiten, Kündigungsdaten, Gruppierung
+- [ ] **P2** Kunden: Hebam Agency + HebamBüro Dashboards
+- [ ] **P2** Wohnung: Mieter, Hausverwaltung, Nebenkosten
+- [ ] **P2** Familie + Gesundheit: Termine, Organisation, Fitness
 
 **KANI Working Rules:**
 1. When editing code: use the **Repo** path above for all file operations
