@@ -6,7 +6,7 @@ import mckayPlugin from './scripts/vite-mckay-plugin.mjs'
 import { spawn, type ChildProcess } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, readdirSync } from 'fs'
+import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, readdirSync, renameSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 // @ts-expect-error — imapflow types
@@ -2370,6 +2370,7 @@ Antworte NUR mit dem JSON-Array.`
               wallet: string
               matchedVendor: string | null
               hasFile: boolean
+              matchedFile: string
             }
 
             // Skip patterns
@@ -2443,9 +2444,36 @@ Antworte NUR mit dem JSON-Array.`
               const matchedVendor = matchVendor(vendorRaw) || matchVendor(segment)
 
               // Check if a file exists for this vendor in the month folder
-              const hasFile = matchedVendor
-                ? existingFiles.some(f => f.toLowerCase().includes(matchedVendor.toLowerCase().replace(/[_\s]/g, '').substring(0, 4)))
-                : existingFiles.some(f => f.toLowerCase().includes(vendorRaw.toLowerCase().split(/[\s(]/)[0].substring(0, 4)))
+              // Smart matching: check vendor name, matched vendor, and also common aliases
+              const vendorAliases: Record<string, string[]> = {
+                Pinoil: ['tanken', 'pinoil'], JET: ['tanken', 'jet'], Shell: ['tanken', 'shell'],
+                Finkbeiner: ['autowaesche', 'finkbeiner', 'waschanlage'],
+                Deutsche_Post: ['porto', 'post', 'briefmarke'], BCU: ['bcu', 'business_center'],
+                Apple: ['apple', 'icloud', 'chatgpt'], Google_One: ['google_one', 'google'],
+                Google_Workspace: ['google_workspace', 'google'], Anthropic: ['anthropic', 'claude'],
+                XAI: ['xai', 'grok'], Media_Markt: ['media_markt', 'mediamarkt', 'ipad'],
+              }
+              const searchTerms: string[] = []
+              if (matchedVendor) {
+                searchTerms.push(matchedVendor.toLowerCase())
+                const aliases = vendorAliases[matchedVendor]
+                if (aliases) searchTerms.push(...aliases)
+              }
+              searchTerms.push(vendorRaw.toLowerCase().split(/[\s(*]/)[0])
+
+              const hasFile = existingFiles.some(f => {
+                const fl = f.toLowerCase()
+                return searchTerms.some(term => fl.includes(term))
+              })
+
+              // Find the matching file for potential rename
+              let matchedFile = ''
+              if (hasFile) {
+                matchedFile = existingFiles.find(f => {
+                  const fl = f.toLowerCase()
+                  return searchTerms.some(term => fl.includes(term))
+                }) || ''
+              }
 
               transactions.push({
                 date,
@@ -2456,7 +2484,37 @@ Antworte NUR mit dem JSON-Array.`
                 wallet: wallet.replace('Hebammen.Agency', 'Hebammen.Agency'),
                 matchedVendor,
                 hasFile,
+                matchedFile,
               })
+            }
+
+            // Auto-rename poorly named files in the month folder
+            const renamed: Array<{ from: string; to: string }> = []
+            if (periodYear && periodMonth) {
+              const monthDir = join(BUCHHALTUNG_ROOT, periodYear, `${periodMonth}_${periodYear}`)
+              if (existsSync(monthDir)) {
+                const files = readdirSync(monthDir).filter(f => !f.startsWith('.') && f.endsWith('.pdf'))
+                for (const file of files) {
+                  // Skip already properly named files (YYYY-MM_Vendor_...)
+                  if (/^\d{4}-\d{2}_/.test(file)) continue
+                  // Try to match vendor from filename
+                  const vendor = matchVendor(file)
+                  if (vendor) {
+                    // Find a unique name
+                    let baseName = `${periodYear}-${periodMonth}_${vendor}_Beleg`
+                    let newName = `${baseName}.pdf`
+                    let counter = 1
+                    while (existsSync(join(monthDir, newName))) {
+                      counter++
+                      newName = `${baseName}_${counter}.pdf`
+                    }
+                    try {
+                      renameSync(join(monthDir, file), join(monthDir, newName))
+                      renamed.push({ from: file, to: newName })
+                    } catch { /* rename failed, skip */ }
+                  }
+                }
+              }
             }
 
             // Also save the PDF to the month folder as Kontoauszug
@@ -2476,6 +2534,7 @@ Antworte NUR mit dem JSON-Array.`
               totalExpenses: transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
               totalIncome: transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
               transactionCount: transactions.length,
+              renamed,
             }))
           } catch (err) {
             res.writeHead(500, { 'Content-Type': 'application/json' })
