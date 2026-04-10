@@ -10,7 +10,7 @@ import { useCalendarEvents } from '../../hooks/useCalendarEvents.ts'
 import { useEmailUnread } from '../../hooks/useEmailUnread.ts'
 import { useEmailTriage } from '../../hooks/useEmailTriage.ts'
 import type { CalendarEvent, CalendarInfo, TriagedEmail, EmailCategory, TriageStats } from '../../lib/types.ts'
-import { Plus, Check, Trash2, ExternalLink, Mail, Calendar, Clock, ChevronLeft, ChevronRight, Pencil, X, Save, RefreshCw, Send, Bot, FileText, Archive, Eye } from 'lucide-react'
+import { Plus, Check, Trash2, ExternalLink, Mail, Calendar, Clock, ChevronLeft, ChevronRight, Pencil, X, Save, RefreshCw, Send, Bot, FileText, Archive, Eye, Download, Paperclip } from 'lucide-react'
 
 interface Props { toggleTheme: () => void }
 
@@ -48,6 +48,12 @@ const MONTH_NAMES = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli
 // ============================================================
 // Calendar Components — Hybrid Multi-Calendar
 // ============================================================
+
+// Neon system colors for calendars (replaces dull Google Calendar colors)
+const CALENDAR_NEON_COLORS = ['#00F0FF', '#FF2DAA', '#8B5CF6', '#00FF88', '#FF6B2C']
+function getCalendarNeonColor(index: number): string {
+  return CALENDAR_NEON_COLORS[index % CALENDAR_NEON_COLORS.length]
+}
 
 function CalendarToggles({ calendars, enabledIds, onToggle }: {
   calendars: CalendarInfo[]; enabledIds: Set<string>; onToggle: (id: string) => void
@@ -233,7 +239,7 @@ function CalendarMonth({ events, selectedDay, onDayClick, monthOffset = 0 }: {
   )
 }
 
-function CalendarYear({ events }: { events: CalendarEvent[] }) {
+function CalendarYear({ events, onMonthClick }: { events: CalendarEvent[]; onMonthClick?: (monthOffset: number) => void }) {
   const now = new Date()
   const year = now.getFullYear()
   return (
@@ -246,8 +252,13 @@ function CalendarYear({ events }: { events: CalendarEvent[] }) {
           const startOffset = (firstDay.getDay() + 6) % 7
           const monthEvents = events.filter(e => { const d = new Date(e.start); return d.getMonth() === m && d.getFullYear() === year })
           const eventDays = new Set(monthEvents.map(e => new Date(e.start).getDate()))
+          const monthDiff = m - now.getMonth()
           return (
-            <div key={m} style={{ padding: 6 }}>
+            <div key={m} style={{ padding: 6, cursor: 'pointer', borderRadius: 8, transition: 'background 0.15s' }}
+              onClick={() => onMonthClick?.(monthDiff)}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
               <div style={{ fontSize: 9, fontWeight: 700, color: m === now.getMonth() ? 'var(--c)' : 'var(--tx3)', letterSpacing: 1, marginBottom: 4, textTransform: 'uppercase' }}>
                 {MONTH_NAMES[m].substring(0, 3)}
               </div>
@@ -449,6 +460,7 @@ function TodoList() {
   const { addTodo, setStatus, deleteTodo } = useTodoActions()
   const [newTitle, setNewTitle] = useState('')
   const [newPriority, setNewPriority] = useState<'P1' | 'P2' | 'P3'>('P2')
+  const [filter, setFilter] = useState<'alle' | 'offen' | 'erledigt'>('alle')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const openTodos = hubTodos.filter(t => t.status !== 'done')
@@ -498,7 +510,24 @@ function TodoList() {
         </button>
       </div>
 
+      {/* Filter buttons */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {([['alle', 'Alle', 'var(--bl)', hubTodos.length], ['offen', 'Offen', 'var(--o)', openTodos.length], ['erledigt', 'Erledigt', 'var(--g)', doneTodos.length]] as const).map(([key, label, c, count]) => (
+          <button key={key} className="ghost-btn" onClick={() => setFilter(key as typeof filter)}
+            style={{
+              padding: '6px 14px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+              background: filter === key ? `${c}12` : 'transparent',
+              color: filter === key ? c : 'var(--tx3)',
+              border: filter === key ? `1px solid ${c}30` : '1px solid transparent',
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+            {label} <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9 }}>{count}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Open todos */}
+      {filter !== 'erledigt' && <>
       <TcLabel>Offen ({openTodos.length})</TcLabel>
       {openTodos.length === 0 && <TcText>Keine offenen Todos.</TcText>}
       {openTodos.map(t => (
@@ -527,8 +556,10 @@ function TodoList() {
         </div>
       ))}
 
+      </>}
+
       {/* Done todos */}
-      {doneTodos.length > 0 && (
+      {filter !== 'offen' && doneTodos.length > 0 && (
         <>
           <TcLabel>Erledigt ({doneTodos.length})</TcLabel>
           {doneTodos.map(t => (
@@ -563,14 +594,86 @@ const CATEGORY_LABELS: Record<EmailCategory, string> = { info: 'INFO', action: '
 const CATEGORY_ICONS: Record<EmailCategory, string> = { info: '\u2139\ufe0f', action: '\u26a1', spam: '\ud83d\uddd1', invoice: '\ud83e\uddfe' }
 const URGENCY_COLORS: Record<string, string> = { low: 'var(--g)', medium: 'var(--a)', high: 'var(--r)' }
 
-function TriageKPIBar({ stats, color }: { stats: TriageStats; color: string }) {
+const LABEL_COLORS: Record<string, string> = {
+  'Deployment-Alert': 'var(--o)',
+  'Rechnung': 'var(--p)',
+  'Newsletter': 'var(--tx3)',
+  'Kundenanfrage': 'var(--g)',
+  'Zahlungseingang': 'var(--g)',
+  'Terminbuchung': 'var(--bl)',
+  'Serverstatus': 'var(--o)',
+  'Angebot': 'var(--pk)',
+}
+function getLabelColor(label: string, category: string): string {
+  if (LABEL_COLORS[label]) return LABEL_COLORS[label]
+  const catColors: Record<string, string> = { info: 'var(--bl)', action: 'var(--o)', spam: 'var(--tx3)', invoice: 'var(--p)' }
+  return catColors[category] || 'var(--bl)'
+}
+
+function SmartKPIBar({ total, labels, activeFilter, onFilterChange, onRefresh, color, refreshing }: {
+  total: number; labels: { label: string; count: number; category: string }[];
+  activeFilter: string | null; onFilterChange: (label: string | null) => void;
+  onRefresh: () => void; color: string; refreshing: boolean;
+}) {
   return (
-    <TcStatRow>
-      <TcStat value={`${stats.total}`} label="Verarbeitet" color={color} />
-      <TcStat value={`${stats.action}`} label="Aktionen" color="var(--o)" />
-      <TcStat value={`${stats.spam}`} label="Spam" color="var(--tx3)" />
-      <TcStat value={`${stats.invoice}`} label="Rechnungen" color="var(--p)" />
-    </TcStatRow>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+      {/* Total — always first */}
+      <button
+        onClick={() => onFilterChange(null)}
+        style={{
+          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+          opacity: activeFilter === null ? 1 : 0.5, transition: 'opacity 0.15s',
+        }}
+      >
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace", fontSize: 28, fontWeight: 700,
+          color: color, lineHeight: 1,
+        }}>{total}</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--tx3)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          Alle
+        </span>
+      </button>
+
+      {/* Dynamic smart labels */}
+      {labels.slice(0, 5).map(({ label, count, category }) => {
+        const c = getLabelColor(label, category)
+        const isActive = activeFilter === label
+        return (
+          <button
+            key={label}
+            onClick={() => onFilterChange(isActive ? null : label)}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              opacity: activeFilter === null || isActive ? 1 : 0.4, transition: 'opacity 0.15s',
+            }}
+          >
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 26, fontWeight: 700,
+              color: isActive ? c : c, lineHeight: 1,
+            }}>{count}</span>
+            <span style={{
+              fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
+              color: isActive ? c : 'var(--tx3)',
+              borderBottom: isActive ? `2px solid ${c}` : '2px solid transparent',
+              paddingBottom: 2,
+            }}>
+              {label}
+            </span>
+          </button>
+        )
+      })}
+
+      {/* Aktualisieren button — far right */}
+      <button
+        className="ghost-btn"
+        onClick={onRefresh}
+        style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: 9, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+      >
+        <RefreshCw size={10} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} /> Aktualisieren
+      </button>
+    </div>
   )
 }
 
@@ -594,23 +697,23 @@ function TriagedEmailCard({ email, selected, onClick }: {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 6, height: 6, borderRadius: 2, background: catColor, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {email.envelope.from.name || email.envelope.from.address}
         </span>
         <div style={{ width: 5, height: 5, borderRadius: '50%', background: urgColor, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${catColor}15`, color: catColor, letterSpacing: 0.5 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${catColor}15`, color: catColor, letterSpacing: 0.5 }}>
           {CATEGORY_LABELS[email.triage.category]}
         </span>
       </div>
-      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 14 }}>
         {email.envelope.subject}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 14 }}>
         <Bot size={10} stroke="var(--p)" />
-        <span style={{ fontSize: 10, color: 'var(--tx3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 11, color: 'var(--tx3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {email.triage.summary}
         </span>
-        <span style={{ fontSize: 9, color: 'var(--tx3)', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>
+        <span style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>
           {dateStr} {timeStr}
         </span>
       </div>
@@ -618,30 +721,28 @@ function TriagedEmailCard({ email, selected, onClick }: {
   )
 }
 
-function EmailDetailExpanded({ email, fullBody, editDraft, setEditDraft, onApprove, onArchive, onDelete, onMoveInvoice, onTodo, onFetchBody, onClose, sending }: {
+function EmailDetailExpanded({ email, fullBody, editDraft, setEditDraft, onApprove, onArchive, onDelete, onMoveInvoice, onTodo, onFetchBody, onClose, onDownloadAttachment, sending }: {
   email: TriagedEmail; fullBody: any; editDraft: string; setEditDraft: (s: string) => void;
   onApprove: () => void; onArchive: () => void; onDelete: () => void; onMoveInvoice: () => void; onTodo: () => void;
-  onFetchBody: () => void; onClose: () => void; sending: boolean;
+  onFetchBody: () => void; onClose: () => void; onDownloadAttachment: (partId: string, filename: string) => void; sending: boolean;
 }) {
   const ctx = email.triage.sender_context
   const [showBody, setShowBody] = useState(false)
 
-  const btnStyle = { padding: '6px 14px', fontSize: 10, borderRadius: 6, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' as const, flexShrink: 0 }
-
   return (
-    <div style={{ margin: '4px 0 8px', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header: Sender + Close */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx)' }}>{email.envelope.from.name || email.envelope.from.address}</span>
-          {email.envelope.from.name && <span style={{ fontSize: 9, color: 'var(--tx3)' }}>{email.envelope.from.address}</span>}
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx)' }}>{email.envelope.from.name || email.envelope.from.address}</span>
+          {email.envelope.from.name && <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{email.envelope.from.address}</span>}
           {ctx && (
             <>
-              <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.1)', color: 'var(--p)', fontWeight: 600 }}>
+              <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.1)', color: 'var(--p)', fontWeight: 600 }}>
                 {ctx.relationship}
               </span>
               {ctx.role && ctx.role !== ctx.relationship && (
-                <span style={{ fontSize: 9, color: 'var(--tx3)' }}>({ctx.role})</span>
+                <span style={{ fontSize: 10, color: 'var(--tx3)' }}>({ctx.role})</span>
               )}
             </>
           )}
@@ -651,88 +752,105 @@ function EmailDetailExpanded({ email, fullBody, editDraft, setEditDraft, onAppro
         </button>
       </div>
 
-      {/* Postfach */}
-      <div style={{ fontSize: 9, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4 }}>
-        <Mail size={9} /> Postfach: <strong style={{ color: 'var(--tx2)' }}>{email.account}</strong>
+      {/* Postfach + Betreff */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx)' }}>{email.envelope.subject}</div>
+        <div style={{ fontSize: 11, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Mail size={10} /> Postfach: <strong style={{ color: 'var(--tx2)' }}>{email.account}</strong>
+          <span style={{ marginLeft: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
+            {new Date(email.envelope.date).toLocaleDateString('de-DE')} {new Date(email.envelope.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
       </div>
 
-      {/* KANI: Reply draft */}
+      {/* KANI: Reply draft — prominent */}
       {email.triage.category === 'action' && email.triage.suggested_action === 'reply' && email.triage.draft_reply && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <TcLabel>KANI-Entwurf</TcLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', borderRadius: 8, background: 'rgba(0,255,136,0.03)', border: '1px solid rgba(0,255,136,0.1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Send size={12} stroke="var(--g)" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--g)', letterSpacing: 0.5, textTransform: 'uppercase' }}>Antwort-Entwurf</span>
+          </div>
           <textarea
             value={editDraft || email.triage.draft_reply}
             onChange={e => setEditDraft(e.target.value)}
             style={{
-              width: '100%', minHeight: 100, padding: '10px 12px', borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)',
-              color: 'var(--tx)', fontSize: 12, fontFamily: "'Space Grotesk', sans-serif",
-              outline: 'none', resize: 'vertical',
+              width: '100%', minHeight: 80, padding: '10px 12px', borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
+              color: 'var(--tx)', fontSize: 13, fontFamily: "'Space Grotesk', sans-serif",
+              outline: 'none', resize: 'vertical', lineHeight: 1.6,
             }}
           />
+          <button className="ghost-btn" onClick={onApprove} disabled={sending}
+            style={{ padding: '8px 18px', fontSize: 12, borderRadius: 6, color: 'var(--g)', display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', fontWeight: 600 }}>
+            <Send size={12} /> {sending ? 'Wird gesendet...' : 'Antwort senden'}
+          </button>
         </div>
       )}
 
       {/* KANI: Todo suggestion */}
       {email.triage.category === 'action' && email.triage.suggested_action === 'todo' && email.triage.todo_text && (
+        <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,136,0,0.04)', border: '1px solid rgba(255,136,0,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 13, color: 'var(--tx)', flex: 1 }}>{email.triage.todo_text}</div>
+          <button className="ghost-btn" onClick={onTodo}
+            style={{ padding: '6px 14px', fontSize: 11, borderRadius: 6, color: 'var(--g)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <Plus size={11} /> Todo erstellen
+          </button>
+        </div>
+      )}
+
+      {/* Original toggle + Minimal actions */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
+        <button className="ghost-btn" onClick={() => { setShowBody(!showBody); if (!fullBody || fullBody.uid !== email.envelope.uid) onFetchBody() }}
+          style={{ padding: '6px 12px', fontSize: 11, borderRadius: 6, color: showBody ? 'var(--bl)' : 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+          <Eye size={11} /> {showBody ? 'Original ausblenden' : 'Original anzeigen'}
+        </button>
+      </div>
+
+      {/* Attachments */}
+      {fullBody && fullBody.uid === email.envelope.uid && fullBody.attachments?.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <TcLabel>KANI-Vorschlag</TcLabel>
-          <div style={{ fontSize: 12, color: 'var(--tx)', padding: '8px 12px', borderRadius: 6, background: 'rgba(255,136,0,0.06)', border: '1px solid rgba(255,136,0,0.1)' }}>
-            {email.triage.todo_text}
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Paperclip size={10} /> ANHÄNGE ({fullBody.attachments.length})
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {fullBody.attachments.map((att: { filename: string; contentType: string; size: number; partId: string }, i: number) => {
+              const isImage = att.contentType.startsWith('image/')
+              const isPdf = att.contentType === 'application/pdf'
+              const sizeStr = att.size > 1024 * 1024
+                ? `${(att.size / 1024 / 1024).toFixed(1)} MB`
+                : att.size > 1024
+                  ? `${(att.size / 1024).toFixed(0)} KB`
+                  : `${att.size} B`
+
+              return (
+                <button
+                  key={i}
+                  className="ghost-btn"
+                  onClick={() => onDownloadAttachment(att.partId, att.filename)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 6, fontSize: 10,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                    color: 'var(--tx2)', cursor: 'pointer',
+                  }}
+                >
+                  {isImage ? <Eye size={10} stroke="var(--bl)" /> : isPdf ? <FileText size={10} stroke="var(--p)" /> : <Download size={10} />}
+                  <span style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.filename}</span>
+                  <span style={{ fontSize: 8, color: 'var(--tx3)', fontFamily: "'JetBrains Mono', monospace" }}>{sizeStr}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Action buttons — compact, single row */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-        {/* Reply */}
-        {email.triage.category === 'action' && email.triage.suggested_action === 'reply' && (
-          <button className="ghost-btn" onClick={onApprove} disabled={sending} style={{ ...btnStyle, color: 'var(--g)' }}>
-            <Send size={10} /> {sending ? 'Sende...' : 'Senden'}
-          </button>
-        )}
-        {/* Todo */}
-        {email.triage.category === 'action' && email.triage.suggested_action === 'todo' && (
-          <button className="ghost-btn" onClick={onTodo} style={{ ...btnStyle, color: 'var(--g)' }}>
-            <Plus size={10} /> Todo erstellen
-          </button>
-        )}
-        {/* Invoice */}
-        {email.triage.category === 'invoice' && (
-          <button className="ghost-btn" onClick={onMoveInvoice} style={{ ...btnStyle, color: 'var(--p)' }}>
-            <FileText size={10} /> Rechnungen
-          </button>
-        )}
-        {/* Spam delete */}
-        {email.triage.category === 'spam' && (
-          <button className="ghost-btn" onClick={onDelete} style={{ ...btnStyle, color: 'var(--r)' }}>
-            <Trash2 size={10} /> Löschen
-          </button>
-        )}
-        {/* Archive — always available */}
-        <button className="ghost-btn" onClick={onArchive} style={{ ...btnStyle, color: 'var(--tx3)' }}>
-          <Archive size={10} /> Erledigt
-        </button>
-        {/* Delete — always available */}
-        {email.triage.category !== 'spam' && (
-          <button className="ghost-btn" onClick={onDelete} style={{ ...btnStyle, color: 'var(--tx3)', opacity: 0.6 }}>
-            <Trash2 size={10} />
-          </button>
-        )}
-        {/* Original toggle */}
-        <button className="ghost-btn" onClick={() => { setShowBody(!showBody); if (!fullBody || fullBody.uid !== email.envelope.uid) onFetchBody() }}
-          style={{ ...btnStyle, color: 'var(--tx3)', marginLeft: 'auto' }}>
-          <Eye size={10} /> {showBody ? 'Ausblenden' : 'Original'}
-        </button>
-      </div>
-
       {/* Original email body */}
       {showBody && fullBody && fullBody.uid === email.envelope.uid && (
         <div style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
-          <div style={{ fontSize: 10, color: 'var(--tx3)', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 8 }}>
             {fullBody.from.name} &lt;{fullBody.from.address}&gt; \u2014 {new Date(fullBody.date).toLocaleString('de-DE')}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--tx2)', whiteSpace: 'pre-wrap', maxHeight: 250, overflow: 'auto', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12, color: 'var(--tx2)', whiteSpace: 'pre-wrap', maxHeight: 250, overflow: 'auto', lineHeight: 1.6 }}>
             {fullBody.textPlain.substring(0, 3000)}
           </div>
         </div>
@@ -744,21 +862,25 @@ function EmailDetailExpanded({ email, fullBody, editDraft, setEditDraft, onAppro
   )
 }
 
-function EmailTriageView({ groupId, color, glow, filterAccount, triage }: {
+function EmailTriageView({ groupId, color, glow, filterAccount, triage, onCreateTodo }: {
   groupId: string; color: string; glow: string; filterAccount?: string;
   triage: ReturnType<typeof useEmailTriage>;
+  onCreateTodo?: (title: string) => void;
 }) {
   const {
     loading, triaging, sending,
     selectedEmail, setSelectedEmail,
     fullBody, editDraft, setEditDraft,
     fetchAndTriage, fetchGroup,
-    getEmails, getEmailsByCategory, getStats,
-    fetchBody, executeAction, approveDraft,
+    getEmails, getEmailsByCategory, getStats, getSmartLabels,
+    fetchBody, downloadAttachment, executeAction, approveDraft,
     deleteAllSpam, moveAllInvoices, isGroupFetched,
   } = triage
 
-  const [activeFilter, setActiveFilter] = useState<EmailCategory | 'all'>('all')
+  const [smartFilter, setSmartFilter] = useState<string | null>(null)
+  const [comment, setComment] = useState('')
+  const [kaniPlan, setKaniPlan] = useState<string | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
   const stats = getStats(groupId, filterAccount)
   const fetched = isGroupFetched(groupId)
 
@@ -770,9 +892,11 @@ function EmailTriageView({ groupId, color, glow, filterAccount, triage }: {
     }
   }, [fetched, filterAccount, groupId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredEmails = activeFilter === 'all'
-    ? getEmails(groupId, filterAccount)
-    : getEmailsByCategory(groupId, activeFilter, filterAccount)
+  const smartLabels = getSmartLabels(groupId, filterAccount)
+  const allEmails = getEmails(groupId, filterAccount)
+  const filteredEmails = smartFilter === null
+    ? allEmails
+    : allEmails.filter(e => (e.triage.smart_label || e.triage.category) === smartFilter)
 
   const handleTriage = () => {
     if (filterAccount) fetchAndTriage(filterAccount, groupId)
@@ -797,73 +921,289 @@ function EmailTriageView({ groupId, color, glow, filterAccount, triage }: {
     )
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* KPI Bar */}
-      <TriageKPIBar stats={stats} color={color} />
+  // Build KANI recommendations by grouping emails with same smart_label
+  const recommendations = smartLabels.map(({ label, count, category }) => {
+    const emails = allEmails.filter(e => (e.triage.smart_label || e.triage.category) === label)
+    const urgencies = emails.map(e => e.triage.urgency)
+    const topUrgency = urgencies.includes('high') ? 'high' : urgencies.includes('medium') ? 'medium' : 'low'
+    const senders = [...new Set(emails.map(e => e.envelope.from.name || e.envelope.from.address))].slice(0, 3)
+    const dominantAction = emails[0]?.triage.suggested_action || 'archive'
 
-      {/* Category filter buttons */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-        {([['all', 'Alle', color, stats.total], ['action', 'Aktion', 'var(--o)', stats.action], ['invoice', 'Rechnungen', 'var(--p)', stats.invoice], ['info', 'Info', 'var(--bl)', stats.info], ['spam', 'Spam', 'var(--tx3)', stats.spam]] as const).map(([key, label, c, count]) => (
-          <button
-            key={key}
-            className="ghost-btn"
-            onClick={() => setActiveFilter(key as EmailCategory | 'all')}
-            style={{
-              padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-              background: activeFilter === key ? `${c}12` : 'transparent',
-              color: activeFilter === key ? c : 'var(--tx3)',
-              border: activeFilter === key ? `1px solid ${c}30` : '1px solid transparent',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            {label}
-            {count > 0 && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9 }}>{count}</span>}
-          </button>
-        ))}
-        <div style={{ marginLeft: 'auto' }}>
-          <button className="ghost-btn" onClick={handleTriage} style={{ padding: '4px 10px', fontSize: 9, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <RefreshCw size={10} /> Aktualisieren
-          </button>
+    let recommendation = ''
+    let quickAction: { label: string; action: () => void } | null = null
+
+    if (category === 'spam') {
+      recommendation = `${count} Spam-Mail${count > 1 ? 's' : ''} — löschen`
+      quickAction = { label: 'Alle löschen', action: () => { for (const em of emails) executeAction(em.account, em.envelope.uid, 'delete') } }
+    } else if (category === 'invoice') {
+      recommendation = `${count} Rechnung${count > 1 ? 'en' : ''} — in Rechnungsordner sortieren`
+      quickAction = { label: 'Sortieren', action: () => { for (const em of emails) { const f = em.triage.folder_target || 'KANI/Rechnungen'; executeAction(em.account, em.envelope.uid, 'move', f) } } }
+    } else if (count > 1 && dominantAction === 'archive') {
+      recommendation = `${count}× gleiches Thema — alle archivieren`
+      quickAction = { label: 'Alle archivieren', action: () => { for (const em of emails) executeAction(em.account, em.envelope.uid, 'move', 'KANI/Bearbeitet') } }
+    } else if (dominantAction === 'reply') {
+      recommendation = `Antwort empfohlen — KANI-Entwurf bereit`
+    } else if (dominantAction === 'todo') {
+      recommendation = `Todo erstellen empfohlen`
+    } else {
+      recommendation = `${count} Mail${count > 1 ? 's' : ''} — prüfen und archivieren`
+      quickAction = count > 1 ? { label: 'Alle archivieren', action: () => { for (const em of emails) executeAction(em.account, em.envelope.uid, 'move', 'KANI/Bearbeitet') } } : null
+    }
+
+    return { label, count, category, topUrgency, senders, recommendation, quickAction, emails }
+  }).sort((a, b) => {
+    const urgOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
+    return (urgOrder[a.topUrgency] ?? 2) - (urgOrder[b.topUrgency] ?? 2)
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
+      {/* Smart KPI Bar — clickable filters + Aktualisieren */}
+      <SmartKPIBar
+        total={stats.total}
+        labels={smartLabels}
+        activeFilter={smartFilter}
+        onFilterChange={setSmartFilter}
+        onRefresh={handleTriage}
+        color={color}
+        refreshing={loading || triaging}
+      />
+
+      {/* Bearbeitet counter */}
+      {triage.processedCount > 0 && (
+        <div style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: "'JetBrains Mono', monospace", textAlign: 'center', padding: '2px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+          {triage.processedCount} heute bearbeitet
+        </div>
+      )}
+
+      {/* Bulk actions */}
+      {smartFilter && smartLabels.find(l => l.label === smartFilter && l.category === 'spam') && (
+        <button className="ghost-btn" onClick={() => deleteAllSpam(groupId, filterAccount)} style={{ padding: '4px 10px', fontSize: 9, color: 'var(--r)', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Trash2 size={10} /> Alle Spam löschen
+        </button>
+      )}
+      {smartFilter && smartLabels.find(l => l.label === smartFilter && l.category === 'invoice') && (
+        <button className="ghost-btn" onClick={() => moveAllInvoices(groupId, filterAccount)} style={{ padding: '4px 10px', fontSize: 9, color: 'var(--p)', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <FileText size={10} /> Alle Rechnungen sortieren
+        </button>
+      )}
+
+      {/* === MASTER-DETAIL: Email List (left) + Detail/Empfehlung (right) === */}
+      <div style={{ display: 'flex', flex: 1, gap: 0, minHeight: 0 }}>
+
+        {/* Email list — scrollable left column */}
+        <div style={{ flex: '0 0 45%', minWidth: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 12 }}>
+          {filteredEmails.length === 0 && <TcText>Keine E-Mails in dieser Kategorie.</TcText>}
+          {filteredEmails.map(e => {
+            const isSelected = selectedEmail?.envelope.uid === e.envelope.uid && selectedEmail?.account === e.account
+            return (
+              <TriagedEmailCard key={`${e.account}:${e.envelope.uid}`} email={e} selected={isSelected} onClick={() => handleEmailClick(e)} />
+            )
+          })}
+          {stats.total === 0 && smartFilter === null && <TcText>Keine neuen E-Mails in diesem Postfach.</TcText>}
+        </div>
+
+        {/* Right column — Detail or grouped overview */}
+        <div style={{
+          flex: 1, minWidth: 0, overflowY: 'auto',
+          borderLeft: '1px solid rgba(255,255,255,0.06)', paddingLeft: 16,
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          {/* When an email is selected: show detail + KANI recommendation */}
+          {selectedEmail && (() => {
+            const e = selectedEmail
+            const label = e.triage.smart_label || e.triage.category
+            const catColor = getLabelColor(label, e.triage.category)
+            const urgColor = e.triage.urgency === 'high' ? 'var(--r)' : e.triage.urgency === 'medium' ? 'var(--a)' : 'var(--g)'
+
+            return (
+              <>
+                {/* KANI Empfehlung — prominent at top */}
+                <div className="ghost-card" style={{ '--hc': `${catColor}30`, padding: '14px 16px', gap: 8 } as React.CSSProperties}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Bot size={14} stroke="var(--p)" />
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--tx3)' }}>KANI Empfehlung</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: `${catColor}15`, color: catColor }}>
+                      {label}
+                    </span>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: urgColor, flexShrink: 0 }} />
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--tx)', lineHeight: 1.6, paddingLeft: 22 }}>
+                    {e.triage.summary}
+                  </div>
+                  {/* Quick actions */}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8, alignItems: 'center' }}>
+                    {e.triage.category === 'action' && e.triage.suggested_action === 'reply' && (
+                      <button className="ghost-btn" onClick={() => approveDraft(e, editDraft || e.triage.draft_reply || '')} disabled={sending}
+                        style={{ padding: '8px 18px', fontSize: 12, borderRadius: 8, color: 'var(--g)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                        <Send size={12} /> {sending ? 'Sende...' : 'Antwort senden'}
+                      </button>
+                    )}
+                    {e.triage.category === 'action' && e.triage.suggested_action === 'todo' && (
+                      <button className="ghost-btn" onClick={() => {
+                        onCreateTodo?.(e.triage.todo_text || e.envelope.subject)
+                        executeAction(e.account, e.envelope.uid, 'move', e.triage.folder_target || 'KANI/Bearbeitet')
+                      }} style={{ padding: '8px 18px', fontSize: 12, borderRadius: 8, color: 'var(--g)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                        <Plus size={12} /> Todo erstellen
+                      </button>
+                    )}
+                    {e.triage.category === 'invoice' && (
+                      <button className="ghost-btn" onClick={() => executeAction(e.account, e.envelope.uid, 'move', e.triage.folder_target || 'KANI/Rechnungen')}
+                        style={{ padding: '8px 18px', fontSize: 12, borderRadius: 8, color: 'var(--p)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                        <FileText size={12} /> In Rechnungen
+                      </button>
+                    )}
+                    {e.triage.category === 'spam' && (
+                      <button className="ghost-btn" onClick={() => executeAction(e.account, e.envelope.uid, 'delete')}
+                        style={{ padding: '8px 18px', fontSize: 12, borderRadius: 8, color: 'var(--r)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                        <Trash2 size={12} /> Löschen
+                      </button>
+                    )}
+                    <button className="ghost-btn" onClick={() => {
+                      const folder = e.triage.folder_target && e.triage.category === 'action' ? e.triage.folder_target : 'KANI/Bearbeitet'
+                      executeAction(e.account, e.envelope.uid, 'move', folder)
+                    }} style={{ padding: '8px 18px', fontSize: 12, borderRadius: 8, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                      <Archive size={12} /> Erledigt
+                    </button>
+                    <button className="ghost-btn" onClick={() => executeAction(e.account, e.envelope.uid, 'delete')}
+                      style={{ padding: '8px 12px', fontSize: 12, borderRadius: 8, color: 'var(--tx3)', opacity: 0.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+
+                  {/* Kommentar-Flow — eigene Anweisung an KANI */}
+                  <div style={{ paddingLeft: 22, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {!kaniPlan ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <input
+                          value={comment}
+                          onChange={ev => setComment(ev.target.value)}
+                          onKeyDown={ev => {
+                            if (ev.key === 'Enter' && comment.trim()) {
+                              setPlanLoading(true)
+                              fetch('/api/kani/stream', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ prompt: `E-Mail von ${e.envelope.from.name || e.envelope.from.address}: "${e.envelope.subject}". Mehtis Anweisung: "${comment}". Was genau soll ich tun? Antworte in 1-2 kurzen Sätzen auf Deutsch. Nur den Plan, keine Fragen.` }),
+                              }).then(r => r.text()).then(text => {
+                                setKaniPlan(text.replace(/\[.*?\]/g, '').trim() || `${comment} — wird ausgeführt`)
+                              }).catch(() => {
+                                setKaniPlan(`${comment} — wird ausgeführt`)
+                              }).finally(() => setPlanLoading(false))
+                            }
+                          }}
+                          placeholder="Eigene Anweisung an KANI..."
+                          style={{
+                            flex: 1, padding: '8px 12px', borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
+                            color: 'var(--tx)', fontSize: 12, fontFamily: "'Space Grotesk', sans-serif",
+                            outline: 'none',
+                          }}
+                        />
+                        {planLoading && <RefreshCw size={14} stroke="var(--p)" style={{ animation: 'spin 1s linear infinite', flexShrink: 0, marginTop: 8 }} />}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ fontSize: 12, color: 'var(--tx)', padding: '8px 12px', borderRadius: 8, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.1)', lineHeight: 1.5 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--p)', display: 'block', marginBottom: 4 }}>KANI Plan:</span>
+                          {kaniPlan}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button className="ghost-btn" onClick={() => {
+                            // Execute: archive the email + clear
+                            const folder = e.triage.folder_target || 'KANI/Bearbeitet'
+                            executeAction(e.account, e.envelope.uid, 'move', folder)
+                            setComment('')
+                            setKaniPlan(null)
+                          }} style={{ padding: '6px 14px', fontSize: 11, borderRadius: 6, color: 'var(--g)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <Check size={11} /> Ausführen
+                          </button>
+                          <button className="ghost-btn" onClick={() => { setKaniPlan(null); setComment('') }}
+                            style={{ padding: '6px 14px', fontSize: 11, borderRadius: 6, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <X size={11} /> Abbrechen
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Email Detail */}
+                <EmailDetailExpanded
+                  email={e} fullBody={fullBody} editDraft={editDraft} setEditDraft={setEditDraft} sending={sending}
+                  onApprove={() => approveDraft(e, editDraft || e.triage.draft_reply || '')}
+                  onArchive={() => {
+                    const unit = e.triage.folder_target
+                    const folder = unit && e.triage.category === 'action' ? unit : 'KANI/Bearbeitet'
+                    executeAction(e.account, e.envelope.uid, 'move', folder)
+                  }}
+                  onDelete={() => executeAction(e.account, e.envelope.uid, 'delete')}
+                  onMoveInvoice={() => executeAction(e.account, e.envelope.uid, 'move', e.triage.folder_target || 'KANI/Rechnungen')}
+                  onTodo={() => {
+                    onCreateTodo?.(e.triage.todo_text || e.envelope.subject)
+                    executeAction(e.account, e.envelope.uid, 'move', e.triage.folder_target || 'KANI/Bearbeitet')
+                  }}
+                  onFetchBody={() => fetchBody(e.account, e.envelope.uid)}
+                  onDownloadAttachment={(partId, filename) => downloadAttachment(e.account, e.envelope.uid, partId, filename)}
+                  onClose={() => setSelectedEmail(null)}
+                />
+              </>
+            )
+          })()}
+
+          {/* When no email selected: show grouped overview */}
+          {!selectedEmail && recommendations.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Bot size={12} stroke="var(--p)" /> KANI Übersicht
+              </div>
+
+              {recommendations.map(rec => {
+                const urgColor = rec.topUrgency === 'high' ? 'var(--r)' : rec.topUrgency === 'medium' ? 'var(--a)' : 'var(--tx3)'
+                const catColor = getLabelColor(rec.label, rec.category)
+
+                return (
+                  <div key={rec.label} className="ghost-card" style={{ '--hc': `${catColor}30`, padding: '12px 14px', gap: 6 } as React.CSSProperties}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: urgColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14, fontWeight: 700, color: catColor }}>{rec.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx3)', fontFamily: "'JetBrains Mono', monospace" }}>
+                        {rec.count}×
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--tx3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {rec.senders.join(', ')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--tx2)', paddingLeft: 14 }}>
+                      {rec.recommendation}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, paddingLeft: 14, marginTop: 4 }}>
+                      {rec.quickAction && (
+                        <button className="ghost-btn" onClick={rec.quickAction.action}
+                          style={{ padding: '5px 12px', fontSize: 11, borderRadius: 5, color: catColor, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Check size={10} /> {rec.quickAction.label}
+                        </button>
+                      )}
+                      <button className="ghost-btn" onClick={() => setSmartFilter(rec.label)}
+                        style={{ padding: '5px 12px', fontSize: 11, borderRadius: 5, color: 'var(--tx3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Eye size={10} /> Anzeigen
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )}
+
+          {/* Empty state */}
+          {!selectedEmail && recommendations.length === 0 && stats.total > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '40px 0', opacity: 0.5 }}>
+              <Mail size={24} stroke="var(--tx3)" />
+              <TcText>Email auswählen für KANI Empfehlung</TcText>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Bulk actions for current filter */}
-      {activeFilter === 'spam' && stats.spam > 0 && (
-        <button className="ghost-btn" onClick={() => deleteAllSpam(groupId, filterAccount)} style={{ padding: '4px 10px', fontSize: 9, color: 'var(--r)', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Trash2 size={10} /> Alle {stats.spam} Spam löschen
-        </button>
-      )}
-      {activeFilter === 'invoice' && stats.invoice > 0 && (
-        <button className="ghost-btn" onClick={() => moveAllInvoices(groupId, filterAccount)} style={{ padding: '4px 10px', fontSize: 9, color: 'var(--p)', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <FileText size={10} /> Alle {stats.invoice} in Ordner "KANI/Rechnungen" verschieben
-        </button>
-      )}
-
-      {/* Email list */}
-      {filteredEmails.length === 0 && <TcText>Keine E-Mails in dieser Kategorie.</TcText>}
-      {filteredEmails.map(e => {
-        const isSelected = selectedEmail?.envelope.uid === e.envelope.uid && selectedEmail?.account === e.account
-        return (
-          <div key={`${e.account}:${e.envelope.uid}`}>
-            <TriagedEmailCard email={e} selected={isSelected} onClick={() => handleEmailClick(e)} />
-            {isSelected && (
-              <EmailDetailExpanded
-                email={e} fullBody={fullBody} editDraft={editDraft} setEditDraft={setEditDraft} sending={sending}
-                onApprove={() => approveDraft(e, editDraft || e.triage.draft_reply || '')}
-                onArchive={() => executeAction(e.account, e.envelope.uid, 'move', 'KANI/Bearbeitet')}
-                onDelete={() => executeAction(e.account, e.envelope.uid, 'delete')}
-                onMoveInvoice={() => executeAction(e.account, e.envelope.uid, 'move', 'KANI/Rechnungen')}
-                onTodo={() => executeAction(e.account, e.envelope.uid, 'read')}
-                onFetchBody={() => fetchBody(e.account, e.envelope.uid)}
-                onClose={() => setSelectedEmail(null)}
-              />
-            )}
-          </div>
-        )
-      })}
-
-      {stats.total === 0 && activeFilter === 'all' && <TcText>Keine neuen E-Mails in diesem Postfach.</TcText>}
     </div>
   )
 }
@@ -946,10 +1286,18 @@ export function Hub({ toggleTheme }: Props) {
   } = useCalendarEvents()
   const { getGroupUnread, getUnread } = useEmailUnread()
   const emailTriage = useEmailTriage()
+  const { addTodo } = useTodoActions()
+
+  // Remap calendar colors to neon system colors
+  const neonCalendars = calendars.map((c, i) => ({ ...c, backgroundColor: getCalendarNeonColor(i) }))
+  const calColorMap = new Map(calendars.map((c, i) => [c.id, getCalendarNeonColor(i)]))
+  const neonEvents = events.map(e => ({ ...e, calendarColor: calColorMap.get(e.calendarId) || e.calendarColor }))
+  const neonTodayEvents = todayEvents.map(e => ({ ...e, calendarColor: calColorMap.get(e.calendarId) || e.calendarColor }))
+  const neonGetEventsForDate = (d: Date) => getEventsForDate(d).map(e => ({ ...e, calendarColor: calColorMap.get(e.calendarId) || e.calendarColor }))
 
   // Calendar-specific state
   const [calView, setCalView] = useState('monat')
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [selectedDay, setSelectedDay] = useState<Date | null>(new Date())
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [monthOffset, setMonthOffset] = useState(0)
@@ -996,19 +1344,19 @@ export function Hub({ toggleTheme }: Props) {
   const buildCalendarContent = (showToggles: boolean, calColor?: string) => (
     <>
       {calError && <TcText>{calError}</TcText>}
-      {showToggles && calendars.length > 0 && (
-        <CalendarToggles calendars={calendars} enabledIds={enabledCalendarIds} onToggle={toggleCalendar} />
+      {showToggles && neonCalendars.length > 0 && (
+        <CalendarToggles calendars={neonCalendars} enabledIds={enabledCalendarIds} onToggle={toggleCalendar} />
       )}
       <CalendarViewSwitcher view={calView} onViewChange={setCalView} />
 
       {calView === 'tag' && (
         <>
           <TcLabel>Termine heute \u2014 {new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</TcLabel>
-          <CalendarToday events={todayEvents} />
+          <CalendarToday events={neonTodayEvents} />
         </>
       )}
       {calView === 'woche' && (
-        <CalendarWeek events={events} getEventsForDate={getEventsForDate} selectedDay={selectedDay} onDayClick={setSelectedDay} />
+        <CalendarWeek events={neonEvents} getEventsForDate={neonGetEventsForDate} selectedDay={selectedDay} onDayClick={setSelectedDay} />
       )}
       {calView === 'monat' && (
         <>
@@ -1017,16 +1365,16 @@ export function Hub({ toggleTheme }: Props) {
             <button className="ghost-btn" onClick={() => setMonthOffset(0)} style={{ padding: '4px 8px', fontSize: 10, color: monthOffset === 0 ? 'var(--g)' : 'var(--tx3)' }}>Heute</button>
             <button className="ghost-btn" onClick={() => setMonthOffset(p => p + 1)} style={{ padding: '4px 8px' }}><ChevronRight size={14} /></button>
           </div>
-          <CalendarMonth events={events} selectedDay={selectedDay} onDayClick={setSelectedDay} monthOffset={monthOffset} />
+          <CalendarMonth events={neonEvents} selectedDay={selectedDay} onDayClick={setSelectedDay} monthOffset={monthOffset} />
         </>
       )}
-      {calView === 'jahr' && <CalendarYear events={events} />}
+      {calView === 'jahr' && <CalendarYear events={neonEvents} onMonthClick={(offset) => { setMonthOffset(offset); setCalView('monat') }} />}
 
       {/* Day detail below grid */}
       {selectedDay && (calView === 'monat' || calView === 'woche') && (
         <CalendarDayDetail
           date={selectedDay}
-          events={getEventsForDate(selectedDay)}
+          events={neonGetEventsForDate(selectedDay)}
           onEdit={setEditingEvent}
           onDelete={async (e) => { await deleteEvent(e.id, e.calendarId) }}
           editingEvent={editingEvent}
@@ -1039,7 +1387,7 @@ export function Hub({ toggleTheme }: Props) {
       {showCreateForm && selectedDay && (
         <CalendarCreateForm
           date={selectedDay}
-          calendars={calendars}
+          calendars={neonCalendars}
           onSubmit={async (params) => { await createEvent(params); setShowCreateForm(false) }}
           onCancel={() => setShowCreateForm(false)}
           loading={calMutating}
@@ -1053,7 +1401,7 @@ export function Hub({ toggleTheme }: Props) {
     if (cat.id === 'kalender') {
       const tabs = [
         { label: 'Alle', content: buildCalendarContent(true) },
-        ...calendars.map(cal => ({
+        ...neonCalendars.map(cal => ({
           label: cal.name,
           content: buildCalendarContent(false, cal.backgroundColor),
         })),
@@ -1086,10 +1434,10 @@ export function Hub({ toggleTheme }: Props) {
       const group = emailGroups.find(g => g.id === groupId)
       if (!group) return [{ label: 'Info', content: <TcText>Nicht gefunden.</TcText> }]
       return [
-        { label: 'Alle', content: <EmailTriageView groupId={groupId} color={cat.color} glow={cat.glow} triage={emailTriage} /> },
+        { label: 'Alle', content: <EmailTriageView groupId={groupId} color={cat.color} glow={cat.glow} triage={emailTriage} onCreateTodo={(title) => addTodo(null, title, 'P2')} /> },
         ...group.accounts.map(acc => ({
           label: acc.email.split('@')[0],
-          content: <EmailTriageView groupId={groupId} color={cat.color} glow={cat.glow} filterAccount={acc.email} triage={emailTriage} />,
+          content: <EmailTriageView groupId={groupId} color={cat.color} glow={cat.glow} filterAccount={acc.email} triage={emailTriage} onCreateTodo={(title) => addTodo(null, title, 'P2')} />,
         })),
       ]
     }
@@ -1108,7 +1456,7 @@ export function Hub({ toggleTheme }: Props) {
       />
 
       <SplitLayout
-        ratio="55% 45%"
+        ratio="20% 80%"
         left={
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -1118,38 +1466,36 @@ export function Hub({ toggleTheme }: Props) {
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dynamicCategories.map((c, i) => (
                 <div
                   key={c.id}
                   className="ghost-card"
                   style={{
-                    '--hc': c.glow, padding: '18px 22px', gap: 8, cursor: 'pointer',
+                    '--hc': c.glow, padding: '10px 14px', gap: 4, cursor: 'pointer',
                     border: sel === i ? `1px solid ${c.color}30` : undefined,
                     background: sel === i ? `${c.color}06` : undefined,
                   } as React.CSSProperties}
                   onClick={() => { setSel(i); setTab(0); if (c.id === 'kalender') { setActiveTab('all'); setMonthOffset(0) } }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>{c.emoji}</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)' }}>{c.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>{c.emoji}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                     <span style={{
-                      fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                      background: `${c.color}15`, color: c.color, letterSpacing: 1, marginLeft: 'auto',
+                      fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                      background: `${c.color}15`, color: c.color, letterSpacing: 0.5, flexShrink: 0,
                     }}>
                       {c.badge}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--tx2)', lineHeight: 1.5 }}>{c.desc}</div>
-                  <div style={{ display: 'flex', gap: 14, marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 10, paddingLeft: 20 }}>
                     {c.stats.map((s, si) => (
-                      <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: c.color }}>{s.value}</span>
+                      <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: c.color }}>{s.value}</span>
                         <span style={{ fontSize: 10, color: 'var(--tx3)' }}>{s.label}</span>
                       </div>
                     ))}
                   </div>
-                  <div style={{ width: 32, height: 3, borderRadius: 2, background: c.color, opacity: 0.5, marginTop: 2 }} />
                 </div>
               ))}
             </div>

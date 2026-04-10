@@ -238,6 +238,13 @@ export type EmailCategory = 'info' | 'action' | 'spam' | 'invoice'
 export type EmailUrgency = 'low' | 'medium' | 'high'
 export type SuggestedAction = 'note' | 'reply' | 'todo' | 'delete' | 'archive' | 'file_invoice'
 
+export interface EmailAttachment {
+  filename: string
+  contentType: string
+  size: number
+  partId: string
+}
+
 export interface EmailEnvelope {
   uid: number
   messageId: string
@@ -251,12 +258,14 @@ export interface EmailEnvelope {
 
 export interface EmailTriage {
   category: EmailCategory
+  smart_label?: string
   summary: string
   urgency: EmailUrgency
   suggested_action: SuggestedAction
   draft_reply?: string
   todo_text?: string
   sender_context?: { name: string; role: string; relationship: string }
+  folder_target?: string
 }
 
 export interface TriagedEmail {
@@ -274,6 +283,7 @@ export interface EmailFullBody {
   date: string
   textPlain: string
   textHtml: string
+  attachments: EmailAttachment[]
 }
 
 export interface TriageStats {

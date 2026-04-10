@@ -479,6 +479,111 @@ function kaniTerminal(): Plugin {
         return anthropicClient
       }
 
+      // Server-side Supabase for email memory
+      let serverSb: any = null
+      function getServerSupabase() {
+        if (!serverSb) {
+          const envRaw = readFileSync(join(process.cwd(), '.env.local'), 'utf-8')
+          const lines: Record<string, string> = {}
+          for (const line of envRaw.split('\n')) {
+            const eq = line.indexOf('=')
+            if (eq > 0 && !line.startsWith('#')) lines[line.substring(0, eq).trim()] = line.substring(eq + 1).trim()
+          }
+          serverSb = createClient(lines.VITE_SUPABASE_URL, lines.VITE_SUPABASE_ANON_KEY)
+        }
+        return serverSb
+      }
+
+      // Business unit mapping (account → unit)
+      const BUSINESS_UNITS: Record<string, string> = {
+        'm.kaymaz@hebammenbuero.com': 'Hebammenbuero',
+        'hello@hebammenbuero.com': 'Hebammenbuero',
+        'office@hebammenbuero.com': 'Hebammenbuero',
+        'hello@hebammenbuero.de': 'Hebammenbuero',
+        'm.kaymaz@hebammenbuero.de': 'Hebammenbuero',
+        'hello@hebammen.agency': 'Hebammen.Agency',
+        'm.kaymaz@hebammen.agency': 'Hebammen.Agency',
+        'support@hebammen.agency': 'Hebammen.Agency',
+        'kontakt@stillzentrum.com': 'Stillzentrum',
+        'office@stillzentrum.com': 'Stillzentrum',
+        'm.kaymaz@stillzentrum.com': 'Stillzentrum',
+        'organisation@stillzentrum.com': 'Stillzentrum',
+        'Stillzentrum.ulm@gmail.com': 'Stillzentrum',
+      }
+
+      // Get dynamic folder for an email based on rules
+      async function getDynamicFolder(account: string, fromAddress: string, category: string): Promise<string | null> {
+        // 1. Check if this is a customer email (account belongs to a business unit)
+        const unit = BUSINESS_UNITS[account]
+        if (unit && category === 'action') {
+          return `KANI/Kunden/${unit}`
+        }
+
+        // 2. For invoices, try to find vendor folder from email_rules
+        if (category === 'invoice') {
+          const fromDomain = fromAddress.split('@')[1]?.toLowerCase()
+          if (fromDomain) {
+            try {
+              const sb = getServerSupabase()
+              const { data } = await sb
+                .from('email_rules')
+                .select('target_folder')
+                .eq('rule_type', 'folder_route')
+                .eq('match_field', 'from_domain')
+                .eq('match_value', fromDomain)
+                .eq('active', true)
+                .limit(1)
+                .single()
+              if (data?.target_folder) return data.target_folder
+            } catch { /* no rule found */ }
+          }
+          return 'KANI/Rechnungen'
+        }
+
+        return null
+      }
+
+      // Upsert email contact in Supabase
+      async function upsertEmailContact(email: string, senderContext: any, category: string, urgency: string, subject: string, account: string) {
+        try {
+          const sb = getServerSupabase()
+          const unit = BUSINESS_UNITS[account] || null
+          const { data: existing } = await sb
+            .from('email_contacts')
+            .select('id, interaction_count')
+            .eq('email', email)
+            .single()
+
+          if (existing) {
+            await sb.from('email_contacts').update({
+              name: senderContext?.name || undefined,
+              role: senderContext?.role || undefined,
+              relationship: senderContext?.relationship || undefined,
+              business_unit: unit || undefined,
+              interaction_count: (existing.interaction_count || 0) + 1,
+              last_category: category,
+              last_urgency: urgency,
+              last_subject: subject,
+              last_seen_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }).eq('id', existing.id)
+          } else {
+            await sb.from('email_contacts').insert({
+              email,
+              name: senderContext?.name || null,
+              role: senderContext?.role || null,
+              relationship: senderContext?.relationship || null,
+              business_unit: unit,
+              last_category: category,
+              last_urgency: urgency,
+              last_subject: subject,
+            })
+          }
+        } catch (err) {
+          console.error('Email contact upsert failed:', (err as Error).message)
+        }
+      }
+
       function buildTriagePrompt(emails: any[], account: string): string {
         return `Du bist KANI, der KI-Assistent von Mehti Kaymaz. Klassifiziere folgende E-Mails für das Konto ${account}.
 
@@ -486,6 +591,7 @@ Antworte NUR mit einem JSON-Array. Für jede E-Mail ein Objekt:
 {
   "uid": <uid>,
   "category": "info" | "action" | "spam" | "invoice",
+  "smart_label": "kurzes deutsches Themen-Label (2-3 Wörter, z.B. Deployment-Alert, Kundenanfrage, Rechnung, Newsletter, Terminbuchung, Zahlungseingang, Serverstatus, Angebot, Bestellbestätigung)",
   "summary": "einzeilige deutsche Zusammenfassung",
   "urgency": "low" | "medium" | "high",
   "suggested_action": "note" | "reply" | "todo" | "delete" | "archive" | "file_invoice",
@@ -499,6 +605,7 @@ Regeln:
 - Rechnungen, Quittungen, Zahlungsbestätigungen → "invoice", suggested_action "file_invoice"
 - Erfordert Antwort oder Handlung von Mehti → "action", suggested_action "reply" oder "todo"
 - Reine Info, Bestätigungen, Statusupdates → "info", suggested_action "note" oder "archive"
+- smart_label: Kurzes deutsches Themen-Label das den Inhalt beschreibt. Ähnliche E-Mails bekommen das GLEICHE Label (z.B. alle Vercel-Deploy-Failures → "Deployment-Alert", alle Strato-Rechnungen → "Rechnung"). Labels sollen konsistent und wiederverwendbar sein.
 - draft_reply NUR wenn suggested_action = "reply" — auf Deutsch, professionell, im Namen von Mehti Kaymaz
 - todo_text NUR wenn suggested_action = "todo" — kurze Aufgabenbeschreibung
 
@@ -673,6 +780,8 @@ Antworte NUR mit dem JSON-Array.`
               }
 
               // Find all MIME parts
+              const attachments: { filename: string; contentType: string; size: number; partId: string }[] = []
+              let partIndex = 0
               const boundaryMatch = srcStr.match(/boundary="?([^"\r\n;]+)"?/i)
               if (boundaryMatch) {
                 const boundary = boundaryMatch[1]
@@ -682,6 +791,24 @@ Antworte NUR mit dem JSON-Array.`
                   if (headerEnd < 0) continue
                   const headers = part.substring(0, headerEnd).toLowerCase()
                   let content = part.substring(headerEnd + 4).replace(/--\s*$/, '').trim()
+
+                  // Detect attachments
+                  const isAttachment = headers.includes('content-disposition: attachment') ||
+                    headers.includes('content-disposition:\tattachment') ||
+                    (headers.includes('name=') && !headers.includes('text/plain') && !headers.includes('text/html'))
+                  if (isAttachment) {
+                    const fnMatch = headers.match(/(?:filename|name)="?([^"\r\n;]+)"?/i)
+                    const ctMatch = headers.match(/content-type:\s*([^\r\n;]+)/i)
+                    const filename = fnMatch ? fnMatch[1].trim() : `attachment_${partIndex}`
+                    attachments.push({
+                      filename,
+                      contentType: ctMatch ? ctMatch[1].trim() : 'application/octet-stream',
+                      size: Buffer.byteLength(content, headers.includes('base64') ? 'base64' : 'utf-8'),
+                      partId: String(partIndex),
+                    })
+                    partIndex++
+                    continue
+                  }
 
                   // Handle nested multipart — recurse one level
                   const nestedBoundary = headers.match(/boundary="?([^"\r\n;]+)"?/i)
@@ -697,6 +824,7 @@ Antworte NUR mit dem JSON-Array.`
                       if (nHeaders.includes('text/plain') && !textPlain) textPlain = nContent
                       if (nHeaders.includes('text/html') && !textHtml) textHtml = nContent
                     }
+                    partIndex++
                     continue
                   }
 
@@ -704,6 +832,7 @@ Antworte NUR mit dem JSON-Array.`
                   else if (headers.includes('quoted-printable')) content = decodeQP(content)
                   if (headers.includes('text/plain') && !textPlain) textPlain = content
                   if (headers.includes('text/html') && !textHtml) textHtml = content
+                  partIndex++
                 }
               } else {
                 // Simple non-multipart email
@@ -735,7 +864,107 @@ Antworte NUR mit dem JSON-Array.`
                 date: env.date ? new Date(env.date).toISOString() : '',
                 textPlain: textPlain.substring(0, 5000),
                 textHtml: textHtml.substring(0, 10000),
+                attachments,
               }))
+            } finally {
+              lock.release()
+              await client.logout()
+            }
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message }))
+          }
+        })()
+      })
+
+      // --------------------------------------------------------
+      // GET /api/email/attachments — List attachments for a message
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/email/attachments')) return next()
+        const url = new URL(req.url, 'http://localhost')
+        const account = url.searchParams.get('account')
+        const uid = url.searchParams.get('uid')
+        if (!account || !uid) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account and uid required' })); return }
+
+        ;(async () => {
+          try {
+            const { client } = await connectImap(account)
+            const lock = await client.getMailboxLock('INBOX')
+            try {
+              const msg = await client.fetchOne(uid, { uid: true, bodyStructure: true }, { uid: true })
+              const attachments: { filename: string; contentType: string; size: number; partId: string }[] = []
+
+              function walkStructure(node: any, path: string = '') {
+                if (!node) return
+                if (node.childNodes) {
+                  node.childNodes.forEach((child: any, i: number) => {
+                    walkStructure(child, path ? `${path}.${i + 1}` : `${i + 1}`)
+                  })
+                } else {
+                  const disp = node.disposition?.toLowerCase()
+                  const ct = `${node.type || ''}/${node.subtype || ''}`.toLowerCase()
+                  if (disp === 'attachment' || (node.dispositionParameters?.filename && ct !== 'text/plain' && ct !== 'text/html')) {
+                    attachments.push({
+                      filename: node.dispositionParameters?.filename || node.parameters?.name || `part_${path}`,
+                      contentType: ct,
+                      size: node.size || 0,
+                      partId: path || '1',
+                    })
+                  }
+                }
+              }
+              walkStructure(msg.bodyStructure)
+
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ attachments }))
+            } finally {
+              lock.release()
+              await client.logout()
+            }
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message, attachments: [] }))
+          }
+        })()
+      })
+
+      // --------------------------------------------------------
+      // GET /api/email/attachment/download — Download a specific attachment
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/email/attachment/download')) return next()
+        const url = new URL(req.url, 'http://localhost')
+        const account = url.searchParams.get('account')
+        const uid = url.searchParams.get('uid')
+        const part = url.searchParams.get('part')
+        const filename = url.searchParams.get('filename') || 'download'
+        if (!account || !uid || !part) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account, uid, part required' })); return }
+
+        ;(async () => {
+          try {
+            const { client } = await connectImap(account)
+            const lock = await client.getMailboxLock('INBOX')
+            try {
+              // Fetch the specific MIME part
+              const content = await client.download(uid, part, { uid: true })
+              if (!content || !content.content) {
+                res.writeHead(404, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ error: 'Attachment not found' }))
+                return
+              }
+
+              const contentType = content.meta?.contentType || 'application/octet-stream'
+              res.writeHead(200, {
+                'Content-Type': contentType,
+                'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
+              })
+
+              // Stream the content
+              for await (const chunk of content.content) {
+                res.write(chunk)
+              }
+              res.end()
             } finally {
               lock.release()
               await client.logout()
@@ -785,6 +1014,7 @@ Antworte NUR mit dem JSON-Array.`
                         envelope,
                         triage: {
                           category: cls.category,
+                          smart_label: cls.smart_label || cls.category,
                           summary: cls.summary,
                           urgency: cls.urgency,
                           suggested_action: cls.suggested_action,
@@ -796,6 +1026,25 @@ Antworte NUR mit dem JSON-Array.`
                         groupId: groupId || '',
                       }
                       triageCache.set(`${account}:${cls.uid}`, triaged)
+
+                      // Save contact to email-memory
+                      upsertEmailContact(
+                        envelope.from?.address || '',
+                        cls.sender_context,
+                        cls.category,
+                        cls.urgency,
+                        envelope.subject || '',
+                        account
+                      )
+
+                      // Determine dynamic folder target
+                      getDynamicFolder(account, envelope.from?.address || '', cls.category)
+                        .then(folder => {
+                          if (folder) {
+                            const cached = triageCache.get(`${account}:${cls.uid}`)
+                            if (cached) cached.triage.folder_target = folder
+                          }
+                        })
                     }
                   } catch (parseErr) {
                     console.error('Triage parse error:', parseErr, 'Raw:', jsonText.substring(0, 200))
@@ -846,8 +1095,17 @@ Antworte NUR mit dem JSON-Array.`
                     break
                   case 'move':
                     if (!target) throw new Error('target folder required for move')
-                    try { await client.mailboxCreate(target) } catch { /* already exists */ }
-                    await client.messageMove(uidStr, target, { uid: true })
+                    // Dynamic folder routing for invoices
+                    let resolvedTarget = target
+                    if (target === 'KANI/Rechnungen') {
+                      // Try to find vendor-specific folder from triage cache
+                      const cached = triageCache.get(`${account}:${uid}`)
+                      if (cached?.triage?.folder_target?.startsWith('KANI/Rechnungen/')) {
+                        resolvedTarget = cached.triage.folder_target
+                      }
+                    }
+                    try { await client.mailboxCreate(resolvedTarget) } catch { /* already exists */ }
+                    await client.messageMove(uidStr, resolvedTarget, { uid: true })
                     break
                   case 'flag':
                     await client.messageFlagsAdd(uidStr, ['\\Flagged'], { uid: true })

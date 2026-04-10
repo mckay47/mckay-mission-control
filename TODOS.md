@@ -4,13 +4,6 @@ project: "mission-control"
 updated: 2026-04-10
 ---
 
-## Active — Session C: Email Phase 2
-- [ ] **P1** Anhänge: Backend (MIME extract + Download), UI (Liste, Preview, Download)
-- [ ] **P1** Dynamische Ordner: KANI sortiert nach Geschäftsbereich + Anbieter
-- [ ] **P1** Email-Memory: Supabase Tabellen (email_contacts, email_threads, email_rules)
-- [ ] **P2** Pro-Konto Kontext: Absender-Profil wächst mit jeder Triage
-- [ ] **P2** Ordner-Regel: Kunden nach Business (Hebammenbüro, Agency), nie pro Person
-
 ## Active — Session D: Office ausbauen
 - [ ] **P1** Buchhaltung: Belege-Upload, Auto-Rename, KPIs
 - [ ] **P2** Subscriptions: Provider-Liste, Kosten, API-Key-Datei-Links
@@ -31,6 +24,27 @@ updated: 2026-04-10
 - [ ] **P1** Alle Bereiche mit Mehti durchgehen
 - [ ] **P1** Action Buttons pro Bereich finalisieren
 - [ ] **P1** Dev → Main merge
+
+## Done (Session C: 2026-04-10)
+- [x] **P1** Anhänge Backend — MIME-Parser Attachments, GET /api/email/attachments + /attachment/download
+- [x] **P1** Anhänge UI — Paperclip-Header, Typ-Icons, Größe, Download per Klick
+- [x] **P1** Dynamische Ordner — KANI/Kunden/{Geschäftsbereich}, KANI/Rechnungen/{Anbieter}
+- [x] **P1** Email-Memory Supabase — email_contacts, email_threads, email_rules + 18 Routing-Regeln
+- [x] **P1** Kontakt-Profile — upsertEmailContact bei jeder Triage, interaction_count wächst
+- [x] **P1** Smart Labels — KANI benennt dynamische Kategorien pro Postfach statt fixe 4
+- [x] **P1** SmartKPIBar — KPIs sind klickbare Filter, ersetzt Filter-Tabs komplett
+- [x] **P1** Master-Detail Layout — 20/40/40, Email-Liste links, KANI-Empfehlung rechts
+- [x] **P1** KANI Empfehlungen — gruppierte Übersicht + 1:1 Detail pro ausgewählter Email
+- [x] **P1** Kommentar-Flow — eigene Anweisung → KANI Plan → Bestätigung → Ausführen
+- [x] **P1** Reply-Flow — Antwort-Entwurf prominent mit grünem Block + dediziertem Send-Button
+- [x] **P2** Kalender Neon-Farben — Google-Farben durch Cyan/Pink/Purple ersetzt
+- [x] **P2** Jahresansicht klickbar — Monat anklicken springt in Monatsansicht
+- [x] **P2** Today vorausgewählt — Monatsansicht startet mit aktuellem Tag + Termine
+- [x] **P2** Todo aus Email — "Todo erstellen" schreibt tatsächlich in Supabase
+- [x] **P2** Todo Filter — Alle/Offen/Erledigt Buttons mit Count
+- [x] **P2** Bearbeitet-Counter — zählt hoch bei jeder Email-Aktion, persistent pro Tag
+- [x] **P2** Schriftgrößen — überall +1-3px für bessere Lesbarkeit
+- [x] **P2** Kompakte Karten — Links 20% mit schlanken Kategorie-Karten
 
 ## Done (Session B: 2026-04-10)
 - [x] **P1** Google Calendar Full CRUD — OAuth2 upgraded, 5 Endpoints, Multi-Calendar Hybrid UI

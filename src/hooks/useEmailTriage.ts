@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import type { TriagedEmail, EmailEnvelope, EmailFullBody, TriageStats, EmailCategory } from '../lib/types.ts'
+import type { TriagedEmail, EmailEnvelope, EmailFullBody, TriageStats, EmailCategory, EmailAttachment } from '../lib/types.ts'
 import { emailGroups } from '../lib/categories.ts'
 
 export function useEmailTriage() {
@@ -10,6 +10,23 @@ export function useEmailTriage() {
   const [fullBody, setFullBody] = useState<EmailFullBody | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [processedCount, setProcessedCount] = useState(() => {
+    // Persist per day in localStorage
+    const today = new Date().toISOString().slice(0, 10)
+    const stored = localStorage.getItem('kani-email-processed')
+    if (stored) {
+      try { const d = JSON.parse(stored); if (d.date === today) return d.count } catch {}
+    }
+    return 0
+  })
+  const incrementProcessed = useCallback(() => {
+    setProcessedCount(prev => {
+      const next = prev + 1
+      const today = new Date().toISOString().slice(0, 10)
+      localStorage.setItem('kani-email-processed', JSON.stringify({ date: today, count: next }))
+      return next
+    })
+  }, [])
   const fetchedAccounts = useRef(new Set<string>())
 
   // Fetch inbox + triage for a single account
@@ -86,6 +103,24 @@ export function useEmailTriage() {
     }
   }, [getEmails])
 
+  // Get smart label counts for a group
+  const getSmartLabels = useCallback((groupId: string, filterAccount?: string): { label: string; count: number; category: EmailCategory }[] => {
+    const emails = getEmails(groupId, filterAccount)
+    const labelMap = new Map<string, { count: number; category: EmailCategory }>()
+    for (const e of emails) {
+      const label = e.triage.smart_label || e.triage.category
+      const existing = labelMap.get(label)
+      if (existing) {
+        existing.count++
+      } else {
+        labelMap.set(label, { count: 1, category: e.triage.category })
+      }
+    }
+    return Array.from(labelMap.entries())
+      .map(([label, data]) => ({ label, count: data.count, category: data.category }))
+      .sort((a, b) => b.count - a.count)
+  }, [getEmails])
+
   // Fetch full email body
   const fetchBody = useCallback(async (account: string, uid: number) => {
     setFullBody(null)
@@ -93,6 +128,12 @@ export function useEmailTriage() {
     if (!res.ok) return
     const body = await res.json() as EmailFullBody
     setFullBody(body)
+  }, [])
+
+  // Download attachment
+  const downloadAttachment = useCallback((account: string, uid: number, partId: string, filename: string) => {
+    const url = `/api/email/attachment/download?account=${encodeURIComponent(account)}&uid=${uid}&part=${encodeURIComponent(partId)}&filename=${encodeURIComponent(filename)}`
+    window.open(url, '_blank')
   }, [])
 
   // Execute IMAP action
@@ -111,7 +152,8 @@ export function useEmailTriage() {
       return n
     })
     if (selectedEmail?.envelope.uid === uid) setSelectedEmail(null)
-  }, [selectedEmail])
+    incrementProcessed()
+  }, [selectedEmail, incrementProcessed])
 
   // Approve and send draft
   const approveDraft = useCallback(async (email: TriagedEmail, draftText: string) => {
@@ -139,10 +181,11 @@ export function useEmailTriage() {
       })
       setSelectedEmail(null)
       setEditDraft('')
+      incrementProcessed()
     } finally {
       setSending(false)
     }
-  }, [])
+  }, [incrementProcessed])
 
   // Bulk action: delete all spam
   const deleteAllSpam = useCallback(async (groupId: string, filterAccount?: string) => {
@@ -156,7 +199,8 @@ export function useEmailTriage() {
   const moveAllInvoices = useCallback(async (groupId: string, filterAccount?: string) => {
     const invoices = getEmailsByCategory(groupId, 'invoice', filterAccount)
     for (const email of invoices) {
-      await executeAction(email.account, email.envelope.uid, 'move', 'KANI/Rechnungen')
+      const folder = email.triage.folder_target || 'KANI/Rechnungen'
+      await executeAction(email.account, email.envelope.uid, 'move', folder)
     }
   }, [getEmailsByCategory, executeAction])
 
@@ -173,7 +217,8 @@ export function useEmailTriage() {
     fullBody, editDraft, setEditDraft,
     fetchAndTriage, fetchGroup, isGroupFetched,
     getEmails, getEmailsByCategory, getStats,
-    fetchBody, executeAction,
-    approveDraft, deleteAllSpam, moveAllInvoices,
+    fetchBody, downloadAttachment, executeAction,
+    approveDraft, deleteAllSpam, moveAllInvoices, getSmartLabels,
+    processedCount,
   }
 }
