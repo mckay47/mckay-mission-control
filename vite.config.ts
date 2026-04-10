@@ -11,6 +11,8 @@ import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 // @ts-expect-error — imapflow types
 import { ImapFlow } from 'imapflow'
+import { createTransport } from 'nodemailer'
+import Anthropic from '@anthropic-ai/sdk'
 
 // ============================================================
 // Process Registry — tracks all active Claude CLI processes
@@ -425,6 +427,94 @@ function kaniTerminal(): Plugin {
 
       const emailErrors: Record<string, string> = {}
 
+      // Email triage cache
+      const triageCache = new Map<string, any>() // key: "account:uid"
+
+      function findCredentials(email: string): { host: string; port: number; password: string; provider: string } | null {
+        const credPath = join(process.cwd(), '.email-credentials.json')
+        if (!existsSync(credPath)) return null
+        const creds = JSON.parse(readFileSync(credPath, 'utf-8'))
+        for (const provider of ['strato', 'gmail'] as const) {
+          const cfg = creds[provider]
+          if (!cfg?.accounts) continue
+          for (const acc of cfg.accounts) {
+            if (acc.email === email && acc.password) {
+              return { host: cfg.host, port: cfg.port, password: acc.password, provider }
+            }
+          }
+        }
+        return null
+      }
+
+      async function connectImap(email: string) {
+        const cred = findCredentials(email)
+        if (!cred) throw new Error(`No credentials for ${email}`)
+        const client = new ImapFlow({
+          host: cred.host, port: cred.port, secure: true,
+          auth: { user: email, pass: cred.password },
+          logger: false
+        })
+        await client.connect()
+        return { client, cred }
+      }
+
+      function getSmtpConfig(provider: string, email: string, password: string) {
+        if (provider === 'gmail' || email.endsWith('@gmail.com')) {
+          return { service: 'gmail', auth: { user: email, pass: password } }
+        }
+        return { host: 'smtp.strato.de', port: 465, secure: true, auth: { user: email, pass: password } }
+      }
+
+      let anthropicClient: Anthropic | null = null
+      function getAnthropic(): Anthropic {
+        if (!anthropicClient) {
+          const envRaw = readFileSync(join(process.cwd(), '.env.local'), 'utf-8')
+          const lines: Record<string, string> = {}
+          for (const line of envRaw.split('\n')) {
+            const eq = line.indexOf('=')
+            if (eq > 0 && !line.startsWith('#')) lines[line.substring(0, eq).trim()] = line.substring(eq + 1).trim()
+          }
+          anthropicClient = new Anthropic({ apiKey: lines.ANTHROPIC_API_KEY })
+        }
+        return anthropicClient
+      }
+
+      function buildTriagePrompt(emails: any[], account: string): string {
+        return `Du bist KANI, der KI-Assistent von Mehti Kaymaz. Klassifiziere folgende E-Mails für das Konto ${account}.
+
+Antworte NUR mit einem JSON-Array. Für jede E-Mail ein Objekt:
+{
+  "uid": <uid>,
+  "category": "info" | "action" | "spam" | "invoice",
+  "summary": "einzeilige deutsche Zusammenfassung",
+  "urgency": "low" | "medium" | "high",
+  "suggested_action": "note" | "reply" | "todo" | "delete" | "archive" | "file_invoice",
+  "draft_reply": "...",
+  "todo_text": "...",
+  "sender_context": { "name": "...", "role": "vermutete Rolle", "relationship": "Kunde/Partner/Service/Newsletter/Familie/Unbekannt" }
+}
+
+Regeln:
+- Newsletter, Werbung, Marketing, Promotions → "spam", suggested_action "delete"
+- Rechnungen, Quittungen, Zahlungsbestätigungen → "invoice", suggested_action "file_invoice"
+- Erfordert Antwort oder Handlung von Mehti → "action", suggested_action "reply" oder "todo"
+- Reine Info, Bestätigungen, Statusupdates → "info", suggested_action "note" oder "archive"
+- draft_reply NUR wenn suggested_action = "reply" — auf Deutsch, professionell, im Namen von Mehti Kaymaz
+- todo_text NUR wenn suggested_action = "todo" — kurze Aufgabenbeschreibung
+
+E-Mails:
+${emails.map((e: any) => `---
+UID: ${e.uid}
+Von: ${e.from?.name || ''} <${e.from?.address || ''}>
+An: ${e.to?.map((t: any) => t.address).join(', ') || ''}
+Betreff: ${e.subject}
+Datum: ${e.date}
+Vorschau: ${e.snippet}
+---`).join('\n')}
+
+Antworte NUR mit dem JSON-Array.`
+      }
+
       async function fetchUnreadCount(host: string, port: number, email: string, password: string): Promise<number> {
         if (!password) { emailErrors[email] = 'no password'; return -1 }
         try {
@@ -491,6 +581,463 @@ function kaniTerminal(): Plugin {
       })
 
       // --------------------------------------------------------
+      // GET /api/email/inbox — Fetch email headers from IMAP
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/email/inbox')) return next()
+        const url = new URL(req.url, 'http://localhost')
+        const account = url.searchParams.get('account')
+        const limit = parseInt(url.searchParams.get('limit') || '30')
+        if (!account) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account required' })); return }
+
+        ;(async () => {
+          try {
+            const { client } = await connectImap(account)
+            const lock = await client.getMailboxLock('INBOX')
+            try {
+              const uids = await client.search({ seen: false }, { uid: true })
+              if (uids.length === 0) {
+                res.writeHead(200, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ emails: [] }))
+                return
+              }
+              const targetUids = uids.slice(-limit)
+              const emails: any[] = []
+              for await (const msg of client.fetch(targetUids, { uid: true, envelope: true, flags: true, bodyStructure: true, source: { start: 0, maxLength: 1000 } }, { uid: true })) {
+                const env = msg.envelope
+                let snippet = ''
+                if (msg.source) {
+                  const srcStr = msg.source.toString('utf-8')
+                  const bodyStart = srcStr.indexOf('\r\n\r\n')
+                  if (bodyStart > -1) {
+                    snippet = srcStr.substring(bodyStart + 4, bodyStart + 504)
+                      .replace(/<[^>]*>/g, '')
+                      .replace(/\s+/g, ' ')
+                      .trim()
+                      .substring(0, 200)
+                  }
+                }
+                emails.push({
+                  uid: msg.uid,
+                  messageId: env.messageId || '',
+                  from: { name: env.from?.[0]?.name || '', address: env.from?.[0]?.address || '' },
+                  to: (env.to || []).map((t: any) => ({ name: t.name || '', address: t.address || '' })),
+                  subject: env.subject || '(Kein Betreff)',
+                  date: env.date ? new Date(env.date).toISOString() : new Date().toISOString(),
+                  snippet,
+                  seen: (msg.flags || new Set()).has('\\Seen'),
+                })
+              }
+              emails.sort((a: any, b: any) => b.date.localeCompare(a.date))
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ emails }))
+            } finally {
+              lock.release()
+              await client.logout()
+            }
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message, emails: [] }))
+          }
+        })()
+      })
+
+      // --------------------------------------------------------
+      // GET /api/email/message — Fetch full email body
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/email/message')) return next()
+        const url = new URL(req.url, 'http://localhost')
+        const account = url.searchParams.get('account')
+        const uid = url.searchParams.get('uid')
+        if (!account || !uid) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account and uid required' })); return }
+
+        ;(async () => {
+          try {
+            const { client } = await connectImap(account)
+            const lock = await client.getMailboxLock('INBOX')
+            try {
+              const msg = await client.fetchOne(uid, { uid: true, envelope: true, source: true }, { uid: true })
+              const env = msg.envelope
+              const srcStr = msg.source ? msg.source.toString('utf-8') : ''
+
+              // Parse multipart MIME properly
+              let textPlain = ''
+              let textHtml = ''
+
+              function decodeBase64(str: string): string {
+                try { return Buffer.from(str.replace(/\s/g, ''), 'base64').toString('utf-8') } catch { return str }
+              }
+              function decodeQP(str: string): string {
+                return str.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+              }
+
+              // Find all MIME parts
+              const boundaryMatch = srcStr.match(/boundary="?([^"\r\n;]+)"?/i)
+              if (boundaryMatch) {
+                const boundary = boundaryMatch[1]
+                const parts = srcStr.split('--' + boundary)
+                for (const part of parts) {
+                  const headerEnd = part.indexOf('\r\n\r\n')
+                  if (headerEnd < 0) continue
+                  const headers = part.substring(0, headerEnd).toLowerCase()
+                  let content = part.substring(headerEnd + 4).replace(/--\s*$/, '').trim()
+
+                  // Handle nested multipart — recurse one level
+                  const nestedBoundary = headers.match(/boundary="?([^"\r\n;]+)"?/i)
+                  if (nestedBoundary) {
+                    const nestedParts = content.split('--' + nestedBoundary[1])
+                    for (const np of nestedParts) {
+                      const nh = np.indexOf('\r\n\r\n')
+                      if (nh < 0) continue
+                      const nHeaders = np.substring(0, nh).toLowerCase()
+                      let nContent = np.substring(nh + 4).replace(/--\s*$/, '').trim()
+                      if (nHeaders.includes('base64')) nContent = decodeBase64(nContent)
+                      else if (nHeaders.includes('quoted-printable')) nContent = decodeQP(nContent)
+                      if (nHeaders.includes('text/plain') && !textPlain) textPlain = nContent
+                      if (nHeaders.includes('text/html') && !textHtml) textHtml = nContent
+                    }
+                    continue
+                  }
+
+                  if (headers.includes('base64')) content = decodeBase64(content)
+                  else if (headers.includes('quoted-printable')) content = decodeQP(content)
+                  if (headers.includes('text/plain') && !textPlain) textPlain = content
+                  if (headers.includes('text/html') && !textHtml) textHtml = content
+                }
+              } else {
+                // Simple non-multipart email
+                const bodyStart = srcStr.indexOf('\r\n\r\n')
+                if (bodyStart > -1) {
+                  let body = srcStr.substring(bodyStart + 4)
+                  const headerSection = srcStr.substring(0, bodyStart).toLowerCase()
+                  if (headerSection.includes('base64')) body = decodeBase64(body)
+                  else if (headerSection.includes('quoted-printable')) body = decodeQP(body)
+                  if (headerSection.includes('text/html')) {
+                    textHtml = body
+                  } else {
+                    textPlain = body
+                  }
+                }
+              }
+
+              // If only HTML, strip tags for plain text
+              if (!textPlain && textHtml) {
+                textPlain = textHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim()
+              }
+
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({
+                uid: msg.uid,
+                account,
+                subject: env.subject || '',
+                from: { name: env.from?.[0]?.name || '', address: env.from?.[0]?.address || '' },
+                date: env.date ? new Date(env.date).toISOString() : '',
+                textPlain: textPlain.substring(0, 5000),
+                textHtml: textHtml.substring(0, 10000),
+              }))
+            } finally {
+              lock.release()
+              await client.logout()
+            }
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message }))
+          }
+        })()
+      })
+
+      // --------------------------------------------------------
+      // POST /api/email/triage — AI-classify emails via Claude Haiku
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/email/triage') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { account, emails, groupId } = JSON.parse(body)
+              if (!account || !emails?.length) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account and emails required' })); return }
+
+              const uncached = emails.filter((e: any) => !triageCache.has(`${account}:${e.uid}`))
+
+              if (uncached.length > 0) {
+                for (let i = 0; i < uncached.length; i += 6) {
+                  const batch = uncached.slice(i, i + 6)
+                  const prompt = buildTriagePrompt(batch, account)
+
+                  const response = await getAnthropic().messages.create({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 4000,
+                    messages: [{ role: 'user', content: prompt }],
+                  })
+
+                  let jsonText = (response.content[0] as any).text || ''
+                  jsonText = jsonText.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
+
+                  try {
+                    const classifications = JSON.parse(jsonText)
+                    for (const cls of classifications) {
+                      const envelope = batch.find((e: any) => e.uid === cls.uid)
+                      if (!envelope) continue
+                      const triaged = {
+                        envelope,
+                        triage: {
+                          category: cls.category,
+                          summary: cls.summary,
+                          urgency: cls.urgency,
+                          suggested_action: cls.suggested_action,
+                          draft_reply: cls.draft_reply || undefined,
+                          todo_text: cls.todo_text || undefined,
+                          sender_context: cls.sender_context || undefined,
+                        },
+                        account,
+                        groupId: groupId || '',
+                      }
+                      triageCache.set(`${account}:${cls.uid}`, triaged)
+                    }
+                  } catch (parseErr) {
+                    console.error('Triage parse error:', parseErr, 'Raw:', jsonText.substring(0, 200))
+                  }
+                }
+              }
+
+              const results = emails
+                .map((e: any) => triageCache.get(`${account}:${e.uid}`))
+                .filter(Boolean)
+
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ results }))
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: (err as Error).message, results: [] }))
+            }
+          })()
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/email/action — IMAP actions (read, delete, move, flag)
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/email/action') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { account, uid, action, target } = JSON.parse(body)
+              if (!account || !uid || !action) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account, uid, action required' })); return }
+
+              const { client } = await connectImap(account)
+              const lock = await client.getMailboxLock('INBOX')
+              try {
+                const uidStr = String(uid)
+                switch (action) {
+                  case 'read':
+                    await client.messageFlagsAdd(uidStr, ['\\Seen'], { uid: true })
+                    break
+                  case 'unread':
+                    await client.messageFlagsRemove(uidStr, ['\\Seen'], { uid: true })
+                    break
+                  case 'delete':
+                    await client.messageDelete(uidStr, { uid: true })
+                    break
+                  case 'move':
+                    if (!target) throw new Error('target folder required for move')
+                    try { await client.mailboxCreate(target) } catch { /* already exists */ }
+                    await client.messageMove(uidStr, target, { uid: true })
+                    break
+                  case 'flag':
+                    await client.messageFlagsAdd(uidStr, ['\\Flagged'], { uid: true })
+                    break
+                  default:
+                    throw new Error(`Unknown action: ${action}`)
+                }
+                triageCache.delete(`${account}:${uid}`)
+                res.writeHead(200, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ ok: true }))
+              } finally {
+                lock.release()
+                await client.logout()
+              }
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: (err as Error).message }))
+            }
+          })()
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/email/send — Send email via SMTP
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/email/send') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { account, to, subject, body: emailBody, inReplyTo, references } = JSON.parse(body)
+              if (!account || !to || !subject || !emailBody) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account, to, subject, body required' })); return }
+
+              const cred = findCredentials(account)
+              if (!cred) throw new Error(`No credentials for ${account}`)
+
+              const smtpConfig = getSmtpConfig(cred.provider, account, cred.password)
+              const transporter = createTransport(smtpConfig)
+
+              const mailOptions: any = {
+                from: account,
+                to,
+                subject,
+                text: emailBody,
+              }
+              if (inReplyTo) mailOptions.inReplyTo = inReplyTo
+              if (references) mailOptions.references = references
+
+              const info = await transporter.sendMail(mailOptions)
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true, messageId: info.messageId }))
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: (err as Error).message }))
+            }
+          })()
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/email/draft/approve — Approve KANI draft + send + archive
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/email/draft/approve') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { account, uid, draft, to, subject, inReplyTo } = JSON.parse(body)
+              if (!account || !uid || !draft || !to) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'account, uid, draft, to required' })); return }
+
+              // 1. Send via SMTP
+              const cred = findCredentials(account)
+              if (!cred) throw new Error(`No credentials for ${account}`)
+              const smtpConfig = getSmtpConfig(cred.provider, account, cred.password)
+              const transporter = createTransport(smtpConfig)
+              await transporter.sendMail({
+                from: account,
+                to,
+                subject: subject || 'Re:',
+                text: draft,
+                inReplyTo: inReplyTo || undefined,
+              })
+
+              // 2. Mark original as read + move to Bearbeitet
+              const { client } = await connectImap(account)
+              const lock = await client.getMailboxLock('INBOX')
+              try {
+                const uidStr = String(uid)
+                await client.messageFlagsAdd(uidStr, ['\\Seen'], { uid: true })
+                try { await client.mailboxCreate('KANI/Bearbeitet') } catch { /* exists */ }
+                await client.messageMove(uidStr, 'KANI/Bearbeitet', { uid: true })
+              } finally {
+                lock.release()
+                await client.logout()
+              }
+
+              // 3. Remove from cache
+              triageCache.delete(`${account}:${uid}`)
+
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true }))
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: (err as Error).message }))
+            }
+          })()
+        })
+      })
+
+      // --------------------------------------------------------
+      // Google Calendar — Shared auth helper with token cache
+      // --------------------------------------------------------
+      let calTokenCache: { token: string; envHash: string; expiresAt: number } | null = null
+
+      async function getCalendarAccessToken(): Promise<string> {
+        // Read env fresh from disk every time to detect .env.local changes
+        const envRaw = readFileSync(join(process.cwd(), '.env.local'), 'utf-8')
+        const envLines: Record<string, string> = {}
+        for (const line of envRaw.split('\n')) {
+          const eq = line.indexOf('=')
+          if (eq > 0 && !line.startsWith('#')) envLines[line.substring(0, eq).trim()] = line.substring(eq + 1).trim()
+        }
+        const clientId = envLines.VITE_GOOGLE_CLIENT_ID
+        const clientSecret = envLines.VITE_GOOGLE_CLIENT_SECRET
+        const refreshToken = envLines.GOOGLE_REFRESH_TOKEN
+        if (!clientId || !clientSecret || !refreshToken) {
+          throw new Error('Google Calendar not configured')
+        }
+        // Cache key = hash of refresh token (detects scope upgrades via new token)
+        const envHash = refreshToken.substring(0, 20)
+        if (calTokenCache && calTokenCache.envHash === envHash && Date.now() < calTokenCache.expiresAt) {
+          return calTokenCache.token
+        }
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+            grant_type: 'refresh_token',
+          }),
+        })
+        const tokenData = await tokenRes.json()
+        if (!tokenData.access_token) throw new Error('Failed to get access token')
+        calTokenCache = { token: tokenData.access_token, envHash, expiresAt: Date.now() + 50 * 60 * 1000 }
+        return tokenData.access_token
+      }
+
+      // --------------------------------------------------------
+      // GET /api/calendar/calendars — List subscribed calendars
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || req.url !== '/api/calendar/calendars') return next()
+
+        ;(async () => {
+          try {
+            const token = await getCalendarAccessToken()
+            const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            const listData = await listRes.json()
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const calendars = (listData.items || [])
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((c: any) => c.accessRole !== 'freeBusyReader')
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .map((c: any) => ({
+                id: c.id,
+                name: c.summaryOverride || c.summary || c.id,
+                backgroundColor: c.backgroundColor || '#4285f4',
+                foregroundColor: c.foregroundColor || '#ffffff',
+                primary: !!c.primary,
+                accessRole: c.accessRole || 'reader',
+                selected: c.selected !== false,
+              }))
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ calendars }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message, calendars: [] }))
+          }
+        })()
+      })
+
+      // --------------------------------------------------------
       // GET /api/calendar/events — Fetch Google Calendar events
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {
@@ -499,54 +1046,19 @@ function kaniTerminal(): Plugin {
         const url = new URL(req.url, 'http://localhost')
         const timeMin = url.searchParams.get('timeMin') || new Date().toISOString()
         const timeMax = url.searchParams.get('timeMax') || new Date(Date.now() + 30 * 86400000).toISOString()
+        const calendarId = url.searchParams.get('calendarId') || loadEnv('development', process.cwd(), '').GOOGLE_CALENDAR_ID || 'primary'
+        const q = url.searchParams.get('q') || undefined
 
-        const env = loadEnv('development', process.cwd(), '')
-        const clientId = env.VITE_GOOGLE_CLIENT_ID
-        const clientSecret = env.VITE_GOOGLE_CLIENT_SECRET
-        const refreshToken = env.GOOGLE_REFRESH_TOKEN
-        const calendarId = env.GOOGLE_CALENDAR_ID || 'primary'
-
-        if (!clientId || !clientSecret || !refreshToken) {
-          res.writeHead(503, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Google Calendar not configured. Add credentials to .env.local', events: [] }))
-          return
-        }
-
-        // Get access token from refresh token, then fetch events
         ;(async () => {
           try {
-            // Step 1: Exchange refresh token for access token
-            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({
-                client_id: clientId,
-                client_secret: clientSecret,
-                refresh_token: refreshToken,
-                grant_type: 'refresh_token',
-              }),
-            })
-            const tokenData = await tokenRes.json()
-            if (!tokenData.access_token) {
-              res.writeHead(401, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ error: 'Failed to get access token', details: tokenData, events: [] }))
-              return
-            }
-
-            // Step 2: Fetch calendar events
-            const calUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` + new URLSearchParams({
-              timeMin,
-              timeMax,
-              singleEvents: 'true',
-              orderBy: 'startTime',
-              maxResults: '100',
-            })
+            const token = await getCalendarAccessToken()
+            const params: Record<string, string> = { timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '250' }
+            if (q) params.q = q
+            const calUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` + new URLSearchParams(params)
             const calRes = await fetch(calUrl, {
-              headers: { Authorization: `Bearer ${tokenData.access_token}` },
+              headers: { Authorization: `Bearer ${token}` },
             })
             const calData = await calRes.json()
-
-            // Step 3: Transform to our CalendarEvent format
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const events = (calData.items || []).map((item: any) => ({
               id: item.id,
@@ -556,8 +1068,9 @@ function kaniTerminal(): Plugin {
               allDay: !item.start?.dateTime,
               location: item.location || '',
               description: (item.description || '').substring(0, 200),
+              calendarId,
+              color: item.colorId || '',
             }))
-
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ events }))
           } catch (err) {
@@ -565,6 +1078,111 @@ function kaniTerminal(): Plugin {
             res.end(JSON.stringify({ error: (err as Error).message, events: [] }))
           }
         })()
+      })
+
+      // --------------------------------------------------------
+      // POST /api/calendar/events/create — Create a calendar event
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/calendar/events/create') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { calendarId, title, start, end, description, location, allDay } = JSON.parse(body)
+              if (!title) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'title required' })); return }
+              const token = await getCalendarAccessToken()
+              const targetCal = calendarId || 'primary'
+              const event: Record<string, unknown> = { summary: title, description: description || '', location: location || '' }
+              if (allDay) {
+                event.start = { date: start.split('T')[0] }
+                event.end = { date: (end || start).split('T')[0] }
+              } else {
+                event.start = { dateTime: start, timeZone: 'Europe/Berlin' }
+                event.end = { dateTime: end, timeZone: 'Europe/Berlin' }
+              }
+              const createRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCal)}/events`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(event),
+              })
+              const created = await createRes.json()
+              if (!createRes.ok) { res.writeHead(createRes.status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: created.error?.message || 'Create failed' })); return }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true, event: { id: created.id, title: created.summary, start: created.start?.dateTime || created.start?.date || '', end: created.end?.dateTime || created.end?.date || '', allDay: !created.start?.dateTime } }))
+            } catch (err) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: (err as Error).message })) }
+          })()
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/calendar/events/update — Update a calendar event
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/calendar/events/update') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { calendarId, eventId, title, start, end, description, location, allDay } = JSON.parse(body)
+              if (!eventId) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'eventId required' })); return }
+              const token = await getCalendarAccessToken()
+              const targetCal = calendarId || 'primary'
+              const patch: Record<string, unknown> = {}
+              if (title !== undefined) patch.summary = title
+              if (description !== undefined) patch.description = description
+              if (location !== undefined) patch.location = location
+              if (start !== undefined) {
+                patch.start = allDay ? { date: start.split('T')[0] } : { dateTime: start, timeZone: 'Europe/Berlin' }
+              }
+              if (end !== undefined) {
+                patch.end = allDay ? { date: end.split('T')[0] } : { dateTime: end, timeZone: 'Europe/Berlin' }
+              }
+              const patchRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCal)}/events/${encodeURIComponent(eventId)}`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(patch),
+              })
+              const updated = await patchRes.json()
+              if (!patchRes.ok) { res.writeHead(patchRes.status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: updated.error?.message || 'Update failed' })); return }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true }))
+            } catch (err) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: (err as Error).message })) }
+          })()
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/calendar/events/delete — Delete a calendar event
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/calendar/events/delete') return next()
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          ;(async () => {
+            try {
+              const { calendarId, eventId } = JSON.parse(body)
+              if (!eventId) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'eventId required' })); return }
+              const token = await getCalendarAccessToken()
+              const targetCal = calendarId || 'primary'
+              const delRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCal)}/events/${encodeURIComponent(eventId)}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (!delRes.ok && delRes.status !== 204) {
+                const errData = await delRes.json().catch(() => ({}))
+                res.writeHead(delRes.status, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ error: (errData as { error?: { message?: string } }).error?.message || 'Delete failed' }))
+                return
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true }))
+            } catch (err) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: (err as Error).message })) }
+          })()
+        })
       })
 
       // --------------------------------------------------------

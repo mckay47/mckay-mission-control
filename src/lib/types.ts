@@ -196,8 +196,20 @@ export interface CalendarEvent {
   end: string      // ISO datetime
   allDay: boolean
   calendar?: string // calendar name/color
+  calendarId?: string
+  calendarColor?: string
   location?: string
   description?: string
+}
+
+export interface CalendarInfo {
+  id: string
+  name: string
+  backgroundColor: string
+  foregroundColor: string
+  primary: boolean
+  accessRole: string
+  selected: boolean
 }
 
 export interface EmailAccount {
@@ -216,6 +228,61 @@ export interface EmailGroup {
   desc: string
   accounts: EmailAccount[]
   stats: { label: string; value: string }[]
+}
+
+// ============================================================
+// Email Triage — KANI AI Classification
+// ============================================================
+
+export type EmailCategory = 'info' | 'action' | 'spam' | 'invoice'
+export type EmailUrgency = 'low' | 'medium' | 'high'
+export type SuggestedAction = 'note' | 'reply' | 'todo' | 'delete' | 'archive' | 'file_invoice'
+
+export interface EmailEnvelope {
+  uid: number
+  messageId: string
+  from: { name: string; address: string }
+  to: { name: string; address: string }[]
+  subject: string
+  date: string
+  snippet: string
+  seen: boolean
+}
+
+export interface EmailTriage {
+  category: EmailCategory
+  summary: string
+  urgency: EmailUrgency
+  suggested_action: SuggestedAction
+  draft_reply?: string
+  todo_text?: string
+  sender_context?: { name: string; role: string; relationship: string }
+}
+
+export interface TriagedEmail {
+  envelope: EmailEnvelope
+  triage: EmailTriage
+  account: string
+  groupId: string
+}
+
+export interface EmailFullBody {
+  uid: number
+  account: string
+  subject: string
+  from: { name: string; address: string }
+  date: string
+  textPlain: string
+  textHtml: string
+}
+
+export interface TriageStats {
+  total: number
+  info: number
+  action: number
+  spam: number
+  invoice: number
+  pending: number
 }
 
 export interface MemoryFile {
