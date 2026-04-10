@@ -4,11 +4,15 @@ project: "mission-control"
 updated: 2026-04-10
 ---
 
-## Active — Session D: Office ausbauen
-- [ ] **P1** Buchhaltung: Belege-Upload, Auto-Rename, KPIs
-- [ ] **P2** Subscriptions: Provider-Liste, Kosten, API-Key-Datei-Links
-- [ ] **P2** Verträge: Laufzeiten, Kündigungsdaten, Gruppierung
-- [ ] **P2** Kunden: Hebam Agency + HebamBüro Dashboards
+## Done (Session D: 2026-04-10)
+- [x] **P1** Buchhaltung: Funktionaler Beleg-Tracker (Email-Scan, Kontoauszug-Upload, Drag&Drop, Auto-Rename)
+- [x] **P1** Toast-System: Global, 5 Typen, Progress-Bar, Glassmorphism
+- [x] **P1** 6 Backend-Endpoints: check-folder, upload, mark, scan-email (SSE), parse-kontoauszug
+- [x] **P1** 2-Jahres-Beleg-Analyse: Echte Provider, Beträge, Source-Details aus Excel
+- [x] **P2** Subscriptions: 23 echte Services, 8 Kategorien, tabellarisch links-aligned
+- [x] **P2** Verträge: 7 echte Verträge, Laufzeit-Bars, Kündigungsfristen, Warnungen
+- [x] **P2** Kunden: Hebammen.Agency + Hebammenbüro Dashboards mit echten Daten
+- [x] **P2** Design-Overhaul: KPIs horizontal, Services tabellarisch, Kosten alle Kategorien
 
 ## Active — Session E: Life ausbauen
 - [ ] **P2** Wohnung: Mieter, Hausverwaltung, Nebenkosten

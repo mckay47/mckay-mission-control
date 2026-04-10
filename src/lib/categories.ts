@@ -21,11 +21,11 @@ export interface CategoryItem {
 // ============================================================
 
 export const officeCategories: CategoryItem[] = [
-  { id: 'buchhaltung', name: 'Buchhaltung', desc: 'Belege, Datev, Steuerberaterin', color: 'var(--bl)', glow: 'var(--blg)', badge: 'Monatlich', emoji: '\u{1F4CA}', stats: [{ label: 'Letzter Upload', value: '2026-03-28' }, { label: 'Belege', value: '42' }] },
-  { id: 'subscriptions', name: 'Subscriptions', desc: 'SaaS, Lizenzen, API-Kosten', color: 'var(--p)', glow: 'var(--pg)', badge: '9 aktiv', emoji: '\u{1F511}', stats: [{ label: 'Monatlich', value: '\u20AC347' }, { label: 'Services', value: '9' }] },
-  { id: 'vertraege', name: 'Vertr\u00E4ge', desc: 'Handy, Auto, Lizenzen, Laufzeiten', color: 'var(--a)', glow: 'var(--ag)', badge: '7 aktiv', emoji: '\u{1F4C4}', stats: [{ label: 'Aktiv', value: '7' }, { label: 'N\u00E4chste K\u00FCndigung', value: '2026-06-15' }] },
-  { id: 'kunden', name: 'Kunden', desc: 'Hebam Agency, HebamB\u00FCro, aktive Kunden', color: 'var(--g)', glow: 'var(--gg)', badge: '2 Businesses', emoji: '\u{1F465}', stats: [{ label: 'Hebam Agency', value: '~100' }, { label: 'HebamB\u00FCro', value: '12' }] },
-  { id: 'business-email', name: 'Business E-Mails', desc: 'Support, Anfragen, R\u00FCckmeldungen', color: 'var(--o)', glow: 'var(--og)', badge: '3 Postf\u00E4cher', emoji: '\u{1F4E7}', stats: [{ label: 'Ungelesen', value: '5' }, { label: 'Heute', value: '2' }] },
+  { id: 'buchhaltung', name: 'Buchhaltung', desc: 'Belege, Vollständigkeit, Steuerberaterin', color: 'var(--bl)', glow: 'var(--blg)', badge: 'Apr 2026', emoji: '\u{1F4CA}', stats: [{ label: 'Vorhanden', value: '5/12' }, { label: 'Fällig', value: '30.04.' }] },
+  { id: 'subscriptions', name: 'Subscriptions', desc: 'SaaS, Telco, AI, Domains, Hosting', color: 'var(--p)', glow: 'var(--pg)', badge: '19 Services', emoji: '\u{1F511}', stats: [{ label: 'Monatlich', value: '~\u20AC547' }, { label: 'Aktiv', value: '17' }] },
+  { id: 'vertraege', name: 'Vertr\u00E4ge', desc: 'Vodafone, BCU, Strato, Finom', color: 'var(--a)', glow: 'var(--ag)', badge: '7 aktiv', emoji: '\u{1F4C4}', stats: [{ label: 'Aktiv', value: '7' }, { label: 'Monatlich', value: '~\u20AC323' }] },
+  { id: 'kunden', name: 'Kunden', desc: 'Hebammen.Agency, Hebammenb\u00FCro', color: 'var(--g)', glow: 'var(--gg)', badge: '2 Businesses', emoji: '\u{1F465}', stats: [{ label: 'Revenue/Mo', value: '~\u20AC800' }, { label: 'Kunden', value: '~112' }] },
+  { id: 'business-email', name: 'Business E-Mails', desc: 'Verwaltung im Hub', color: 'var(--o)', glow: 'var(--og)', badge: 'Hub', emoji: '\u{1F4E7}', stats: [{ label: 'Postf\u00E4cher', value: '3' }, { label: 'Status', value: 'Hub \u2192' }] },
 ]
 
 // ============================================================

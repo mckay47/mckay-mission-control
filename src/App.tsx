@@ -5,6 +5,7 @@ import ShutdownDialog from './components/ShutdownDialog'
 import { MissionControlProvider } from './lib/MissionControlProvider.tsx'
 import { useKaniStream } from './hooks/useKaniStream.ts'
 import { ZoneProvider } from './components/ZoneProvider'
+import { ToastProvider } from './components/ui/Toast'
 
 // V3 Ghost UI Pages
 import { Cockpit } from './components/pages/Cockpit'
@@ -69,6 +70,7 @@ export default function App() {
 
   return (
     <ZoneProvider>
+    <ToastProvider>
     <MissionControlProvider>
       <BrowserRouter>
         <Routes>
@@ -110,6 +112,7 @@ export default function App() {
         />
       </BrowserRouter>
     </MissionControlProvider>
+    </ToastProvider>
     </ZoneProvider>
   )
 }

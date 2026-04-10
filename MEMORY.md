@@ -4,44 +4,35 @@
 
 ---
 
-## Letzte Session: 2026-04-10 (Kurz — kein Build)
+## Letzte Session: D — Office (2026-04-10)
 
-**Was gebaut wurde:**
+### Was gebaut wurde
+- **Buchhaltung:** Funktionaler Beleg-Tracker (nicht Mockup!)
+  - Email-Scan: 8 IMAP-Konten, SSE-Streaming, PDF-Attachment-Extraktion → iCloud BUCHHALTUNG
+  - Kontoauszug-Upload: Finom PDF Parser, dynamische Beleg-Liste aus Transaktionen
+  - Drag & Drop Upload + Auto-Rename (YYYY-MM_Vendor_Beschreibung.pdf)
+  - Vollständigkeits-Tracker: Live-Status aus iCloud BUCHHALTUNG Ordner
+  - Source-Details aus Excel Betriebskosten-Übersicht
+  - 2 Jahre Belege analysiert (2024-2026), echte Provider-Liste
+- **Subscriptions:** 23 echte Services, 8 Kategorien, tabellarisch
+- **Verträge:** 7 echte Verträge, Laufzeit-Bars, Kündigungsfristen
+- **Kunden:** Hebammen.Agency + Hebammenbüro Dashboards
+- **Toast-System:** Global, 5 Typen, Progress-Bar, Glassmorphism
+- **6 neue Backend-Endpoints** für Belege-Management
 
-Keine Build-Aktivität. Kurze Session — nur Verbindungstest + auto-generierte Datei-Updates (CLAUDE.md Timestamps, data.ts Todo-Count).
+### Daten-Erkenntnisse
+- Echte monatliche Kosten ~€550+/mo (COSTS.md zeigte nur €247)
+- Superchat + WixEngine gekündigt Ende 2025
+- Vercel/Supabase/n8n = Free Tier
+- Neue Services: Anthropic Claude, Pathway Solutions, XAI/Grok, Twilio noch aktiv
 
-**Letzter Build-Stand (2026-04-09 Spätschicht):**
-- Hub Rebuild: 8 Kategorien, Google Calendar OAuth2, IMAP 17/20 Konten, Todo CRUD
-- Commits: 28982b7, 4cfed29, 91fa9bc
+## Nächste Sessions
+- **E:** Life (Wohnung, Familie, Gesundheit)
+- **F:** Network (Kontakte, Events, Partner)
+- **G:** Go Live (Review, dev → main merge)
 
----
-
-## Next Steps
-
-**Naechste Session:** Mehtis Vision fuer E-Mail + Kalender Funktionen im Hub (Preview, Aktionen, etc.)
-**Session B:** Office ausbauen
-**Session C:** Life ausbauen
-**Session D:** Network ausbauen
-**Session E:** Final Review + Go Live
-
-7 von 9 Bereichen live-ready. Hub ist jetzt mit echten Daten ausgestattet.
-
----
-
-## Bekannte Issues
-
-- Gmail: 3 Konten ohne 2FA (mckaykay0711, cryptomkay, Stillzentrum.ulm) — uebersprungen
-- IMAP Polling: 17 parallele Verbindungen alle 5 Min — bei Strato kein Problem bisher
-- Google Calendar Refresh Token kann ablaufen — OAuth Playground erneut durchlaufen
-
----
-
-## Technischer Stand
-
-- **Branch:** dev (2 neue Commits)
-- **Google Calendar:** OAuth2, GCP "MCKAY Mission Control", useCalendarEvents Hook
-- **IMAP:** imapflow, .email-credentials.json (gitignored), /api/email/unread + /api/email/refresh
-- **Hub:** 8 Kategorien, echte Calendar Events, echte Unread-Counts, Todo CRUD
-- **Category-Daten:** categories.ts (nicht data.ts)
-- **Hub-Todos:** project_id=null in Supabase, hubTodos im Context
-- **Verbundene Konten:** 17/20 (14 Strato + 2 Punycode-Fix + 1 Gmail App-PW)
+## Offene Verbesserungen
+- Proaktive Email-Attachment-Extraktion bei Eingang
+- Download-Ordner Scanner
+- Buchhaltung Belege-Tab UI polieren
+- Alte Toast.tsx in src/components/ entfernen (neue in ui/)

@@ -2203,6 +2203,580 @@ Antworte NUR mit dem JSON-Array.`
           }
         })
       })
+
+      // ============================================================
+      // BELEGE ENDPOINTS — Receipt management for Office/Buchhaltung
+      // Target: iCloud BUCHHALTUNG folder structure
+      // ============================================================
+
+      const BUCHHALTUNG_ROOT = join(homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs', 'MCKAY_AGENCY', 'BUCHHALTUNG')
+
+      // Get/create month folder: BUCHHALTUNG/2026/03_2026/
+      function getBelegeMonthFolder(year: string, month: string): string {
+        const yearDir = join(BUCHHALTUNG_ROOT, year)
+        const monthDir = join(yearDir, `${month}_${year}`)
+        if (!existsSync(yearDir)) mkdirSync(yearDir, { recursive: true })
+        if (!existsSync(monthDir)) mkdirSync(monthDir, { recursive: true })
+        return monthDir
+      }
+
+      // Vendor pattern matching for auto-rename
+      const VENDOR_PATTERNS: { pattern: RegExp; vendor: string }[] = [
+        { pattern: /vodafone/i, vendor: 'Vodafone' },
+        { pattern: /strato|drp\d/i, vendor: 'Strato' },
+        { pattern: /canva|invoice-04/i, vendor: 'Canva' },
+        { pattern: /wix|1[12]\d{8}/i, vendor: 'Wix' },
+        // Google_One must be before Google_Workspace (more specific first)
+        { pattern: /google.?one/i, vendor: 'Google_One' },
+        { pattern: /google|workspace|suite|gsuite/i, vendor: 'Google_Workspace' },
+        { pattern: /lovable|miui4ajy/i, vendor: 'Lovable' },
+        { pattern: /resend|2p5vqxmf/i, vendor: 'Resend' },
+        { pattern: /stripe|ji70nfcy|9zyarnwe/i, vendor: 'Stripe' },
+        { pattern: /apple.*rechnung|icloud|chatgpt|apple\.com\/bill/i, vendor: 'Apple' },
+        { pattern: /bcu|business.?center/i, vendor: 'BCU' },
+        { pattern: /finom|pnl.?fintech|4g70|c-4fbp/i, vendor: 'Finom' },
+        { pattern: /datev/i, vendor: 'DATEV' },
+        { pattern: /anthropic|claude/i, vendor: 'Anthropic' },
+        { pattern: /microsoft|365/i, vendor: 'Microsoft' },
+        { pattern: /flyeralarm/i, vendor: 'Flyeralarm' },
+        { pattern: /pathway/i, vendor: 'Pathway' },
+        { pattern: /pinoil/i, vendor: 'Pinoil' },
+        { pattern: /jet.?tankstelle/i, vendor: 'JET-Tankstelle' },
+        { pattern: /shell\b/i, vendor: 'Shell' },
+        { pattern: /finkbeiner/i, vendor: 'Finkbeiner' },
+        { pattern: /deutsche.?post/i, vendor: 'Deutsche_Post' },
+        { pattern: /media.?markt/i, vendor: 'Media_Markt' },
+        { pattern: /twilio/i, vendor: 'Twilio' },
+        { pattern: /xai\s+llc/i, vendor: 'XAI' },
+      ]
+
+      function matchVendor(text: string): string | null {
+        for (const { pattern, vendor } of VENDOR_PATTERNS) {
+          if (pattern.test(text)) return vendor
+        }
+        return null
+      }
+
+      // --------------------------------------------------------
+      // GET /api/belege/check-folder — List files in BUCHHALTUNG month folder
+      // Query: ?year=2026&month=03
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/belege/check-folder')) return next()
+        const url = new URL(req.url, 'http://localhost')
+        const now = new Date()
+        // Default: previous month
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const year = url.searchParams.get('year') || String(prevMonth.getFullYear())
+        const month = url.searchParams.get('month') || String(prevMonth.getMonth() + 1).padStart(2, '0')
+
+        try {
+          const monthDir = join(BUCHHALTUNG_ROOT, year, `${month}_${year}`)
+          const exists = existsSync(monthDir)
+          const files = exists ? readdirSync(monthDir).filter(f => !f.startsWith('.')) : []
+
+          // Match each file against vendor patterns
+          const vendorsFound: string[] = []
+          const fileDetails = files.map(f => {
+            const vendor = matchVendor(f)
+            if (vendor && !vendorsFound.includes(vendor)) vendorsFound.push(vendor)
+            return { filename: f, vendor: vendor || 'Unbekannt' }
+          })
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({
+            folder: monthDir,
+            period: `${year}-${month}`,
+            exists,
+            files: fileDetails,
+            vendorsFound,
+            totalFiles: files.length,
+          }))
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: (err as Error).message }))
+        }
+      })
+
+      // --------------------------------------------------------
+      // POST /api/belege/parse-kontoauszug — Parse Finom bank statement PDF
+      // Accepts: { data: base64, filename: string }
+      // Returns: { transactions: [...], period: string }
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/belege/parse-kontoauszug') return next()
+
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', async () => {
+          try {
+            const raw = Buffer.concat(chunks).toString('utf-8')
+            const body = JSON.parse(raw)
+
+            if (!body.data) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'data (base64) required' }))
+              return
+            }
+
+            // Import pdfjs-dist dynamically (already installed as pdf-parse dependency)
+            const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+            const pdfBuffer = Buffer.from(body.data, 'base64')
+            const doc = await pdfjsLib.getDocument({ data: new Uint8Array(pdfBuffer) }).promise
+
+            // Extract text from all pages
+            let fullText = ''
+            for (let i = 1; i <= doc.numPages; i++) {
+              const page = await doc.getPage(i)
+              const content = await page.getTextContent()
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              fullText += content.items.map((item: any) => item.str).join(' ') + '\n'
+            }
+
+            // Parse period from header
+            const vonMatch = fullText.match(/Von:\s*(\d{2}\.\d{2}\.\d{4})/)
+            const bisMatch = fullText.match(/Bis:\s*(\d{2}\.\d{2}\.\d{4})/)
+            const periodVon = vonMatch ? vonMatch[1] : ''
+            const periodBis = bisMatch ? bisMatch[1] : ''
+
+            // Extract year/month from the period
+            let periodYear = ''
+            let periodMonth = ''
+            if (periodVon) {
+              const parts = periodVon.split('.')
+              periodMonth = parts[1]
+              periodYear = parts[2]
+            }
+
+            // Parse transactions from the text
+            // Each transaction starts with a date DD.MM.YYYY
+            // Split text into lines for easier parsing
+            const text = fullText.replace(/\n/g, ' ')
+
+            // Find all transactions by splitting on date patterns
+            const datePattern = /(\d{2}\.\d{2}\.\d{4})\s+/g
+            const matches: { index: number; date: string }[] = []
+            let m
+            while ((m = datePattern.exec(text)) !== null) {
+              matches.push({ index: m.index, date: m[1] })
+            }
+
+            interface ParsedTransaction {
+              date: string
+              vendor: string
+              description: string
+              amount: number
+              type: 'expense' | 'income'
+              wallet: string
+              matchedVendor: string | null
+              hasFile: boolean
+            }
+
+            // Skip patterns
+            const skipPatterns = [
+              /Von einer anderen Wallet/i,
+              /Auf eine andere Wallet/i,
+              /Mehti Kaymaz\s+Einzahlung/i,
+            ]
+
+            const transactions: ParsedTransaction[] = []
+
+            // Check which files exist in the month folder
+            let existingFiles: string[] = []
+            if (periodYear && periodMonth) {
+              const monthDir = join(BUCHHALTUNG_ROOT, periodYear, `${periodMonth}_${periodYear}`)
+              if (existsSync(monthDir)) {
+                existingFiles = readdirSync(monthDir).filter(f => !f.startsWith('.'))
+              }
+            }
+
+            for (let idx = 0; idx < matches.length; idx++) {
+              const start = matches[idx].index
+              const end = idx + 1 < matches.length ? matches[idx + 1].index : text.length
+              const segment = text.substring(start, end).trim()
+              const date = matches[idx].date
+
+              // Skip footer lines like "N Mit Finom.co erstellt"
+              if (/^\d{2}\.\d{2}\.\d{4}\s+\d+\s+Mit Finom/.test(segment)) continue
+
+              // Skip header metadata (Von:, Bis:, Eröffnungssaldo, Abschlusssaldo)
+              const afterDateTrimmed = segment.substring(date.length).trim()
+              if (/^(Von:|Bis:|Eröffnungssaldo|Abschlusssaldo|Ausstellungsdatum)/i.test(afterDateTrimmed)) continue
+
+              // Check skip patterns
+              if (skipPatterns.some(p => p.test(segment))) continue
+
+              // Extract vendor: first meaningful text after the date
+              const afterDate = segment.substring(date.length).trim()
+              // The vendor is typically the first word(s) before IBAN, BIC, amount, or next description
+              const vendorMatch = afterDate.match(/^([A-ZÄÖÜa-zäöü][^\d€$]*?)(?:\s+IBAN|\s+\d+[\s,.]|\s+-\s|\s+\d{1,3}[.,]\d{2}\s*€)/)
+              let vendorRaw = vendorMatch ? vendorMatch[1].trim() : afterDate.split(/\s{2,}/)[0].trim()
+              // Clean up vendor name — remove trailing IBAN/BIC lines
+              vendorRaw = vendorRaw.replace(/\s*(IBAN|BIC):?\s*.*/i, '').trim()
+
+              // Extract amount: look for patterns like "- 72,50 €" or "56,46 €"
+              const expenseMatch = segment.match(/-\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/)
+              const incomeMatch = segment.match(/(?:^|[^-])\s(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/)
+
+              let amount = 0
+              let type: 'expense' | 'income' = 'expense'
+
+              if (expenseMatch) {
+                amount = parseFloat(expenseMatch[1].replace('.', '').replace(',', '.'))
+                type = 'expense'
+              } else if (incomeMatch) {
+                amount = parseFloat(incomeMatch[1].replace('.', '').replace(',', '.'))
+                type = 'income'
+              }
+
+              // Extract wallet name
+              const walletMatch = segment.match(/(Main|Hebammen\.Agenc\s*y)\s+\d/)
+              const wallet = walletMatch ? walletMatch[1].replace(/\s+/g, '') : 'Main'
+
+              // Skip STRIPE incoming on Hebammen.Agency wallet (positive amounts)
+              if (/stripe/i.test(vendorRaw) && type === 'income' && /Hebammen/i.test(wallet)) continue
+
+              // Skip PNL Fintech cashback (positive amount)
+              if (/PNL\s+Fintech/i.test(vendorRaw) && /cashback/i.test(segment) && type === 'income') continue
+
+              // Match vendor against known patterns
+              const matchedVendor = matchVendor(vendorRaw) || matchVendor(segment)
+
+              // Check if a file exists for this vendor in the month folder
+              const hasFile = matchedVendor
+                ? existingFiles.some(f => f.toLowerCase().includes(matchedVendor.toLowerCase().replace(/[_\s]/g, '').substring(0, 4)))
+                : existingFiles.some(f => f.toLowerCase().includes(vendorRaw.toLowerCase().split(/[\s(]/)[0].substring(0, 4)))
+
+              transactions.push({
+                date,
+                vendor: vendorRaw,
+                description: afterDate.substring(0, 80).trim(),
+                amount,
+                type,
+                wallet: wallet.replace('Hebammen.Agency', 'Hebammen.Agency'),
+                matchedVendor,
+                hasFile,
+              })
+            }
+
+            // Also save the PDF to the month folder as Kontoauszug
+            if (periodYear && periodMonth) {
+              const monthDir = getBelegeMonthFolder(periodYear, periodMonth)
+              const kontoauszugPath = join(monthDir, `${periodYear}-${periodMonth}_Finom_Kontoauszug.pdf`)
+              if (!existsSync(kontoauszugPath)) {
+                writeFileSync(kontoauszugPath, pdfBuffer)
+              }
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({
+              ok: true,
+              period: { von: periodVon, bis: periodBis, year: periodYear, month: periodMonth },
+              transactions,
+              totalExpenses: transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+              totalIncome: transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+              transactionCount: transactions.length,
+            }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message }))
+          }
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/belege/upload — Upload a receipt file
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/belege/upload') return next()
+
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', () => {
+          try {
+            const raw = Buffer.concat(chunks).toString('utf-8')
+            const body = JSON.parse(raw)
+
+            // Expect: { filename, data (base64), vendor?, description?, amount?, erwarteterBelegId?, period? }
+            if (!body.filename || !body.data) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'filename and data (base64) required' }))
+              return
+            }
+
+            // Auto-rename: YYYY-MM-DD_Vendor_Typ.ext
+            const now = new Date()
+            const dateStr = now.toISOString().split('T')[0]
+            const vendor = (body.vendor || 'Unbekannt').replace(/[^a-zA-Z0-9äöüÄÖÜß-]/g, '_')
+            const ext = body.filename.split('.').pop() || 'pdf'
+            const safeName = `${dateStr}_${vendor}_Beleg.${ext}`
+
+            // Write file
+            const fileBuffer = Buffer.from(body.data, 'base64')
+            const filePath = join(belegeDir, safeName)
+            writeFileSync(filePath, fileBuffer)
+
+            // Update index
+            const index = readBelegeIndex()
+            const meta: BelegMeta = {
+              id: `beleg-${Date.now()}`,
+              vendor: body.vendor || 'Unbekannt',
+              description: body.description || body.filename,
+              amount: body.amount || 0,
+              filename: safeName,
+              originalName: body.filename,
+              uploadDate: dateStr,
+              source: 'upload',
+              period: body.period || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+              erwarteterBelegId: body.erwarteterBelegId,
+            }
+            index.push(meta)
+            writeBelegeIndex(index)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ok: true, beleg: meta, path: filePath }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message }))
+          }
+        })
+      })
+
+      // --------------------------------------------------------
+      // POST /api/belege/mark — Mark an expected receipt as found
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'POST' || req.url !== '/api/belege/mark') return next()
+
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const { erwarteterBelegId, status, filename } = JSON.parse(body)
+            if (!erwarteterBelegId) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'erwarteterBelegId required' }))
+              return
+            }
+
+            const index = readBelegeIndex()
+            // Check if already tracked
+            const existing = index.find(b => b.erwarteterBelegId === erwarteterBelegId)
+            if (existing) {
+              // Update status
+              if (filename) existing.filename = filename
+              writeBelegeIndex(index)
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true, updated: existing }))
+            } else {
+              // Create placeholder entry
+              const meta: BelegMeta = {
+                id: `beleg-${Date.now()}`,
+                vendor: '',
+                description: '',
+                amount: 0,
+                filename: filename || '',
+                originalName: '',
+                uploadDate: new Date().toISOString().split('T')[0],
+                source: status || 'marked',
+                period: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+                erwarteterBelegId,
+              }
+              index.push(meta)
+              writeBelegeIndex(index)
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ ok: true, created: meta }))
+            }
+          } catch (err) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: (err as Error).message }))
+          }
+        })
+      })
+
+      // --------------------------------------------------------
+      // GET /api/belege/scan-email — SSE stream: scan IMAP + extract PDFs
+      // Query: ?targetMonth=2026-03
+      // Streams progress events, then final result
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/belege/scan-email')) return next()
+
+        const url = new URL(req.url, 'http://localhost')
+        let targetMonth = url.searchParams.get('targetMonth') || ''
+
+        // Default: previous month
+        if (!targetMonth) {
+          const now = new Date()
+          now.setMonth(now.getMonth() - 1)
+          targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        }
+
+        const [year, month] = targetMonth.split('-')
+        if (!year || !month) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid targetMonth, use YYYY-MM' }))
+          return
+        }
+
+        // SSE headers
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        })
+
+        function sendEvent(event: string, data: unknown) {
+          res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+        }
+
+        const searchSince = new Date(parseInt(year), parseInt(month) - 1, -2)
+        const searchBefore = new Date(parseInt(year), parseInt(month), 1)
+        const targetDir = getBelegeMonthFolder(year, month)
+
+        // Scan accounts — critical (invoice-heavy) ones first
+        const allAccounts = [
+          // Priority: these have the most invoices
+          'bills@mckay.agency', '1@mckay.agency',
+          // Secondary
+          'hello@mckay.agency', 'm.kaymaz@mckay.agency',
+          'hello@hebammen.agency', 'm.kaymaz@hebammen.agency', 'support@hebammen.agency',
+          'mehtikaymaz@gmail.com',
+        ]
+        const availableAccounts = allAccounts.filter(a => findCredentials(a) !== null)
+
+        sendEvent('progress', { step: 'start', total: availableAccounts.length, message: `Scanne ${availableAccounts.length} Postfächer für ${month}/${year}...` })
+
+        // Scan each account with 20s timeout, parallel in batches of 3
+        const saved: Array<{ vendor: string; filename: string; from: string; subject: string; account: string }> = []
+        const skipped: Array<{ reason: string; subject: string; account: string }> = []
+        const errors: Record<string, string> = {}
+
+        async function scanAccount(account: string): Promise<void> {
+          const timeoutMs = 45000
+          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout 45s')), timeoutMs))
+
+          const scanPromise = (async () => {
+            const { client } = await connectImap(account)
+            const lock = await client.getMailboxLock('INBOX')
+            try {
+              const searchResult = await client.search({ since: searchSince, before: searchBefore })
+              if (!searchResult || searchResult.length === 0) return
+
+              // Phase 1: Fetch envelopes + bodyStructure — collect download targets
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const downloadQueue: Array<{ uid: number; partId: string; subject: string; from: string; origName: string }> = []
+              const uids = searchResult.slice(-60)
+
+              for await (const msg of client.fetch(uids.join(','), { envelope: true, bodyStructure: true, uid: true })) {
+                const env = msg.envelope
+                if (!env) continue
+
+                const subject = env.subject || ''
+                const from = env.from?.[0]?.address || ''
+                const subjectLower = subject.toLowerCase()
+
+                const receiptKw = ['rechnung', 'invoice', 'receipt', 'beleg', 'payment', 'billing', 'subscription', 'quittung', 'zahlung', 'abbuchung', 'tax invoice', 'gutschrift', 'erstattung', 'storno']
+                const isReceipt = receiptKw.some(kw => subjectLower.includes(kw)) ||
+                  from.includes('noreply') || from.includes('billing') || from.includes('invoice') || from.includes('receipt')
+
+                if (!isReceipt) continue
+
+                // Find PDF attachments recursively
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                function findPdfs(nodes: any[]): any[] {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const pdfs: any[] = []
+                  for (const n of nodes) {
+                    if (n.disposition === 'attachment' &&
+                        (n.type === 'application/pdf' || n.parameters?.name?.endsWith('.pdf') || n.dispositionParameters?.filename?.endsWith('.pdf'))) {
+                      pdfs.push(n)
+                    }
+                    if (n.childNodes) pdfs.push(...findPdfs(n.childNodes))
+                  }
+                  return pdfs
+                }
+                const pdfParts = findPdfs(msg.bodyStructure?.childNodes || [])
+                if (pdfParts.length === 0) {
+                  skipped.push({ reason: 'Kein PDF', subject: subject.slice(0, 60), account })
+                  continue
+                }
+
+                for (const part of pdfParts) {
+                  const origName = part.dispositionParameters?.filename || part.parameters?.name || 'attachment.pdf'
+                  downloadQueue.push({ uid: msg.uid, partId: part.part || '2', subject, from, origName })
+                }
+              }
+
+              // Phase 2: Download attachments AFTER fetch loop completes (IMAP is sequential)
+              for (const item of downloadQueue) {
+                try {
+                  const vendor = matchVendor(item.subject) || matchVendor(item.from) || matchVendor(item.origName) || 'Unbekannt'
+                  // Professional format: YYYY-MM_Vendor_Rechnung.pdf with duplicate numbering
+                  let baseName = vendor !== 'Unbekannt'
+                    ? `${year}-${month}_${vendor}_Rechnung`
+                    : `${year}-${month}_${item.origName.replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}`
+                  let safeName = `${baseName}.pdf`
+                  let targetPath = join(targetDir, safeName)
+
+                  // Duplicate numbering: _2, _3, etc.
+                  let dupCounter = 1
+                  while (existsSync(targetPath)) {
+                    dupCounter++
+                    safeName = `${baseName}_${dupCounter}.pdf`
+                    targetPath = join(targetDir, safeName)
+                  }
+
+                  const content = await client.download(String(item.uid), item.partId, { uid: true })
+                  if (!content?.content) continue
+
+                  const chunks: Buffer[] = []
+                  for await (const chunk of content.content) {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+                  }
+                  writeFileSync(targetPath, Buffer.concat(chunks))
+                  saved.push({ vendor, filename: safeName, from: item.from, subject: item.subject.slice(0, 80), account })
+                } catch (partErr) {
+                  skipped.push({ reason: (partErr as Error).message.slice(0, 50), subject: item.subject.slice(0, 60), account })
+                }
+              }
+            } finally {
+              lock.release()
+              await client.logout()
+            }
+          })()
+
+          await Promise.race([scanPromise, timeoutPromise])
+        }
+
+        ;(async () => {
+          // Process in batches of 2 (Strato rate-limits concurrent IMAP)
+          for (let i = 0; i < availableAccounts.length; i += 2) {
+            const batch = availableAccounts.slice(i, i + 2)
+            const results = await Promise.allSettled(batch.map(async (account) => {
+              try {
+                await scanAccount(account)
+                sendEvent('progress', { step: 'account-done', account, current: i + batch.indexOf(account) + 1, total: availableAccounts.length, savedSoFar: saved.length })
+              } catch (err) {
+                errors[account] = (err as Error).message
+                sendEvent('progress', { step: 'account-error', account, error: (err as Error).message, current: i + batch.indexOf(account) + 1, total: availableAccounts.length })
+              }
+            }))
+            // Check for unhandled rejections
+            for (let j = 0; j < results.length; j++) {
+              if (results[j].status === 'rejected') {
+                errors[batch[j]] = (results[j] as PromiseRejectedResult).reason?.message || 'Unknown error'
+              }
+            }
+          }
+
+          sendEvent('done', { targetMonth, targetDir, saved, skipped, errors, scannedAccounts: availableAccounts })
+          res.end()
+        })().catch(err => {
+          sendEvent('error', { message: (err as Error).message })
+          res.end()
+        })
+      })
     },
   }
 }
