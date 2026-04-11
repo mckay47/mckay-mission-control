@@ -2382,14 +2382,39 @@ Antworte NUR mit dem JSON-Array.`
 
             const transactions: ParsedTransaction[] = []
 
-            // Check which files exist in the month folder
-            let existingFiles: string[] = []
+            // Scan existing files in the month folder — extract amounts from PDFs
+            interface FileInfo { filename: string; amounts: number[] }
+            const fileInfos: FileInfo[] = []
             if (periodYear && periodMonth) {
               const monthDir = join(BUCHHALTUNG_ROOT, periodYear, `${periodMonth}_${periodYear}`)
               if (existsSync(monthDir)) {
-                existingFiles = readdirSync(monthDir).filter(f => !f.startsWith('.'))
+                const files = readdirSync(monthDir).filter(f => !f.startsWith('.') && !f.startsWith('_') && f.endsWith('.pdf'))
+                for (const filename of files) {
+                  try {
+                    const buf = readFileSync(join(monthDir, filename))
+                    const fdoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise
+                    let ftext = ''
+                    for (let p = 1; p <= Math.min(fdoc.numPages, 2); p++) {
+                      const pg = await fdoc.getPage(p)
+                      const ct = await pg.getTextContent()
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      ftext += ct.items.map((item: any) => item.str).join(' ') + ' '
+                    }
+                    const amounts: number[] = []
+                    const amtRe = /(\d{1,3}(?:\.\d{3})*,\d{2})\s*€|€\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g
+                    let amm
+                    while ((amm = amtRe.exec(ftext)) !== null) {
+                      const val = parseFloat((amm[1] || amm[2]).replace('.', '').replace(',', '.'))
+                      if (val > 0 && !amounts.includes(val)) amounts.push(val)
+                    }
+                    fileInfos.push({ filename, amounts })
+                  } catch {
+                    fileInfos.push({ filename, amounts: [] })
+                  }
+                }
               }
             }
+            const existingFiles = fileInfos.map(fi => fi.filename)
 
             for (let idx = 0; idx < matches.length; idx++) {
               const start = matches[idx].index
@@ -2442,37 +2467,44 @@ Antworte NUR mit dem JSON-Array.`
               // Match vendor against known patterns
               const matchedVendor = matchVendor(vendorRaw) || matchVendor(segment)
 
-              // Check if a file exists for this vendor in the month folder
-              // Smart matching: check vendor name, matched vendor, and also common aliases
-              const vendorAliases: Record<string, string[]> = {
-                Pinoil: ['tanken', 'pinoil', 'tankstelle'], JET: ['tanken', 'jet', 'tankstelle'], Shell: ['tanken', 'shell', 'tankstelle'],
-                Finkbeiner: ['getraenke', 'finkbeiner', 'waschanlage', 'autowaesche'],
-                Deutsche_Post: ['porto', 'post', 'briefmarke'], BCU: ['bcu', 'business_center', 'geschaeftsadresse'],
-                Apple: ['apple', 'icloud', 'chatgpt', 'ipad'], Google_One: ['google_one', 'google'],
-                Google_Workspace: ['google_workspace', 'google'], Anthropic: ['anthropic', 'claude'],
-                XAI: ['xai', 'grok'], Media_Markt: ['media_markt', 'mediamarkt', 'ipad', 'apple_ipad'],
-              }
-              const searchTerms: string[] = []
-              if (matchedVendor) {
-                searchTerms.push(matchedVendor.toLowerCase())
-                const aliases = vendorAliases[matchedVendor]
-                if (aliases) searchTerms.push(...aliases)
-              }
-              searchTerms.push(vendorRaw.toLowerCase().split(/[\s(*]/)[0])
-
-              const hasFile = existingFiles.some(f => {
-                const fl = f.toLowerCase()
-                return searchTerms.some(term => fl.includes(term))
-              })
-
-              // Find the matching file for potential rename
+              // Match file: AMOUNT FIRST, then vendor name fallback
+              const usedFilesInner = transactions.filter(t => t.matchedFile).map(t => t.matchedFile)
               let matchedFile = ''
-              if (hasFile) {
-                matchedFile = existingFiles.find(f => {
-                  const fl = f.toLowerCase()
-                  return searchTerms.some(term => fl.includes(term))
-                }) || ''
+
+              // Strategy 1: Match by exact amount
+              if (amount > 0) {
+                const amountMatch = fileInfos.find(fi =>
+                  !usedFilesInner.includes(fi.filename) && fi.amounts.includes(amount)
+                )
+                if (amountMatch) matchedFile = amountMatch.filename
               }
+
+              // Strategy 2: Vendor name / alias fallback (for scanned receipts without extractable text)
+              if (!matchedFile) {
+                const vendorAliases: Record<string, string[]> = {
+                  Pinoil: ['tanken', 'pinoil', 'tankstelle'], JET: ['tanken', 'jet', 'tankstelle'], Shell: ['tanken', 'shell', 'tankstelle'],
+                  Finkbeiner: ['getraenke', 'finkbeiner', 'wasch', 'autowaesche'],
+                  Deutsche_Post: ['porto', 'post', 'briefmarke'], BCU: ['bcu', 'business_center', 'geschaeftsadresse'],
+                  Apple: ['apple', 'icloud', 'chatgpt', 'ipad'], Google_One: ['google_one', 'google'],
+                  Google_Workspace: ['google_workspace', 'google'], Anthropic: ['anthropic', 'claude'],
+                  XAI: ['xai', 'grok'], Media_Markt: ['media_markt', 'mediamarkt', 'ipad', 'apple_ipad'],
+                }
+                const searchTerms: string[] = []
+                if (matchedVendor) {
+                  searchTerms.push(matchedVendor.toLowerCase())
+                  const aliases = vendorAliases[matchedVendor]
+                  if (aliases) searchTerms.push(...aliases)
+                }
+                searchTerms.push(vendorRaw.toLowerCase().split(/[\s(*]/)[0])
+
+                const nameMatch = fileInfos.find(fi =>
+                  !usedFilesInner.includes(fi.filename) &&
+                  searchTerms.some(term => fi.filename.toLowerCase().includes(term))
+                )
+                if (nameMatch) matchedFile = nameMatch.filename
+              }
+
+              const hasFile = !!matchedFile
 
               transactions.push({
                 date,
@@ -2561,7 +2593,7 @@ Antworte NUR mit dem JSON-Array.`
         const year = url.searchParams.get('year') || String(prev.getFullYear())
         const month = url.searchParams.get('month') || String(prev.getMonth() + 1).padStart(2, '0')
 
-        try {
+        ;(async () => { try {
           const dataPath = join(BUCHHALTUNG_ROOT, year, `${month}_${year}`, `_kontoauszug_${year}-${month}.json`)
           if (!existsSync(dataPath)) {
             res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -2570,11 +2602,46 @@ Antworte NUR mit dem JSON-Array.`
           }
           const data = JSON.parse(readFileSync(dataPath, 'utf-8'))
 
-          // Re-check hasFile against current folder contents
+          // Re-check hasFile against current folder contents using AMOUNT-BASED matching
           const monthDir = join(BUCHHALTUNG_ROOT, year, `${month}_${year}`)
-          const existingFiles = existsSync(monthDir) ? readdirSync(monthDir).filter(f => !f.startsWith('.') && !f.startsWith('_')) : []
+          const existingFiles = existsSync(monthDir) ? readdirSync(monthDir).filter(f => !f.startsWith('.') && !f.startsWith('_') && f.endsWith('.pdf')) : []
 
-          // Alias map: vendor name → file name patterns that match
+          // Phase 1: Extract amounts from all PDFs in the folder
+          interface FileInfo { filename: string; amounts: number[]; textAvailable: boolean }
+          const fileInfos: FileInfo[] = []
+          try {
+            const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+            for (const filename of existingFiles) {
+              try {
+                const buf = readFileSync(join(monthDir, filename))
+                const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise
+                let text = ''
+                for (let p = 1; p <= Math.min(doc.numPages, 2); p++) {
+                  const page = await doc.getPage(p)
+                  const content = await page.getTextContent()
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  text += content.items.map((item: any) => item.str).join(' ') + ' '
+                }
+                const amounts: number[] = []
+                const amtRegex = /(\d{1,3}(?:\.\d{3})*,\d{2})\s*€|€\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g
+                let am
+                while ((am = amtRegex.exec(text)) !== null) {
+                  const val = parseFloat((am[1] || am[2]).replace('.', '').replace(',', '.'))
+                  if (val > 0 && !amounts.includes(val)) amounts.push(val)
+                }
+                fileInfos.push({ filename, amounts, textAvailable: text.trim().length > 10 })
+              } catch {
+                fileInfos.push({ filename, amounts: [], textAvailable: false })
+              }
+            }
+          } catch {
+            // pdfjs not available — fall back to name-only matching
+            for (const filename of existingFiles) {
+              fileInfos.push({ filename, amounts: [], textAvailable: false })
+            }
+          }
+
+          // Phase 2: Match transactions to files — AMOUNT FIRST, then vendor name fallback
           const fileAliases: Record<string, string[]> = {
             pinoil: ['tanken', 'pinoil', 'tankstelle'], jet: ['tanken', 'jet', 'tankstelle'], shell: ['tanken', 'shell', 'tankstelle'],
             finkbeiner: ['getraenke', 'finkbeiner', 'wasch', 'autowaesche'], media_markt: ['mediamarkt', 'media_markt', 'ipad', 'apple_ipad'],
@@ -2585,23 +2652,38 @@ Antworte NUR mit dem JSON-Array.`
             'hebammen.agency einnahme': ['stripe', 'hebammen'],
           }
 
-          // Smart matching: check vendor name + aliases against file names
           const usedFiles = new Set<string>()
           for (const tx of data.transactions) {
-            const vendor = (tx.matchedVendor || tx.vendor || '').toLowerCase()
-            const firstWord = vendor.split(/[\s_(*]/)[0]
-            const searchTerms = [firstWord, vendor.replace(/[_\s]/g, '')]
-            // Add aliases
-            const aliases = fileAliases[vendor] || fileAliases[firstWord]
-            if (aliases) searchTerms.push(...aliases)
+            const txAmount = tx.amount || 0
 
-            const match = existingFiles.find(f => {
-              if (usedFiles.has(f)) return false
-              const fl = f.toLowerCase()
-              return searchTerms.some(term => fl.includes(term))
-            })
+            // Strategy 1: Match by AMOUNT (most reliable)
+            let match = ''
+            if (txAmount > 0) {
+              const amountMatch = fileInfos.find(fi => {
+                if (usedFiles.has(fi.filename)) return false
+                return fi.amounts.includes(txAmount)
+              })
+              if (amountMatch) match = amountMatch.filename
+            }
+
+            // Strategy 2: Fallback to vendor name / alias matching
+            if (!match) {
+              const vendor = (tx.matchedVendor || tx.vendor || '').toLowerCase()
+              const firstWord = vendor.split(/[\s_(*]/)[0]
+              const searchTerms = [firstWord, vendor.replace(/[_\s]/g, '')]
+              const aliases = fileAliases[vendor] || fileAliases[firstWord]
+              if (aliases) searchTerms.push(...aliases)
+
+              const nameMatch = fileInfos.find(fi => {
+                if (usedFiles.has(fi.filename)) return false
+                const fl = fi.filename.toLowerCase()
+                return searchTerms.some(term => fl.includes(term))
+              })
+              if (nameMatch) match = nameMatch.filename
+            }
+
             tx.hasFile = !!match
-            tx.matchedFile = match || ''
+            tx.matchedFile = match
             if (match) usedFiles.add(match)
           }
 
@@ -2610,7 +2692,7 @@ Antworte NUR mit dem JSON-Array.`
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: (err as Error).message }))
-        }
+        } })()
       })
 
       // --------------------------------------------------------
