@@ -2382,9 +2382,10 @@ Antworte NUR mit dem JSON-Array.`
 
             const transactions: ParsedTransaction[] = []
 
-            // Scan existing files in the month folder — extract amounts from PDFs
-            interface FileInfo { filename: string; amounts: number[] }
+            // Scan existing files in the month folder — extract text, amounts, vendor → auto-rename
+            interface FileInfo { filename: string; amounts: number[]; detectedVendor: string | null; hasText: boolean }
             const fileInfos: FileInfo[] = []
+            const renamedFiles: Array<{ from: string; to: string }> = []
             if (periodYear && periodMonth) {
               const monthDir = join(BUCHHALTUNG_ROOT, periodYear, `${periodMonth}_${periodYear}`)
               if (existsSync(monthDir)) {
@@ -2400,6 +2401,7 @@ Antworte NUR mit dem JSON-Array.`
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       ftext += ct.items.map((item: any) => item.str).join(' ') + ' '
                     }
+                    const hasText = ftext.trim().length > 20
                     const amounts: number[] = []
                     const amtRe = /(\d{1,3}(?:\.\d{3})*,\d{2})\s*€|€\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g
                     let amm
@@ -2407,9 +2409,42 @@ Antworte NUR mit dem JSON-Array.`
                       const val = parseFloat((amm[1] || amm[2]).replace('.', '').replace(',', '.'))
                       if (val > 0 && !amounts.includes(val)) amounts.push(val)
                     }
-                    fileInfos.push({ filename, amounts })
+                    // Detect vendor from PDF text content
+                    const detectedVendor = matchVendor(ftext)
+
+                    // Auto-rename: if file doesn't follow YYYY-MM_ format, rename it
+                    let finalName = filename
+                    if (!/^\d{4}-\d{2}_/.test(filename)) {
+                      if (detectedVendor) {
+                        // Vendor detected → professional name
+                        let baseName = `${periodYear}-${periodMonth}_${detectedVendor}_Rechnung`
+                        let newName = `${baseName}.pdf`
+                        let counter = 1
+                        while (existsSync(join(monthDir, newName)) || renamedFiles.some(r => r.to === newName)) {
+                          counter++
+                          newName = `${baseName}_${counter}.pdf`
+                        }
+                        renameSync(join(monthDir, filename), join(monthDir, newName))
+                        renamedFiles.push({ from: filename, to: newName })
+                        finalName = newName
+                      } else if (!hasText) {
+                        // Scanned receipt, no text → rename to "Beleg_pruefen"
+                        let baseName = `${periodYear}-${periodMonth}_Beleg_pruefen`
+                        let newName = `${baseName}.pdf`
+                        let counter = 1
+                        while (existsSync(join(monthDir, newName)) || renamedFiles.some(r => r.to === newName)) {
+                          counter++
+                          newName = `${baseName}_${counter}.pdf`
+                        }
+                        renameSync(join(monthDir, filename), join(monthDir, newName))
+                        renamedFiles.push({ from: filename, to: newName })
+                        finalName = newName
+                      }
+                    }
+
+                    fileInfos.push({ filename: finalName, amounts, detectedVendor, hasText })
                   } catch {
-                    fileInfos.push({ filename, amounts: [] })
+                    fileInfos.push({ filename, amounts: [], detectedVendor: null, hasText: false })
                   }
                 }
               }
@@ -2548,7 +2583,7 @@ Antworte NUR mit dem JSON-Array.`
               totalExpenses: transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
               totalIncome: transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
               transactionCount: transactions.length,
-              renamed,
+              renamedFiles,
             }))
           } catch (err) {
             res.writeHead(500, { 'Content-Type': 'application/json' })
