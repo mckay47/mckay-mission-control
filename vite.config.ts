@@ -2445,12 +2445,12 @@ Antworte NUR mit dem JSON-Array.`
               // Check if a file exists for this vendor in the month folder
               // Smart matching: check vendor name, matched vendor, and also common aliases
               const vendorAliases: Record<string, string[]> = {
-                Pinoil: ['tanken', 'pinoil'], JET: ['tanken', 'jet'], Shell: ['tanken', 'shell'],
-                Finkbeiner: ['autowaesche', 'finkbeiner', 'waschanlage'],
-                Deutsche_Post: ['porto', 'post', 'briefmarke'], BCU: ['bcu', 'business_center'],
-                Apple: ['apple', 'icloud', 'chatgpt'], Google_One: ['google_one', 'google'],
+                Pinoil: ['tanken', 'pinoil', 'tankstelle'], JET: ['tanken', 'jet', 'tankstelle'], Shell: ['tanken', 'shell', 'tankstelle'],
+                Finkbeiner: ['getraenke', 'finkbeiner', 'waschanlage', 'autowaesche'],
+                Deutsche_Post: ['porto', 'post', 'briefmarke'], BCU: ['bcu', 'business_center', 'geschaeftsadresse'],
+                Apple: ['apple', 'icloud', 'chatgpt', 'ipad'], Google_One: ['google_one', 'google'],
                 Google_Workspace: ['google_workspace', 'google'], Anthropic: ['anthropic', 'claude'],
-                XAI: ['xai', 'grok'], Media_Markt: ['media_markt', 'mediamarkt', 'ipad'],
+                XAI: ['xai', 'grok'], Media_Markt: ['media_markt', 'mediamarkt', 'ipad', 'apple_ipad'],
               }
               const searchTerms: string[] = []
               if (matchedVendor) {
@@ -2574,18 +2574,35 @@ Antworte NUR mit dem JSON-Array.`
           const monthDir = join(BUCHHALTUNG_ROOT, year, `${month}_${year}`)
           const existingFiles = existsSync(monthDir) ? readdirSync(monthDir).filter(f => !f.startsWith('.') && !f.startsWith('_')) : []
 
-          // Update hasFile for each transaction
+          // Alias map: vendor name → file name patterns that match
+          const fileAliases: Record<string, string[]> = {
+            pinoil: ['tanken', 'pinoil', 'tankstelle'], jet: ['tanken', 'jet', 'tankstelle'], shell: ['tanken', 'shell', 'tankstelle'],
+            finkbeiner: ['getraenke', 'finkbeiner', 'wasch', 'autowaesche'], media_markt: ['mediamarkt', 'media_markt', 'ipad', 'apple_ipad'],
+            deutsche_post: ['porto', 'post', 'briefmarke'], bcu: ['bcu', 'business_center', 'geschaeftsadresse'],
+            anthropic: ['anthropic', 'claude'], apple: ['apple', 'icloud', 'chatgpt'],
+            google_one: ['google_one', 'google'], google_workspace: ['google_workspace', 'google'],
+            xai: ['xai', 'grok'], pathway: ['pathway', 'setup'],
+            'hebammen.agency einnahme': ['stripe', 'hebammen'],
+          }
+
+          // Smart matching: check vendor name + aliases against file names
+          const usedFiles = new Set<string>()
           for (const tx of data.transactions) {
             const vendor = (tx.matchedVendor || tx.vendor || '').toLowerCase()
             const firstWord = vendor.split(/[\s_(*]/)[0]
-            tx.hasFile = existingFiles.some(f => {
+            const searchTerms = [firstWord, vendor.replace(/[_\s]/g, '')]
+            // Add aliases
+            const aliases = fileAliases[vendor] || fileAliases[firstWord]
+            if (aliases) searchTerms.push(...aliases)
+
+            const match = existingFiles.find(f => {
+              if (usedFiles.has(f)) return false
               const fl = f.toLowerCase()
-              return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
+              return searchTerms.some(term => fl.includes(term))
             })
-            tx.matchedFile = existingFiles.find(f => {
-              const fl = f.toLowerCase()
-              return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
-            }) || ''
+            tx.hasFile = !!match
+            tx.matchedFile = match || ''
+            if (match) usedFiles.add(match)
           }
 
           res.writeHead(200, { 'Content-Type': 'application/json' })
