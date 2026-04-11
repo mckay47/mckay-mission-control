@@ -2428,8 +2428,8 @@ Antworte NUR mit dem JSON-Array.`
                         renamedFiles.push({ from: filename, to: newName })
                         finalName = newName
                       } else if (!hasText) {
-                        // Scanned receipt, no text → rename to "Beleg_pruefen"
-                        let baseName = `${periodYear}-${periodMonth}_Beleg_pruefen`
+                        // Scanned receipt, no text → rename to "pruefen"
+                        let baseName = 'pruefen'
                         let newName = `${baseName}.pdf`
                         let counter = 1
                         while (existsSync(join(monthDir, newName)) || renamedFiles.some(r => r.to === newName)) {
@@ -2514,14 +2514,17 @@ Antworte NUR mit dem JSON-Array.`
                 if (amountMatch) matchedFile = amountMatch.filename
               }
 
-              // Strategy 2: Direct vendor name in filename (no aliases, just exact vendor match)
-              if (!matchedFile && matchedVendor) {
-                const vendorLower = matchedVendor.toLowerCase().replace(/_/g, '')
-                const nameMatch = fileInfos.find(fi =>
-                  !usedFilesInner.includes(fi.filename) &&
-                  fi.filename.toLowerCase().replace(/[_\-\s]/g, '').includes(vendorLower)
-                )
-                if (nameMatch) matchedFile = nameMatch.filename
+              // Strategy 2: Vendor name words in filename (each word ≥3 chars checked)
+              if (!matchedFile) {
+                const vendorName = matchedVendor || vendorRaw || ''
+                const words = vendorName.toLowerCase().replace(/[_\-\.]/g, ' ').split(/\s+/).filter(w => w.length >= 3)
+                if (words.length > 0) {
+                  const nameMatch = fileInfos.find(fi =>
+                    !usedFilesInner.includes(fi.filename) &&
+                    words.some(w => fi.filename.toLowerCase().includes(w))
+                  )
+                  if (nameMatch) matchedFile = nameMatch.filename
+                }
               }
 
               const hasFile = !!matchedFile
@@ -2661,20 +2664,15 @@ Antworte NUR mit dem JSON-Array.`
             }
           }
 
-          // Phase 2: Match transactions to files — AMOUNT FIRST, then vendor name fallback
-          const fileAliases: Record<string, string[]> = {
-            pinoil: ['tanken', 'pinoil', 'tankstelle'], jet: ['tanken', 'jet', 'tankstelle'], shell: ['tanken', 'shell', 'tankstelle'],
-            finkbeiner: ['getraenke', 'finkbeiner', 'wasch', 'autowaesche'], media_markt: ['mediamarkt', 'media_markt', 'ipad', 'apple_ipad'],
-            deutsche_post: ['porto', 'post', 'briefmarke'], bcu: ['bcu', 'business_center', 'geschaeftsadresse'],
-            anthropic: ['anthropic', 'claude'], apple: ['apple', 'icloud', 'chatgpt'],
-            google_one: ['google_one', 'google'], google_workspace: ['google_workspace', 'google'],
-            xai: ['xai', 'grok'], pathway: ['pathway', 'setup'],
-            'hebammen.agency einnahme': ['stripe', 'hebammen'],
-          }
-
+          // Match transactions to files — AMOUNT FIRST, then vendor name
           const usedFiles = new Set<string>()
           for (const tx of data.transactions) {
             const txAmount = tx.amount || 0
+
+            // Re-resolve matchedVendor if null (older saved data might not have it)
+            if (!tx.matchedVendor && tx.vendor) {
+              tx.matchedVendor = matchVendor(tx.vendor)
+            }
 
             // Strategy 1: Match by AMOUNT (most reliable)
             let match = ''
@@ -2686,14 +2684,19 @@ Antworte NUR mit dem JSON-Array.`
               if (amountMatch) match = amountMatch.filename
             }
 
-            // Strategy 2: Direct vendor name in filename (no aliases, no guessing)
-            if (!match && tx.matchedVendor) {
-              const vendorLower = tx.matchedVendor.toLowerCase().replace(/_/g, '')
-              const nameMatch = fileInfos.find(fi => {
-                if (usedFiles.has(fi.filename)) return false
-                return fi.filename.toLowerCase().replace(/[_\-\s]/g, '').includes(vendorLower)
-              })
-              if (nameMatch) match = nameMatch.filename
+            // Strategy 2: Vendor name in filename (each word of vendor checked separately)
+            if (!match) {
+              const vendorName = tx.matchedVendor || tx.vendor || ''
+              // Split into words and check each (so "JET" matches "jet.pdf", "JET-Tankstelle" matches "jet" in filename)
+              const words = vendorName.toLowerCase().replace(/[_\-\.]/g, ' ').split(/\s+/).filter(w => w.length >= 3)
+              if (words.length > 0) {
+                const nameMatch = fileInfos.find(fi => {
+                  if (usedFiles.has(fi.filename)) return false
+                  const fl = fi.filename.toLowerCase()
+                  return words.some(w => fl.includes(w))
+                })
+                if (nameMatch) match = nameMatch.filename
+              }
             }
 
             tx.hasFile = !!match
