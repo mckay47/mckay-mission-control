@@ -4,6 +4,22 @@ project: "mission-control"
 updated: 2026-04-10
 ---
 
+## Active — Nächste Session: Design-Overhaul
+- [ ] **P1** Buchhaltung nach MCKAY COMMAND Design System restylen (physische Tiefe, Gauges, Animationen, 14px+)
+- [ ] **P1** Finance-Bereich Konzept: Privatkonto, Auto, Wohnen als Perspektiven
+- [ ] **P2** Finom Email-Trigger: "Kontoauszug bereit" → Todo erstellen
+
+## Done (Session D+: 2026-04-10/11)
+- [x] **P1** Layout-Redesign: 20%/80% Split, kompakte Karten, Full-Width Preview
+- [x] **P1** Monatsnavigation: Pfeile zum Blättern, parameterisierte Components
+- [x] **P1** GUV Dashboard + GUV Tab (ersetzt Datev)
+- [x] **P1** 14-Monats-Historie backfilled (354 Transaktionen, Feb 2025 - Apr 2026)
+- [x] **P1** Amount-basiertes Beleg-Matching (PDF-Beträge extrahieren)
+- [x] **P1** Content-basierte Duplikat-Erkennung
+- [x] **P1** Auto-Rename: PDFs lesen → Vendor erkennen → umbenennen
+- [x] **P1** Privateinlagen (Christina + Mehti) separat kategorisiert
+- [x] **P1** History-Endpoint für monatliche Trendübersicht
+
 ## Done (Session D: 2026-04-10)
 - [x] **P1** Buchhaltung: Funktionaler Beleg-Tracker (Email-Scan, Kontoauszug-Upload, Drag&Drop, Auto-Rename)
 - [x] **P1** Toast-System: Global, 5 Typen, Progress-Bar, Glassmorphism
