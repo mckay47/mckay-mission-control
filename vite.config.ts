@@ -6,7 +6,7 @@ import mckayPlugin from './scripts/vite-mckay-plugin.mjs'
 import { spawn, type ChildProcess } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, readdirSync, renameSync } from 'fs'
+import { existsSync, mkdirSync, appendFileSync, writeFileSync, readFileSync, readdirSync, renameSync, statSync, openSync, readSync, closeSync } from 'fs'
 import type { Plugin, ViteDevServer } from 'vite'
 import { createClient } from '@supabase/supabase-js'
 // @ts-expect-error — imapflow types
@@ -2775,17 +2775,7 @@ Antworte NUR mit dem JSON-Array.`
                   let baseName = vendor !== 'Unbekannt'
                     ? `${year}-${month}_${vendor}_Rechnung`
                     : `${year}-${month}_${item.origName.replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9._-]/g, '_')}`
-                  let safeName = `${baseName}.pdf`
-                  let targetPath = join(targetDir, safeName)
-
-                  // Duplicate numbering: _2, _3, etc.
-                  let dupCounter = 1
-                  while (existsSync(targetPath)) {
-                    dupCounter++
-                    safeName = `${baseName}_${dupCounter}.pdf`
-                    targetPath = join(targetDir, safeName)
-                  }
-
+                  // Download attachment first, then check for duplicates by content
                   const content = await client.download(String(item.uid), item.partId, { uid: true })
                   if (!content?.content) continue
 
@@ -2793,7 +2783,40 @@ Antworte NUR mit dem JSON-Array.`
                   for await (const chunk of content.content) {
                     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
                   }
-                  writeFileSync(targetPath, Buffer.concat(chunks))
+                  const fileBuffer = Buffer.concat(chunks)
+
+                  // Content-based duplicate check: compare size + first 512 bytes against ALL existing files
+                  const existingFiles = readdirSync(targetDir).filter(f => f.endsWith('.pdf') && !f.startsWith('.'))
+                  let isDuplicate = false
+                  for (const ef of existingFiles) {
+                    const efPath = join(targetDir, ef)
+                    const efStat = statSync(efPath)
+                    if (efStat.size === fileBuffer.length) {
+                      // Same size → compare first 512 bytes
+                      const efHead = Buffer.alloc(512)
+                      const fd = openSync(efPath, 'r')
+                      readSync(fd, efHead, 0, 512, 0)
+                      closeSync(fd)
+                      if (efHead.compare(fileBuffer.subarray(0, 512)) === 0) {
+                        isDuplicate = true
+                        skipped.push({ reason: `Duplikat: ${ef}`, subject: item.subject.slice(0, 60), account })
+                        break
+                      }
+                    }
+                  }
+                  if (isDuplicate) continue
+
+                  // Find unique filename
+                  let safeName = `${baseName}.pdf`
+                  let targetPath = join(targetDir, safeName)
+                  let dupCounter = 1
+                  while (existsSync(targetPath)) {
+                    dupCounter++
+                    safeName = `${baseName}_${dupCounter}.pdf`
+                    targetPath = join(targetDir, safeName)
+                  }
+
+                  writeFileSync(targetPath, fileBuffer)
                   saved.push({ vendor, filename: safeName, from: item.from, subject: item.subject.slice(0, 80), account })
                 } catch (partErr) {
                   skipped.push({ reason: (partErr as Error).message.slice(0, 50), subject: item.subject.slice(0, 60), account })
