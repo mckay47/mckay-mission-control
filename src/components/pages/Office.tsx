@@ -362,6 +362,92 @@ function BuchhaltungUebersicht({ year, month }: { year: string; month: string })
           <span style={{ fontSize: 11, color: '#8B5CF6' }}>Kontoauszug im Belege-Tab hochladen für vollständige Übersicht</span>
         </div>
       )}
+
+      {/* Privateinlagen */}
+      {(() => {
+        const privateinlagen = tx.filter(t => t.category === 'privateinlage_christina' || t.category === 'privateinlage_mehti')
+        if (privateinlagen.length === 0) return null
+        const total = privateinlagen.reduce((s, t) => s + t.amount, 0)
+        return (
+          <>
+            <TcLabel>Privateinlagen</TcLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {privateinlagen.map((t, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--tx2)' }}>{t.date} — {t.vendor}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: '#8B5CF6' }}>+{t.amount.toFixed(2)} €</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontWeight: 700 }}>
+                <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Gesamt Privateinlagen</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#8B5CF6' }}>+{total.toFixed(2)} €</span>
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* Monatliche Entwicklung */}
+      <GUVHistory currentPeriod={`${year}-${month}`} />
+    </>
+  )
+}
+
+// GUV History — monatliche Trendübersicht
+function GUVHistory({ currentPeriod }: { currentPeriod: string }) {
+  const [history, setHistory] = useState<Array<{ period: string; einnahmen: number; ausgaben: number; privateinlagen: number; saldo: number; txCount: number }>>([])
+
+  useEffect(() => {
+    fetch('/api/belege/history')
+      .then(r => r.json())
+      .then(d => { if (d.history) setHistory(d.history) })
+      .catch(() => {})
+  }, [])
+
+  if (history.length === 0) return null
+
+  const maxAusgaben = Math.max(...history.map(h => h.ausgaben), 1)
+
+  return (
+    <>
+      <TcLabel>Monatliche Entwicklung</TcLabel>
+      {/* Table header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 0 4px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <span style={{ fontSize: 9, color: 'var(--tx3)', width: 65, letterSpacing: 0.5 }}>MONAT</span>
+        <span style={{ fontSize: 9, color: 'var(--tx3)', width: 75, textAlign: 'right', letterSpacing: 0.5 }}>EINNAHMEN</span>
+        <span style={{ fontSize: 9, color: 'var(--tx3)', width: 75, textAlign: 'right', letterSpacing: 0.5 }}>AUSGABEN</span>
+        <span style={{ fontSize: 9, color: 'var(--tx3)', flex: 1 }} />
+        <span style={{ fontSize: 9, color: 'var(--tx3)', width: 75, textAlign: 'right', letterSpacing: 0.5 }}>SALDO</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {history.map(h => {
+          const isCurrent = h.period === currentPeriod
+          const pctBar = (h.ausgaben / maxAusgaben) * 100
+          return (
+            <div key={h.period} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
+              borderBottom: '1px solid rgba(255,255,255,0.025)',
+              background: isCurrent ? 'rgba(0,240,255,0.03)' : 'transparent',
+            }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: isCurrent ? '#00F0FF' : 'var(--tx3)', width: 65, fontWeight: isCurrent ? 700 : 400 }}>
+                {h.period.slice(2)}
+              </span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: h.einnahmen > 0 ? '#00FF88' : 'var(--tx3)', width: 75, textAlign: 'right' }}>
+                {h.einnahmen > 0 ? `+${h.einnahmen.toFixed(0)}` : '—'}
+              </span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF6B2C', width: 75, textAlign: 'right' }}>
+                -{h.ausgaben.toFixed(0)}
+              </span>
+              <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                <div style={{ width: `${pctBar}%`, height: '100%', borderRadius: 2, background: h.saldo >= 0 ? '#00FF88' : '#FF6B2C', opacity: 0.6 }} />
+              </div>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: h.saldo >= 0 ? '#00FF88' : '#FF6B2C', width: 75, textAlign: 'right' }}>
+                {h.saldo >= 0 ? '+' : ''}{h.saldo.toFixed(0)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </>
   )
 }
@@ -376,6 +462,8 @@ interface KontoauszugTransaction {
   wallet: string
   matchedVendor: string | null
   hasFile: boolean
+  matchedFile?: string
+  category?: string
 }
 
 function BuchhaltungBelege({ year, month }: { year: string; month: string }) {

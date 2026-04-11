@@ -2713,6 +2713,57 @@ Antworte NUR mit dem JSON-Array.`
       })
 
       // --------------------------------------------------------
+      // GET /api/belege/history — Monthly summary for all months with data
+      // Returns: array of { period, einnahmen, ausgaben, privateinlagen, cashback, saldo, txCount }
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/belege/history')) return next()
+
+        try {
+          const history: Array<{ period: string; einnahmen: number; ausgaben: number; privateinlagen: number; cashback: number; saldo: number; txCount: number; belegeComplete: boolean }> = []
+
+          // Scan all year folders in BUCHHALTUNG
+          if (existsSync(BUCHHALTUNG_ROOT)) {
+            const years = readdirSync(BUCHHALTUNG_ROOT).filter(f => /^\d{4}$/.test(f)).sort()
+            for (const year of years) {
+              const yearDir = join(BUCHHALTUNG_ROOT, year)
+              const months = readdirSync(yearDir).filter(f => /^\d{2}_\d{4}$/.test(f)).sort()
+              for (const monthFolder of months) {
+                const month = monthFolder.split('_')[0]
+                const jsonPath = join(yearDir, monthFolder, `_kontoauszug_${year}-${month}.json`)
+                if (!existsSync(jsonPath)) continue
+
+                try {
+                  const data = JSON.parse(readFileSync(jsonPath, 'utf-8'))
+                  const txs = data.transactions || []
+                  let einnahmen = 0, ausgaben = 0, privateinlagen = 0, cashback = 0
+                  for (const tx of txs) {
+                    if (tx.category === 'revenue') einnahmen += tx.amount
+                    else if (tx.category === 'privateinlage_christina' || tx.category === 'privateinlage_mehti') privateinlagen += tx.amount
+                    else if (tx.category === 'cashback') cashback += tx.amount
+                    else if (tx.type === 'expense') ausgaben += tx.amount
+                  }
+                  history.push({
+                    period: `${year}-${month}`,
+                    einnahmen, ausgaben, privateinlagen, cashback,
+                    saldo: einnahmen + cashback - ausgaben,
+                    txCount: txs.length,
+                    belegeComplete: !!data.belegeComplete || !!data.historicImport,
+                  })
+                } catch { /* skip corrupted files */ }
+              }
+            }
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ history: history.sort((a, b) => a.period.localeCompare(b.period)) }))
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: (err as Error).message }))
+        }
+      })
+
+      // --------------------------------------------------------
       // POST /api/belege/upload — Upload a receipt file
       // --------------------------------------------------------
       server.middlewares.use((req, res, next) => {
