@@ -599,27 +599,20 @@ function BuchhaltungBelege() {
     handleScanEmail()
   }, [handleKontoauszugUpload, handleScanEmail])
 
-  // Merge kontoauszug transactions with folder status for the definitive view
-  const matchedFileNames = new Set<string>() // track which folder files are already matched
+  // Use backend matching directly — no frontend re-matching
+  const matchedFileNames = new Set(kontoauszugTx.filter(tx => tx.matchedFile).map(tx => tx.matchedFile))
 
-  const kontoTransactions = kontoauszugTx.map((tx, i) => {
-    const isExpense = tx.type === 'expense'
-    // Find matching file in folder
-    const matchedFile = folderStatus?.files.find(f => {
-      if (matchedFileNames.has(f.filename)) return false // already matched to another tx
-      const fl = f.filename.toLowerCase()
-      const vendor = (tx.matchedVendor || tx.vendor).toLowerCase()
-      const firstWord = vendor.split(/[\s_(*]/)[0]
-      return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
-    })
-    if (matchedFile) matchedFileNames.add(matchedFile.filename)
-    return { ...tx, idx: i, matchedFile: matchedFile?.filename || '', needsBeleg: isExpense, source: 'kontoauszug' as const }
-  })
+  const kontoTransactions = kontoauszugTx.map((tx, i) => ({
+    ...tx,
+    idx: i,
+    needsBeleg: tx.type === 'expense',
+    source: 'kontoauszug' as const,
+  }))
 
   // Find files in folder that DON'T match any Kontoauszug transaction = privat/bar bezahlt
   const unmatchedFiles = (folderStatus?.files || [])
     .filter(f => !matchedFileNames.has(f.filename))
-    .filter(f => !f.filename.toLowerCase().includes('kontoauszug')) // Skip the Kontoauszug PDF itself
+    .filter(f => !f.filename.toLowerCase().includes('kontoauszug') && !f.filename.startsWith('_'))
     .map((f, i) => ({
       date: '', vendor: f.vendor !== 'Unbekannt' ? f.vendor : f.filename.replace(/^[\d-]+_/, '').replace(/_/g, ' ').replace(/\.pdf$/i, ''),
       description: f.filename, amount: 0, type: 'expense' as const, wallet: 'Privat/Bar',
