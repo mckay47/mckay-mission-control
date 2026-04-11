@@ -5,7 +5,7 @@ import { PreviewPanel, TcLabel, TcText, TcStatRow, TcStat } from '../shared/Prev
 import { BottomTicker } from '../shared/BottomTicker.tsx'
 import { officeCategories } from '../../lib/categories.ts'
 import { useToast } from '../ui/Toast.tsx'
-import { Upload, FileText, Check, Clock, AlertTriangle, ExternalLink, TrendingUp, Users, ShoppingCart, Target, CreditCard, Shield, Wifi, Smartphone, Car, Building, Mail, Download, Globe, CheckCircle, Circle, Send, Inbox } from 'lucide-react'
+import { Upload, FileText, Check, AlertTriangle, ExternalLink, CreditCard, Shield, Wifi, Smartphone, Car, Building, Mail, Download, Globe, CheckCircle, Circle, Send, Inbox, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Props { toggleTheme: () => void }
 
@@ -176,18 +176,14 @@ const FolderCtx = createContext<{ status: FolderStatus | null; refresh: () => vo
 
 function useFolderStatus() { return useContext(FolderCtx) }
 
-function FolderStatusProvider({ children }: { children: React.ReactNode }) {
+function FolderStatusProvider({ year, month, children }: { year: string; month: string; children: React.ReactNode }) {
   const [status, setStatus] = useState<FolderStatus | null>(null)
   const refresh = useCallback(() => {
-    const now = new Date()
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const y = prev.getFullYear()
-    const m = String(prev.getMonth() + 1).padStart(2, '0')
-    fetch(`/api/belege/check-folder?year=${y}&month=${m}`)
+    fetch(`/api/belege/check-folder?year=${year}&month=${month}`)
       .then(r => r.json())
       .then(data => setStatus({ vendorsFound: data.vendorsFound || [], totalFiles: data.totalFiles || 0, files: data.files || [] }))
       .catch(() => {})
-  }, [])
+  }, [year, month])
   useEffect(() => { refresh() }, [refresh])
   return <FolderCtx.Provider value={{ status, refresh }}>{children}</FolderCtx.Provider>
 }
@@ -209,19 +205,17 @@ function getErwarteteBelegeWithStatus(folderStatus: FolderStatus | null) {
 
 // ── BUCHHALTUNG ──────────────────────────────────────────────
 
-function BuchhaltungUebersicht() {
+function BuchhaltungUebersicht({ year, month }: { year: string; month: string }) {
   const { status: folderStatus } = useFolderStatus()
   const [kontoData, setKontoData] = useState<{ transactions: KontoauszugTransaction[]; period: { von: string; bis: string } } | null>(null)
 
   // Load persisted kontoauszug data
   useEffect(() => {
-    const now = new Date()
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    fetch(`/api/belege/kontoauszug-data?year=${prev.getFullYear()}&month=${String(prev.getMonth() + 1).padStart(2, '0')}`)
+    fetch(`/api/belege/kontoauszug-data?year=${year}&month=${month}`)
       .then(r => r.json())
       .then(d => { if (d.exists) setKontoData(d) })
       .catch(() => {})
-  }, [])
+  }, [year, month])
 
   const hasKontoauszug = !!kontoData?.transactions?.length
   const tx = kontoData?.transactions || []
@@ -238,17 +232,100 @@ function BuchhaltungUebersicht() {
   const pct = expenses.length > 0 ? Math.round((belegVorhanden / expenses.length) * 100) : (totalFiles > 0 ? 100 : 0)
   const barColor = pct === 100 ? '#00FF88' : pct >= 50 ? '#FFD600' : '#FF6B2C'
 
-  const now = new Date()
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const monthName = prev.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
+  const selectedDate = new Date(Number(year), Number(month) - 1, 1)
+  const monthName = selectedDate.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
+
+  // Group income by vendor
+  const incomeByVendor = income.reduce<Record<string, number>>((acc, t) => {
+    const key = t.matchedVendor || t.vendor
+    acc[key] = (acc[key] || 0) + t.amount
+    return acc
+  }, {})
+
+  // Group expenses by vendor, sorted by amount
+  const expenseByVendor = expenses.reduce<Record<string, number>>((acc, t) => {
+    const key = t.matchedVendor || t.vendor
+    acc[key] = (acc[key] || 0) + t.amount
+    return acc
+  }, {})
+  const sortedExpenses = Object.entries(expenseByVendor).sort((a, b) => b[1] - a[1])
 
   return (
     <>
-      {/* Vollständigkeit — Hero */}
+      {/* GUV Summary Card */}
+      <div style={{ padding: '20px 22px', borderRadius: 14, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--tx3)', marginBottom: 14 }}>
+          {monthName}
+        </div>
+        <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Einnahmen</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 700, color: '#00FF88' }}>
+              {hasKontoauszug ? `+${totalEinnahmen.toFixed(2)} \u20AC` : '\u2014'}
+            </div>
+          </div>
+          <div style={{ width: 1, background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Ausgaben</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 700, color: '#FF6B2C' }}>
+              {hasKontoauszug ? `-${totalAusgaben.toFixed(2)} \u20AC` : '\u2014'}
+            </div>
+          </div>
+        </div>
+        {hasKontoauszug && (
+          <div style={{ padding: '10px 14px', borderRadius: 10, background: saldo >= 0 ? 'rgba(0,255,136,0.04)' : 'rgba(255,107,44,0.04)', border: `1px solid ${saldo >= 0 ? 'rgba(0,255,136,0.12)' : 'rgba(255,107,44,0.12)'}` }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Saldo</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, fontWeight: 700, color: saldo >= 0 ? '#00FF88' : '#FF6B2C' }}>
+                {saldo >= 0 ? '+' : ''}{saldo.toFixed(2)} \u20AC
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Revenue & Expense Breakdown */}
+      {hasKontoauszug && (
+        <div style={{ display: 'flex', gap: 16 }}>
+          {/* Revenue breakdown */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#00FF88', marginBottom: 8 }}>Einnahmen</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {Object.entries(incomeByVendor).sort((a, b) => b[1] - a[1]).map(([vendor, amount]) => (
+                <div key={vendor} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: 2, background: '#00FF88', flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{vendor}</span>
+                  </div>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 600, color: '#00FF88' }}>+{amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Expense breakdown (top 10) */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: '#FF6B2C', marginBottom: 8 }}>Ausgaben (Top 10)</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {sortedExpenses.slice(0, 10).map(([vendor, amount]) => (
+                <div key={vendor} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: 2, background: '#FF6B2C', flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{vendor}</span>
+                  </div>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 600, color: '#FF6B2C' }}>-{amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vollständigkeit */}
       <div style={{ padding: '16px 18px', borderRadius: 12, background: `${barColor}06`, border: `1px solid ${barColor}18` }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>
-            {hasKontoauszug ? `Buchhaltung ${monthName}` : monthName}
+            Beleg-Vollst\u00E4ndigkeit
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: barColor }}>{pct}%</span>
@@ -263,22 +340,6 @@ function BuchhaltungUebersicht() {
           }
         </div>
       </div>
-
-      {/* KPIs */}
-      {hasKontoauszug ? (
-        <KpiRow>
-          <KpiCard value={`€${totalAusgaben.toFixed(0)}`} label="Ausgaben" color="#FF6B2C" />
-          <KpiCard value={`€${totalEinnahmen.toFixed(0)}`} label="Einnahmen" color="#00FF88" />
-          <KpiCard value={`€${Math.abs(saldo).toFixed(0)}`} label={saldo >= 0 ? 'Überschuss' : 'Defizit'} color={saldo >= 0 ? '#00FF88' : '#FF6B2C'} />
-          <KpiCard value={`${totalFiles}`} label="Belege" color="var(--bl)" />
-        </KpiRow>
-      ) : (
-        <KpiRow>
-          <KpiCard value={`${totalFiles}`} label="Belege im Ordner" color="var(--bl)" />
-          <KpiCard value="—" label="Ausgaben" color="var(--tx3)" />
-          <KpiCard value="—" label="Einnahmen" color="var(--tx3)" />
-        </KpiRow>
-      )}
 
       {/* Steuerberaterin Timeline */}
       <TcLabel>Steuerberaterin</TcLabel>
@@ -317,7 +378,7 @@ interface KontoauszugTransaction {
   hasFile: boolean
 }
 
-function BuchhaltungBelege() {
+function BuchhaltungBelege({ year, month }: { year: string; month: string }) {
   const [dragOver, setDragOver] = useState(false)
   const [filter, setFilter] = useState<'alle' | 'fehlt' | 'vorhanden'>('alle')
   const [uploading, setUploading] = useState(false)
@@ -334,20 +395,19 @@ function BuchhaltungBelege() {
 
   // Load persisted kontoauszug data on mount
   useEffect(() => {
-    const now = new Date()
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const y = prev.getFullYear()
-    const m = String(prev.getMonth() + 1).padStart(2, '0')
-    fetch(`/api/belege/kontoauszug-data?year=${y}&month=${m}`)
+    fetch(`/api/belege/kontoauszug-data?year=${year}&month=${month}`)
       .then(r => r.json())
       .then(data => {
         if (data.exists && data.transactions) {
           setKontoauszugTx(data.transactions)
           setKontoauszugPeriod(data.period ? `${data.period.von} - ${data.period.bis}` : '')
+        } else {
+          setKontoauszugTx([])
+          setKontoauszugPeriod('')
         }
       })
       .catch(() => {})
-  }, [])
+  }, [year, month])
 
   const belege = getErwarteteBelegeWithStatus(folderStatus)
 
@@ -510,10 +570,9 @@ function BuchhaltungBelege() {
   // SSE-based: streams progress, runs in background, toast updates live
   const handleScanEmail = useCallback(() => {
     setScanning(true)
-    const now = new Date()
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const targetMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
-    const monthName = prev.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
+    const targetMonth = `${year}-${month}`
+    const scanDate = new Date(Number(year), Number(month) - 1, 1)
+    const monthName = scanDate.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
 
     const toastId = addToast({ type: 'loading', title: `Belege-Scan: ${monthName}`, message: 'Verbinde mit Postfächern...' })
 
@@ -719,9 +778,7 @@ function BuchhaltungBelege() {
             <button onClick={() => {
               addToast({ type: 'loading', title: 'Ordner wird neu geladen...', duration: 2000 })
               // Re-fetch kontoauszug-data which re-reads folder + re-matches
-              const now = new Date()
-              const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-              fetch(`/api/belege/kontoauszug-data?year=${prev.getFullYear()}&month=${String(prev.getMonth() + 1).padStart(2, '0')}`)
+              fetch(`/api/belege/kontoauszug-data?year=${year}&month=${month}`)
                 .then(r => r.json())
                 .then(d => {
                   if (d.exists && d.transactions) {
@@ -749,12 +806,12 @@ function BuchhaltungBelege() {
           </div>
 
           {/* Transaction table header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px 4px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ width: 16 }} />
-            <span style={{ fontSize: 9, color: 'var(--tx3)', width: 56, letterSpacing: 0.5 }}>DATUM</span>
-            <span style={{ fontSize: 9, color: 'var(--tx3)', flex: 1, letterSpacing: 0.5 }}>POSITION</span>
-            <span style={{ fontSize: 9, color: 'var(--tx3)', width: 70, textAlign: 'right', letterSpacing: 0.5 }}>BETRAG</span>
-            <span style={{ fontSize: 9, color: 'var(--tx3)', width: 60, textAlign: 'right', letterSpacing: 0.5 }}>STATUS</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ width: 80, fontSize: 10, color: 'var(--tx3)', letterSpacing: 0.5 }}>DATUM</span>
+            <span style={{ fontSize: 10, color: 'var(--tx3)', flex: 2, letterSpacing: 0.5 }}>POSITION</span>
+            <span style={{ fontSize: 10, color: 'var(--tx3)', flex: 1, letterSpacing: 0.5 }}>BELEG</span>
+            <span style={{ fontSize: 10, color: 'var(--tx3)', width: 100, textAlign: 'right', letterSpacing: 0.5 }}>BETRAG</span>
+            <span style={{ fontSize: 10, color: 'var(--tx3)', width: 80, textAlign: 'right', letterSpacing: 0.5 }}>STATUS</span>
           </div>
 
           {/* Transaction list */}
@@ -766,78 +823,72 @@ function BuchhaltungBelege() {
               const amountColor = tx.type === 'income' ? '#00FF88' : '#FF6B2C'
 
               return (
-                <div key={`tx-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 2px', borderBottom: '1px solid rgba(255,255,255,0.025)' }}>
-                  {/* Status dot */}
-                  {isExpense
-                    ? hasBeleg
-                      ? <CheckCircle size={14} color="#00FF88" style={{ flexShrink: 0 }} />
-                      : <Circle size={14} color="#FFD600" style={{ flexShrink: 0 }} />
-                    : <div style={{ width: 14, height: 14, flexShrink: 0 }} />
-                  }
-
+                <div key={`tx-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 2px', borderBottom: '1px solid rgba(255,255,255,0.025)', background: i % 2 === 1 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
                   {/* Date */}
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--tx3)', width: 56, flexShrink: 0 }}>
-                    {tx.date ? tx.date.slice(0, 5) : '—'}
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--tx3)', width: 80, flexShrink: 0 }}>
+                    {tx.date ? tx.date.slice(0, 5) : '\u2014'}
                   </span>
 
-                  {/* Vendor + file info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {/* Position (vendor name) */}
+                  <div style={{ flex: 2, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {tx.matchedVendor || tx.vendor}
                     </div>
+                    {/* Source hint for missing belege */}
+                    {isExpense && !hasBeleg && (() => {
+                      const match = erwarteteBelege.find(b => {
+                        const v = (tx.matchedVendor || '').toLowerCase()
+                        return v && b.vendor.toLowerCase().includes(v.split('_')[0])
+                      })
+                      return match ? (
+                        <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          \u2192 {match.sourceDetail}
+                        </div>
+                      ) : null
+                    })()}
+                  </div>
+
+                  {/* Beleg column */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     {hasBeleg && tx.matchedFile && (
-                      <div style={{ fontSize: 9, color: '#00FF88', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 11, color: '#00FF88', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {tx.matchedFile}
                       </div>
                     )}
                     {isExpense && !hasBeleg && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
-                        <button
-                          onClick={() => {
-                            const input = document.createElement('input')
-                            input.type = 'file'; input.accept = '.pdf,.png,.jpg,.jpeg'
-                            input.onchange = () => handleUpload(input.files, tx.matchedVendor || tx.vendor, `ka-${tx.idx}`)
-                            input.click()
-                          }}
-                          style={{ fontSize: 9, color: '#00F0FF', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontWeight: 600, whiteSpace: 'nowrap' }}
-                        >
-                          <Upload size={9} style={{ verticalAlign: -1, marginRight: 3 }} />Hochladen
-                        </button>
-                        {/* Source hint: where to find this receipt */}
-                        {(() => {
-                          const match = erwarteteBelege.find(b => {
-                            const v = (tx.matchedVendor || '').toLowerCase()
-                            return v && b.vendor.toLowerCase().includes(v.split('_')[0])
-                          })
-                          return match ? (
-                            <span style={{ fontSize: 8, color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              → {match.sourceDetail}
-                            </span>
-                          ) : null
-                        })()}
-                      </div>
+                      <button
+                        onClick={() => {
+                          const input = document.createElement('input')
+                          input.type = 'file'; input.accept = '.pdf,.png,.jpg,.jpeg'
+                          input.onchange = () => handleUpload(input.files, tx.matchedVendor || tx.vendor, `ka-${tx.idx}`)
+                          input.click()
+                        }}
+                        style={{ fontSize: 11, color: '#00F0FF', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontWeight: 600, whiteSpace: 'nowrap' }}
+                      >
+                        <Upload size={10} style={{ verticalAlign: -1, marginRight: 4 }} />Hochladen
+                      </button>
                     )}
                   </div>
 
                   {/* Amount */}
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: amountColor, width: 70, textAlign: 'right', flexShrink: 0 }}>
-                    {tx.amount > 0 ? `${tx.type === 'expense' ? '-' : '+'}${tx.amount.toFixed(2)}` : '—'}
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: amountColor, width: 100, textAlign: 'right', flexShrink: 0 }}>
+                    {tx.amount > 0 ? `${tx.type === 'expense' ? '-' : '+'}${tx.amount.toFixed(2)} \u20AC` : '\u2014'}
                   </span>
 
                   {/* Status badge */}
-                  <span style={{ width: 72, textAlign: 'right', flexShrink: 0 }}>
+                  <span style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>
                     {isExpense && tx.source === 'ordner' && (
-                      <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6' }}>
                         Privat/Bar
                       </span>
                     )}
                     {isExpense && tx.source !== 'ordner' && (
-                      <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${statusColor}15`, color: statusColor }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: `${statusColor}15`, color: statusColor }}>
                         {hasBeleg ? 'Beleg da' : 'Fehlt'}
                       </span>
                     )}
                     {!isExpense && (
-                      <span style={{ fontSize: 8, color: 'var(--tx3)' }}>Einnahme</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, padding: '3px 8px', borderRadius: 4, background: 'rgba(0,255,136,0.06)', color: '#00FF88' }}>Einnahme</span>
                     )}
                   </span>
                 </div>
@@ -850,35 +901,102 @@ function BuchhaltungBelege() {
   )
 }
 
-function BuchhaltungDatev() {
-  return (
-    <>
-      <TcLabel>Datev Unternehmen Online</TcLabel>
-      <div className="ghost-card" style={{ padding: '18px 20px', '--hc': 'rgba(255,255,255,0.04)' } as React.CSSProperties}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx)' }}>Schnittstelle</span>
-          <StatusBadge status="blue" label="Geplant" />
-        </div>
-        <TcText>Datev-Anbindung wird in einer späteren Phase ausgebaut. Aktuell werden Belege manuell an die Steuerberaterin übermittelt.</TcText>
-      </div>
+function BuchhaltungGUV({ year, month }: { year: string; month: string }) {
+  const [kontoData, setKontoData] = useState<{ transactions: KontoauszugTransaction[]; period: { von: string; bis: string } } | null>(null)
 
-      <TcLabel>Aktueller Workflow</TcLabel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {[
-          { step: '1', label: 'Belege im Beleg-Tab sammeln', icon: Upload, color: 'var(--bl)' },
-          { step: '2', label: 'Vollständigkeit prüfen (alle grün)', icon: CheckCircle, color: '#00FF88' },
-          { step: '3', label: 'Belege an Steuerberaterin senden', icon: Send, color: 'var(--p)' },
-          { step: '4', label: 'USt-Voranmeldung prüfen (quartalsweise)', icon: FileText, color: 'var(--a)' },
-        ].map(s => (
-          <div key={s.step} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${s.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <s.icon size={13} color={s.color} />
-            </div>
-            <span style={{ fontSize: 12, color: 'var(--tx2)' }}>{s.label}</span>
+  useEffect(() => {
+    fetch(`/api/belege/kontoauszug-data?year=${year}&month=${month}`)
+      .then(r => r.json())
+      .then(d => { if (d.exists) setKontoData(d) })
+      .catch(() => {})
+  }, [year, month])
+
+  const tx = kontoData?.transactions || []
+  const income = tx.filter(t => t.type === 'income')
+  const expenses = tx.filter(t => t.type === 'expense')
+  const totalEinnahmen = income.reduce((s, t) => s + t.amount, 0)
+  const totalAusgaben = expenses.reduce((s, t) => s + t.amount, 0)
+  const saldo = totalEinnahmen - totalAusgaben
+
+  // Group income by vendor
+  const incomeByVendor = income.reduce<Record<string, number>>((acc, t) => {
+    const key = t.matchedVendor || t.vendor
+    acc[key] = (acc[key] || 0) + t.amount
+    return acc
+  }, {})
+
+  // Group expenses by vendor, sorted by amount (highest first)
+  const expenseByVendor = expenses.reduce<Record<string, number>>((acc, t) => {
+    const key = t.matchedVendor || t.vendor
+    acc[key] = (acc[key] || 0) + t.amount
+    return acc
+  }, {})
+  const sortedExpenses = Object.entries(expenseByVendor).sort((a, b) => b[1] - a[1])
+  const sortedIncome = Object.entries(incomeByVendor).sort((a, b) => b[1] - a[1])
+
+  const selectedDate = new Date(Number(year), Number(month) - 1, 1)
+  const monthName = selectedDate.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
+
+  if (!kontoData?.transactions?.length) {
+    return (
+      <>
+        <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+          <CreditCard size={28} color="var(--tx3)" style={{ margin: '0 auto 10px' }} />
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--tx2)' }}>Keine Daten f\u00FCr {monthName}</div>
+          <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 6 }}>
+            Kontoauszug im Belege-Tab hochladen um die GUV zu erstellen.
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const separator = '\u2500'.repeat(40)
+  const doubleSeparator = '\u2550'.repeat(40)
+
+  return (
+    <div style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+      {/* EINNAHMEN */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#00FF88', marginBottom: 10 }}>EINNAHMEN</div>
+        {sortedIncome.map(([vendor, amount]) => (
+          <div key={vendor} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+            <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{vendor}</span>
+            <span style={{ fontSize: 13, color: '#00FF88', fontWeight: 600 }}>+{amount.toFixed(2)} \u20AC</span>
           </div>
         ))}
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)', margin: '6px 0', letterSpacing: 0 }}>{separator}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>Gesamt Einnahmen</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#00FF88' }}>+{totalEinnahmen.toFixed(2)} \u20AC</span>
+        </div>
       </div>
-    </>
+
+      {/* AUSGABEN */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#FF6B2C', marginBottom: 10 }}>AUSGABEN</div>
+        {sortedExpenses.map(([vendor, amount]) => (
+          <div key={vendor} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+            <span style={{ fontSize: 13, color: 'var(--tx2)' }}>{vendor}</span>
+            <span style={{ fontSize: 13, color: '#FF6B2C', fontWeight: 600 }}>-{amount.toFixed(2)} \u20AC</span>
+          </div>
+        ))}
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)', margin: '6px 0', letterSpacing: 0 }}>{separator}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>Gesamt Ausgaben</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#FF6B2C' }}>-{totalAusgaben.toFixed(2)} \u20AC</span>
+        </div>
+      </div>
+
+      {/* SALDO */}
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', margin: '8px 0', letterSpacing: 0 }}>{doubleSeparator}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--tx)' }}>SALDO</span>
+        <span style={{ fontSize: 18, fontWeight: 700, color: saldo >= 0 ? '#00FF88' : '#FF6B2C' }}>
+          {saldo >= 0 ? '+' : ''}{saldo.toFixed(2)} \u20AC
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -1305,30 +1423,41 @@ function BusinessEmailUebersicht() {
    TAB CONFIG — maps category IDs to real content
    ================================================================ */
 
-const categoryTabs: Record<string, { label: string; content: React.ReactNode }[]> = {
-  buchhaltung: [
-    { label: 'Übersicht', content: <BuchhaltungUebersicht /> },
-    { label: 'Belege', content: <BuchhaltungBelege /> },
-    { label: 'Datev', content: <BuchhaltungDatev /> },
-  ],
-  subscriptions: [
-    { label: 'Übersicht', content: <SubscriptionsUebersicht /> },
-    { label: 'Services', content: <SubscriptionsServices /> },
-    { label: 'Kosten', content: <SubscriptionsKosten /> },
-  ],
-  vertraege: [
-    { label: 'Übersicht', content: <VertraegeUebersicht /> },
-    { label: 'Aktiv', content: <VertraegeAktiv /> },
-    { label: 'Auslaufend', content: <VertraegeAuslaufend /> },
-  ],
-  kunden: [
-    { label: 'Übersicht', content: <KundenUebersicht /> },
-    { label: 'Hebam Agency', content: <KundenHebamAgency /> },
-    { label: 'Hebammenbüro', content: <KundenHebamBuero /> },
-  ],
-  'business-email': [
-    { label: 'Übersicht', content: <BusinessEmailUebersicht /> },
-  ],
+function buildTabs(catId: string, year: string, month: string): { label: string; content: React.ReactNode }[] {
+  if (catId === 'buchhaltung') {
+    return [
+      { label: '\u00DCbersicht', content: <BuchhaltungUebersicht year={year} month={month} /> },
+      { label: 'Belege', content: <BuchhaltungBelege year={year} month={month} /> },
+      { label: 'GUV', content: <BuchhaltungGUV year={year} month={month} /> },
+    ]
+  }
+  if (catId === 'subscriptions') {
+    return [
+      { label: '\u00DCbersicht', content: <SubscriptionsUebersicht /> },
+      { label: 'Services', content: <SubscriptionsServices /> },
+      { label: 'Kosten', content: <SubscriptionsKosten /> },
+    ]
+  }
+  if (catId === 'vertraege') {
+    return [
+      { label: '\u00DCbersicht', content: <VertraegeUebersicht /> },
+      { label: 'Aktiv', content: <VertraegeAktiv /> },
+      { label: 'Auslaufend', content: <VertraegeAuslaufend /> },
+    ]
+  }
+  if (catId === 'kunden') {
+    return [
+      { label: '\u00DCbersicht', content: <KundenUebersicht /> },
+      { label: 'Hebam Agency', content: <KundenHebamAgency /> },
+      { label: 'Hebammenb\u00FCro', content: <KundenHebamBuero /> },
+    ]
+  }
+  if (catId === 'business-email') {
+    return [
+      { label: '\u00DCbersicht', content: <BusinessEmailUebersicht /> },
+    ]
+  }
+  return [{ label: '\u00DCbersicht', content: <TcText>Inhalt wird geladen...</TcText> }]
 }
 
 /* ================================================================
@@ -1336,19 +1465,73 @@ const categoryTabs: Record<string, { label: string; content: React.ReactNode }[]
    ================================================================ */
 
 export function Office({ toggleTheme }: Props) {
+  // Month navigation state — lifted here so FolderStatusProvider gets the correct year/month
+  const [monthOffset, setMonthOffset] = useState(0) // 0 = previous month, -1 = 2 months ago, +1 = current month
+  const now = new Date()
+  const selectedDate = new Date(now.getFullYear(), now.getMonth() - 1 + monthOffset, 1)
+  const selectedYear = String(selectedDate.getFullYear())
+  const selectedMonth = String(selectedDate.getMonth() + 1).padStart(2, '0')
+
   return (
-    <FolderStatusProvider>
-      <OfficeInner toggleTheme={toggleTheme} />
+    <FolderStatusProvider year={selectedYear} month={selectedMonth}>
+      <OfficeInner
+        toggleTheme={toggleTheme}
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        monthOffset={monthOffset}
+        setMonthOffset={setMonthOffset}
+      />
     </FolderStatusProvider>
   )
 }
 
-function OfficeInner({ toggleTheme }: Props) {
+function MonthNavigator({ monthOffset, setMonthOffset, selectedDate }: { monthOffset: number; setMonthOffset: (fn: (p: number) => number) => void; selectedDate: Date }) {
+  const monthName = selectedDate.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
+  // Capitalize first letter
+  const displayName = monthName.charAt(0).toUpperCase() + monthName.slice(1)
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '10px 26px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <button
+        className="ghost-btn"
+        onClick={() => setMonthOffset(p => p - 1)}
+        style={{ padding: '4px 8px', display: 'flex', alignItems: 'center' }}
+      >
+        <ChevronLeft size={14} />
+      </button>
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 600, color: monthOffset === 0 ? 'var(--bl)' : 'var(--tx)', minWidth: 140, textAlign: 'center' }}>
+        {displayName}
+      </span>
+      <button
+        className="ghost-btn"
+        onClick={() => setMonthOffset(p => p + 1)}
+        style={{ padding: '4px 8px', display: 'flex', alignItems: 'center' }}
+      >
+        <ChevronRight size={14} />
+      </button>
+    </div>
+  )
+}
+
+interface OfficeInnerProps extends Props {
+  selectedYear: string
+  selectedMonth: string
+  monthOffset: number
+  setMonthOffset: (fn: (p: number) => number) => void
+}
+
+function OfficeInner({ toggleTheme, selectedYear, selectedMonth, monthOffset, setMonthOffset }: OfficeInnerProps) {
   const [sel, setSel] = useState(0)
   const [tab, setTab] = useState(0)
 
   const cat = officeCategories[sel]
-  const tabs = categoryTabs[cat.id] || [{ label: 'Übersicht', content: <TcText>Inhalt wird geladen...</TcText> }]
+  const tabs = buildTabs(cat.id, selectedYear, selectedMonth)
+
+  // Build the month navigator for Buchhaltung
+  const selectedDate = new Date(Number(selectedYear), Number(selectedMonth) - 1, 1)
+  const monthNav = cat.id === 'buchhaltung' ? (
+    <MonthNavigator monthOffset={monthOffset} setMonthOffset={setMonthOffset} selectedDate={selectedDate} />
+  ) : undefined
 
   return (
     <div style={{ width: '100%', padding: '0 7.5%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -1359,59 +1542,53 @@ function OfficeInner({ toggleTheme }: Props) {
       />
 
       <SplitLayout
-        ratio="55% 45%"
+        ratio="20% 80%"
         left={
           <>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <span className="st" style={{ padding: '0 2px' }}>Bereiche</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, color: 'var(--tx3)' }}>
-                {officeCategories.length} Bereiche
-              </span>
+            <div style={{ marginBottom: 10 }}>
+              <span className="st" style={{ padding: '0 2px', fontSize: 11 }}>Bereiche</span>
             </div>
 
-            {/* Category cards grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-              {officeCategories.map((c, i) => (
-                <div
-                  key={c.id}
-                  className="ghost-card"
-                  style={{
-                    '--hc': c.glow, padding: '18px 22px', gap: 8, cursor: 'pointer',
-                    outline: sel === i ? `1.5px solid ${c.color}` : 'none',
-                    outlineOffset: -1,
-                  } as React.CSSProperties}
-                  onClick={() => { setSel(i); setTab(0) }}
-                >
-                  {/* Emoji + Name + Badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>{c.emoji}</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--tx)' }}>{c.name}</span>
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
-                      background: `${c.color}15`, color: c.color, letterSpacing: 1, marginLeft: 'auto',
-                    }}>
-                      {c.badge}
-                    </span>
+            {/* Category cards — vertical stack */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {officeCategories.map((c, i) => {
+                const isSelected = sel === i
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => { setSel(i); setTab(0) }}
+                    style={{
+                      padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+                      background: isSelected ? `${c.color}06` : 'transparent',
+                      border: isSelected ? `1px solid ${c.color}30` : '1px solid transparent',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {/* Row: Emoji + Name + Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14 }}>{c.emoji}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? 'var(--tx)' : 'var(--tx2)', flex: 1 }}>{c.name}</span>
+                      <span style={{
+                        fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                        background: `${c.color}12`, color: c.color, letterSpacing: 0.5,
+                      }}>
+                        {c.badge}
+                      </span>
+                    </div>
+
+                    {/* Stats row */}
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                      {c.stats.map((s, si) => (
+                        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: c.color }}>{s.value}</span>
+                          <span style={{ fontSize: 9, color: 'var(--tx3)' }}>{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-
-                  {/* Description */}
-                  <div style={{ fontSize: 12, color: 'var(--tx2)', lineHeight: 1.5 }}>{c.desc}</div>
-
-                  {/* Stats */}
-                  <div style={{ display: 'flex', gap: 14, marginTop: 4 }}>
-                    {c.stats.map((s, si) => (
-                      <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: c.color }}>{s.value}</span>
-                        <span style={{ fontSize: 10, color: 'var(--tx3)' }}>{s.label}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Color accent bar */}
-                  <div style={{ width: 32, height: 3, borderRadius: 2, background: c.color, opacity: 0.5, marginTop: 2 }} />
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         }
@@ -1421,6 +1598,7 @@ function OfficeInner({ toggleTheme }: Props) {
             ledColor={cat.color}
             ledGlow={cat.glow}
             badge={{ label: cat.badge, bg: `${cat.color}15`, color: cat.color }}
+            pipeline={monthNav}
             tabs={tabs}
             activeTab={tab}
             onTabChange={setTab}
