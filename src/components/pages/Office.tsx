@@ -532,241 +532,212 @@ function BuchhaltungBelege() {
     }
   }, [addToast, updateToast])
 
+  // Auto-trigger email scan after Kontoauszug upload
+  const handleKontoauszugAndScan = useCallback(async (files: FileList | null) => {
+    await handleKontoauszugUpload(files)
+    // Auto-trigger email scan in background
+    handleScanEmail()
+  }, [handleKontoauszugUpload, handleScanEmail])
+
+  // Merge kontoauszug transactions with folder status for the definitive view
+  const allTransactions = kontoauszugTx.map((tx, i) => {
+    const isExpense = tx.type === 'expense'
+    // Find matching file in folder
+    const matchedFile = folderStatus?.files.find(f => {
+      const fl = f.filename.toLowerCase()
+      const vendor = (tx.matchedVendor || tx.vendor).toLowerCase()
+      const firstWord = vendor.split(/[\s_(*]/)[0]
+      return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
+    })
+    return { ...tx, idx: i, matchedFile: matchedFile?.filename || '', needsBeleg: isExpense }
+  })
+
+  const expenses = allTransactions.filter(t => t.needsBeleg)
+  const belegVorhanden = expenses.filter(t => t.hasFile || t.matchedFile).length
+  const belegFehlt = expenses.filter(t => !t.hasFile && !t.matchedFile).length
+  const totalAusgaben = expenses.reduce((s, t) => s + t.amount, 0)
+  const totalEinnahmen = allTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+
+  const filteredTx = filter === 'alle' ? allTransactions
+    : filter === 'fehlt' ? allTransactions.filter(t => t.needsBeleg && !t.hasFile && !t.matchedFile)
+    : allTransactions.filter(t => t.hasFile || t.matchedFile || !t.needsBeleg)
+
   return (
     <>
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.png,.jpg,.jpeg,.heic"
-        multiple
-        style={{ display: 'none' }}
-        onChange={e => handleUpload(e.target.files)}
-      />
-      {/* Hidden kontoauszug file input */}
-      <input
-        ref={kontoauszugInputRef}
-        type="file"
-        accept=".pdf"
-        style={{ display: 'none' }}
-        onChange={e => handleKontoauszugUpload(e.target.files)}
-      />
+      {/* Hidden inputs */}
+      <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.heic" multiple style={{ display: 'none' }} onChange={e => handleUpload(e.target.files)} />
+      <input ref={kontoauszugInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleKontoauszugAndScan(e.target.files)} />
 
-      {/* Upload Zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        style={{
-          border: `2px dashed ${dragOver ? 'var(--bl)' : uploading ? '#00F0FF55' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius: 14, padding: '20px 16px', textAlign: 'center',
-          background: dragOver ? 'rgba(0, 145, 255, 0.05)' : uploading ? 'rgba(0, 240, 255, 0.03)' : 'transparent',
-          transition: 'all 0.2s ease', cursor: uploading ? 'wait' : 'pointer',
-          opacity: uploading ? 0.7 : 1,
-        }}
-      >
-        <Upload size={20} color={dragOver ? 'var(--bl)' : 'var(--tx3)'} style={{ margin: '0 auto 6px' }} />
-        <div style={{ fontSize: 12, fontWeight: 600, color: dragOver ? 'var(--bl)' : 'var(--tx2)' }}>
-          {uploading ? 'Wird hochgeladen...' : 'Beleg hochladen — Drag & Drop oder Klick'}
-        </div>
-        <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 3 }}>
-          Auto-Rename: Datum_Anbieter_Typ.pdf
-        </div>
-      </div>
-
-      {/* Action Buttons: Scan Email + Kontoauszug */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={handleScanEmail}
-          disabled={scanning}
-          style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,240,255,0.15)',
-            background: scanning ? 'rgba(0,240,255,0.08)' : 'rgba(0,240,255,0.04)',
-            color: '#00F0FF', fontSize: 11, fontWeight: 700, cursor: scanning ? 'wait' : 'pointer',
-            transition: 'all 0.2s ease', letterSpacing: 0.3,
-          }}
-        >
-          <Inbox size={14} />
-          {scanning ? 'Scan läuft im Hintergrund...' : 'E-Mail-Postfächer scannen'}
-        </button>
-        <button
-          onClick={() => kontoauszugInputRef.current?.click()}
-          disabled={parsingKontoauszug}
-          style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(139,92,246,0.2)',
-            background: parsingKontoauszug ? 'rgba(139,92,246,0.08)' : 'rgba(139,92,246,0.04)',
-            color: '#8B5CF6', fontSize: 11, fontWeight: 700, cursor: parsingKontoauszug ? 'wait' : 'pointer',
-            transition: 'all 0.2s ease', letterSpacing: 0.3,
-          }}
-        >
-          <CreditCard size={14} />
-          {parsingKontoauszug ? 'Wird analysiert...' : 'Kontoauszug hochladen'}
-        </button>
-      </div>
-
-      {/* Scan Results (if any) */}
-      {scanResults && scanResults.length > 0 && (
-        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(0,240,255,0.04)', border: '1px solid rgba(0,240,255,0.1)' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#00F0FF', marginBottom: 8, letterSpacing: 0.5 }}>
-            GEFUNDENE RECHNUNGS-EMAILS ({scanResults.length})
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {scanResults.slice(0, 8).map((r, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                <Mail size={10} color="var(--tx3)" />
-                <span style={{ fontSize: 10, color: 'var(--tx2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.subject}</span>
-                <span style={{ fontSize: 9, color: 'var(--tx3)', flexShrink: 0 }}>{r.date}</span>
-                <span style={{ fontSize: 9, color: 'var(--tx3)', flexShrink: 0 }}>{r.account.split('@')[0]}</span>
-              </div>
-            ))}
-            {scanResults.length > 8 && (
-              <div style={{ fontSize: 9, color: 'var(--tx3)', textAlign: 'center', marginTop: 2 }}>
-                +{scanResults.length - 8} weitere
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Kontoauszug Summary — shown after upload */}
-      {kontoauszugTx.length > 0 && (
-        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.12)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#8B5CF6', letterSpacing: 0.5 }}>
-              KONTOAUSZUG {kontoauszugPeriod}
-            </div>
-            <div style={{ fontSize: 9, color: 'var(--tx3)' }}>
-              {kontoauszugTx.length} Transaktionen · {kontoauszugBelege.length} neue Belege erkannt
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#FF6B2C' }}>
-                {kontoauszugTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0).toFixed(2)}
-              </span>
-              <span style={{ fontSize: 9, color: 'var(--tx3)' }}>Ausgaben</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#00FF88' }}>
-                {kontoauszugTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0).toFixed(2)}
-              </span>
-              <span style={{ fontSize: 9, color: 'var(--tx3)' }}>Einnahmen</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filter */}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {([['alle', `Alle (${allBelege.length})`], ['fehlt', `Fehlt (${fehlend})`], ['vorhanden', `Vorhanden (${vorhanden})`]] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
+      {/* STATE 1: No Kontoauszug uploaded yet */}
+      {kontoauszugTx.length === 0 && (
+        <>
+          <div
+            onClick={() => kontoauszugInputRef.current?.click()}
             style={{
-              fontSize: 10, fontWeight: 600, padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              background: filter === key ? 'rgba(255,255,255,0.1)' : 'transparent',
-              color: filter === key ? 'var(--tx)' : 'var(--tx3)',
+              padding: '32px 20px', borderRadius: 14, textAlign: 'center', cursor: 'pointer',
+              border: '2px dashed rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.04)',
+              transition: 'all 0.2s ease',
             }}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <CreditCard size={28} color="#8B5CF6" style={{ margin: '0 auto 10px' }} />
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#8B5CF6' }}>Kontoauszug hochladen</div>
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6, lineHeight: 1.5 }}>
+              Lade den Finom-Kontoauszug als PDF hoch um die Belegarbeit zu starten.<br />
+              Alle Transaktionen werden erkannt, E-Mail-Postfächer automatisch gescannt.
+            </div>
+          </div>
 
-      {/* Beleg-Checkliste */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {filtered.map(b => {
-          const SourceIcon = sourceIcons[b.source]
-          const isJustUploaded = uploadedIds.has(b.id)
-          const effectiveStatus = isJustUploaded ? 'vorhanden' : b.status
-          const statusColor = effectiveStatus === 'vorhanden' ? '#00FF88' : effectiveStatus === 'überfällig' ? '#FF6B2C' : '#FFD600'
-          const isFromKontoauszug = b.id.startsWith('ka-')
-          return (
-            <div key={b.id} className="ghost-card" style={{ padding: '12px 14px', '--hc': `${statusColor}08` } as React.CSSProperties}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {/* Status Icon */}
-                {effectiveStatus === 'vorhanden'
-                  ? <CheckCircle size={16} color="#00FF88" />
-                  : <Circle size={16} color={statusColor} />
-                }
-                {/* Vendor + Description */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)' }}>{b.vendor}</span>
-                    <StatusBadge
-                      status={effectiveStatus === 'vorhanden' ? 'green' : effectiveStatus === 'überfällig' ? 'orange' : 'yellow'}
-                      label={effectiveStatus === 'vorhanden' ? 'Vorhanden' : effectiveStatus === 'überfällig' ? 'Überfällig' : 'Fehlt'}
-                    />
-                    {isFromKontoauszug && (
-                      <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', letterSpacing: 0.5 }}>KONTOAUSZUG</span>
+          {/* Drag & Drop for manual belege upload */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              border: `1px dashed ${dragOver ? 'var(--bl)' : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: 10, padding: '12px', textAlign: 'center', cursor: 'pointer',
+              background: dragOver ? 'rgba(0,145,255,0.05)' : 'transparent', transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ fontSize: 10, color: 'var(--tx3)' }}>
+              <Upload size={12} color="var(--tx3)" style={{ verticalAlign: -2, marginRight: 6 }} />
+              Oder Belege direkt per Drag & Drop hochladen
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* STATE 2: Kontoauszug loaded — Transaction View */}
+      {kontoauszugTx.length > 0 && (
+        <>
+          {/* KPI Row */}
+          <KpiRow>
+            <KpiCard value={`€${totalAusgaben.toFixed(0)}`} label="Ausgaben" color="#FF6B2C" />
+            <KpiCard value={`€${totalEinnahmen.toFixed(0)}`} label="Einnahmen" color="#00FF88" />
+            <KpiCard value={`${belegVorhanden}`} label="Belege da" color="#00FF88" />
+            <KpiCard value={`${belegFehlt}`} label="Fehlen" color={belegFehlt > 0 ? '#FFD600' : '#00FF88'} />
+          </KpiRow>
+
+          {/* Progress bar */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--tx3)' }}>{kontoauszugPeriod}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: belegFehlt === 0 ? '#00FF88' : '#FFD600' }}>
+                {expenses.length > 0 ? Math.round((belegVorhanden / expenses.length) * 100) : 0}%
+              </span>
+            </div>
+            <ProgressBar progress={expenses.length > 0 ? (belegVorhanden / expenses.length) * 100 : 0} color={belegFehlt === 0 ? '#00FF88' : '#FFD600'} />
+          </div>
+
+          {/* Action buttons row */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={handleScanEmail} disabled={scanning}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,240,255,0.12)', background: 'rgba(0,240,255,0.04)', color: '#00F0FF', fontSize: 10, fontWeight: 700, cursor: scanning ? 'wait' : 'pointer' }}>
+              <Inbox size={12} /> {scanning ? 'Scannt...' : 'Emails scannen'}
+            </button>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, border: `1px solid ${dragOver ? 'var(--bl)' : 'rgba(255,255,255,0.08)'}`, background: dragOver ? 'rgba(0,145,255,0.05)' : 'rgba(255,255,255,0.02)', color: 'var(--tx3)', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+              <Upload size={12} /> Belege hochladen
+            </div>
+            <button onClick={() => kontoauszugInputRef.current?.click()}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(139,92,246,0.12)', background: 'rgba(139,92,246,0.03)', color: '#8B5CF6', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+              <CreditCard size={12} />
+            </button>
+          </div>
+
+          {/* Filter */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {([['alle', `Alle (${allTransactions.length})`], ['fehlt', `Fehlt (${belegFehlt})`], ['vorhanden', `Vorhanden (${belegVorhanden})`]] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setFilter(key)}
+                style={{ fontSize: 10, fontWeight: 600, padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: filter === key ? 'rgba(255,255,255,0.1)' : 'transparent', color: filter === key ? 'var(--tx)' : 'var(--tx3)' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Transaction table header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px 4px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ width: 16 }} />
+            <span style={{ fontSize: 9, color: 'var(--tx3)', width: 56, letterSpacing: 0.5 }}>DATUM</span>
+            <span style={{ fontSize: 9, color: 'var(--tx3)', flex: 1, letterSpacing: 0.5 }}>POSITION</span>
+            <span style={{ fontSize: 9, color: 'var(--tx3)', width: 70, textAlign: 'right', letterSpacing: 0.5 }}>BETRAG</span>
+            <span style={{ fontSize: 9, color: 'var(--tx3)', width: 60, textAlign: 'right', letterSpacing: 0.5 }}>STATUS</span>
+          </div>
+
+          {/* Transaction list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {filteredTx.map((tx, i) => {
+              const isExpense = tx.needsBeleg
+              const hasBeleg = tx.hasFile || !!tx.matchedFile
+              const statusColor = !isExpense ? 'var(--tx3)' : hasBeleg ? '#00FF88' : '#FFD600'
+              const amountColor = tx.type === 'income' ? '#00FF88' : '#FF6B2C'
+
+              return (
+                <div key={`tx-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 2px', borderBottom: '1px solid rgba(255,255,255,0.025)' }}>
+                  {/* Status dot */}
+                  {isExpense
+                    ? hasBeleg
+                      ? <CheckCircle size={14} color="#00FF88" style={{ flexShrink: 0 }} />
+                      : <Circle size={14} color="#FFD600" style={{ flexShrink: 0 }} />
+                    : <div style={{ width: 14, height: 14, flexShrink: 0 }} />
+                  }
+
+                  {/* Date */}
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--tx3)', width: 56, flexShrink: 0 }}>
+                    {tx.date.slice(0, 5)}
+                  </span>
+
+                  {/* Vendor + file info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {tx.matchedVendor || tx.vendor}
+                    </div>
+                    {hasBeleg && tx.matchedFile && (
+                      <div style={{ fontSize: 9, color: '#00FF88', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {tx.matchedFile}
+                      </div>
                     )}
-                    {isJustUploaded && (
-                      <span style={{ fontSize: 8, color: '#00FF88', fontWeight: 700, letterSpacing: 0.5 }}>NEU</span>
+                    {isExpense && !hasBeleg && (
+                      <button
+                        onClick={() => {
+                          const input = document.createElement('input')
+                          input.type = 'file'; input.accept = '.pdf,.png,.jpg,.jpeg'
+                          input.onchange = () => handleUpload(input.files, tx.matchedVendor || tx.vendor, `ka-${tx.idx}`)
+                          input.click()
+                        }}
+                        style={{ fontSize: 9, color: '#00F0FF', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontWeight: 600 }}
+                      >
+                        <Upload size={9} style={{ verticalAlign: -1, marginRight: 3 }} />Beleg hochladen
+                      </button>
                     )}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>{b.description} · {b.frequency}</div>
-                </div>
-                {/* Amount */}
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: statusColor, whiteSpace: 'nowrap' }}>
-                  €{b.amount.toFixed(2)}
-                </div>
-              </div>
 
-              {/* Source hint — wo findet man den Beleg */}
-              <div style={{ marginTop: 8, marginLeft: 26, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <SourceIcon size={11} color="var(--tx3)" />
-                <span style={{ fontSize: 10, color: 'var(--tx3)' }}>{sourceLabels[b.source]}:</span>
-                <span style={{ fontSize: 10, color: 'var(--tx2)', flex: 1 }}>{b.sourceDetail}</span>
-              </div>
+                  {/* Amount */}
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: amountColor, width: 70, textAlign: 'right', flexShrink: 0 }}>
+                    {tx.type === 'expense' ? '-' : '+'}{tx.amount.toFixed(2)}
+                  </span>
 
-              {/* Action buttons for missing receipts */}
-              {effectiveStatus !== 'vorhanden' && (
-                <div style={{ marginTop: 8, marginLeft: 26, display: 'flex', gap: 6 }}>
-                  <button
-                    onClick={() => {
-                      // Create a file input specific to this receipt
-                      const input = document.createElement('input')
-                      input.type = 'file'
-                      input.accept = '.pdf,.png,.jpg,.jpeg,.heic'
-                      input.onchange = () => handleUpload(input.files, b.vendor, b.id)
-                      input.click()
-                    }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(0,240,255,0.15)',
-                      background: 'rgba(0,240,255,0.06)', color: '#00F0FF',
-                      fontSize: 9, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                    }}
-                  >
-                    <Upload size={10} /> Hochladen
-                  </button>
-                  <button
-                    onClick={() => handleMark(b.id, b.vendor)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(0,255,136,0.15)',
-                      background: 'rgba(0,255,136,0.06)', color: '#00FF88',
-                      fontSize: 9, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                    }}
-                  >
-                    <Check size={10} /> Als vorhanden markieren
-                  </button>
+                  {/* Status badge */}
+                  <span style={{ width: 60, textAlign: 'right', flexShrink: 0 }}>
+                    {isExpense && (
+                      <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${statusColor}15`, color: statusColor }}>
+                        {hasBeleg ? 'Beleg da' : 'Fehlt'}
+                      </span>
+                    )}
+                    {!isExpense && (
+                      <span style={{ fontSize: 8, color: 'var(--tx3)' }}>Einnahme</span>
+                    )}
+                  </span>
                 </div>
-              )}
-
-              {/* Upload date if vorhanden */}
-              {(b.uploadDate || isJustUploaded) && (
-                <div style={{ marginTop: 4, marginLeft: 26, fontSize: 9, color: 'var(--tx3)' }}>
-                  Hochgeladen: {b.uploadDate || new Date().toISOString().split('T')[0]}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
+        </>
+      )}
     </>
   )
 }
