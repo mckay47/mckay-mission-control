@@ -540,23 +540,40 @@ function BuchhaltungBelege() {
   }, [handleKontoauszugUpload, handleScanEmail])
 
   // Merge kontoauszug transactions with folder status for the definitive view
-  const allTransactions = kontoauszugTx.map((tx, i) => {
+  const matchedFileNames = new Set<string>() // track which folder files are already matched
+
+  const kontoTransactions = kontoauszugTx.map((tx, i) => {
     const isExpense = tx.type === 'expense'
     // Find matching file in folder
     const matchedFile = folderStatus?.files.find(f => {
+      if (matchedFileNames.has(f.filename)) return false // already matched to another tx
       const fl = f.filename.toLowerCase()
       const vendor = (tx.matchedVendor || tx.vendor).toLowerCase()
       const firstWord = vendor.split(/[\s_(*]/)[0]
       return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
     })
-    return { ...tx, idx: i, matchedFile: matchedFile?.filename || '', needsBeleg: isExpense }
+    if (matchedFile) matchedFileNames.add(matchedFile.filename)
+    return { ...tx, idx: i, matchedFile: matchedFile?.filename || '', needsBeleg: isExpense, source: 'kontoauszug' as const }
   })
+
+  // Find files in folder that DON'T match any Kontoauszug transaction = privat/bar bezahlt
+  const unmatchedFiles = (folderStatus?.files || [])
+    .filter(f => !matchedFileNames.has(f.filename))
+    .filter(f => !f.filename.toLowerCase().includes('kontoauszug')) // Skip the Kontoauszug PDF itself
+    .map((f, i) => ({
+      date: '', vendor: f.vendor !== 'Unbekannt' ? f.vendor : f.filename.replace(/^[\d-]+_/, '').replace(/_/g, ' ').replace(/\.pdf$/i, ''),
+      description: f.filename, amount: 0, type: 'expense' as const, wallet: 'Privat/Bar',
+      matchedVendor: f.vendor !== 'Unbekannt' ? f.vendor : null, hasFile: true,
+      idx: 9000 + i, matchedFile: f.filename, needsBeleg: true, source: 'ordner' as const,
+    }))
+
+  const allTransactions = [...kontoTransactions, ...unmatchedFiles]
 
   const expenses = allTransactions.filter(t => t.needsBeleg)
   const belegVorhanden = expenses.filter(t => t.hasFile || t.matchedFile).length
   const belegFehlt = expenses.filter(t => !t.hasFile && !t.matchedFile).length
-  const totalAusgaben = expenses.reduce((s, t) => s + t.amount, 0)
-  const totalEinnahmen = allTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+  const totalAusgaben = kontoTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+  const totalEinnahmen = kontoTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
 
   const filteredTx = filter === 'alle' ? allTransactions
     : filter === 'fehlt' ? allTransactions.filter(t => t.needsBeleg && !t.hasFile && !t.matchedFile)
@@ -616,6 +633,9 @@ function BuchhaltungBelege() {
             <KpiCard value={`€${totalEinnahmen.toFixed(0)}`} label="Einnahmen" color="#00FF88" />
             <KpiCard value={`${belegVorhanden}`} label="Belege da" color="#00FF88" />
             <KpiCard value={`${belegFehlt}`} label="Fehlen" color={belegFehlt > 0 ? '#FFD600' : '#00FF88'} />
+            {unmatchedFiles.length > 0 && (
+              <KpiCard value={`${unmatchedFiles.length}`} label="Privat/Bar" color="#8B5CF6" />
+            )}
           </KpiRow>
 
           {/* Progress bar */}
@@ -688,7 +708,7 @@ function BuchhaltungBelege() {
 
                   {/* Date */}
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--tx3)', width: 56, flexShrink: 0 }}>
-                    {tx.date.slice(0, 5)}
+                    {tx.date ? tx.date.slice(0, 5) : '—'}
                   </span>
 
                   {/* Vendor + file info */}
@@ -718,12 +738,17 @@ function BuchhaltungBelege() {
 
                   {/* Amount */}
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: amountColor, width: 70, textAlign: 'right', flexShrink: 0 }}>
-                    {tx.type === 'expense' ? '-' : '+'}{tx.amount.toFixed(2)}
+                    {tx.amount > 0 ? `${tx.type === 'expense' ? '-' : '+'}${tx.amount.toFixed(2)}` : '—'}
                   </span>
 
                   {/* Status badge */}
-                  <span style={{ width: 60, textAlign: 'right', flexShrink: 0 }}>
-                    {isExpense && (
+                  <span style={{ width: 72, textAlign: 'right', flexShrink: 0 }}>
+                    {isExpense && tx.source === 'ordner' && (
+                      <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6' }}>
+                        Privat/Bar
+                      </span>
+                    )}
+                    {isExpense && tx.source !== 'ordner' && (
                       <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${statusColor}15`, color: statusColor }}>
                         {hasBeleg ? 'Beleg da' : 'Fehlt'}
                       </span>
