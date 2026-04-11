@@ -2479,31 +2479,7 @@ Antworte NUR mit dem JSON-Array.`
                 if (amountMatch) matchedFile = amountMatch.filename
               }
 
-              // Strategy 2: Vendor name / alias fallback (for scanned receipts without extractable text)
-              if (!matchedFile) {
-                const vendorAliases: Record<string, string[]> = {
-                  Pinoil: ['tanken', 'pinoil', 'tankstelle'], JET: ['tanken', 'jet', 'tankstelle'], Shell: ['tanken', 'shell', 'tankstelle'],
-                  Finkbeiner: ['getraenke', 'finkbeiner', 'wasch', 'autowaesche'],
-                  Deutsche_Post: ['porto', 'post', 'briefmarke'], BCU: ['bcu', 'business_center', 'geschaeftsadresse'],
-                  Apple: ['apple', 'icloud', 'chatgpt', 'ipad'], Google_One: ['google_one', 'google'],
-                  Google_Workspace: ['google_workspace', 'google'], Anthropic: ['anthropic', 'claude'],
-                  XAI: ['xai', 'grok'], Media_Markt: ['media_markt', 'mediamarkt', 'ipad', 'apple_ipad'],
-                }
-                const searchTerms: string[] = []
-                if (matchedVendor) {
-                  searchTerms.push(matchedVendor.toLowerCase())
-                  const aliases = vendorAliases[matchedVendor]
-                  if (aliases) searchTerms.push(...aliases)
-                }
-                searchTerms.push(vendorRaw.toLowerCase().split(/[\s(*]/)[0])
-
-                const nameMatch = fileInfos.find(fi =>
-                  !usedFilesInner.includes(fi.filename) &&
-                  searchTerms.some(term => fi.filename.toLowerCase().includes(term))
-                )
-                if (nameMatch) matchedFile = nameMatch.filename
-              }
-
+              // No alias fallback — if amount doesn't match, leave unmatched for manual assignment
               const hasFile = !!matchedFile
 
               transactions.push({
@@ -2666,22 +2642,7 @@ Antworte NUR mit dem JSON-Array.`
               if (amountMatch) match = amountMatch.filename
             }
 
-            // Strategy 2: Fallback to vendor name / alias matching
-            if (!match) {
-              const vendor = (tx.matchedVendor || tx.vendor || '').toLowerCase()
-              const firstWord = vendor.split(/[\s_(*]/)[0]
-              const searchTerms = [firstWord, vendor.replace(/[_\s]/g, '')]
-              const aliases = fileAliases[vendor] || fileAliases[firstWord]
-              if (aliases) searchTerms.push(...aliases)
-
-              const nameMatch = fileInfos.find(fi => {
-                if (usedFiles.has(fi.filename)) return false
-                const fl = fi.filename.toLowerCase()
-                return searchTerms.some(term => fl.includes(term))
-              })
-              if (nameMatch) match = nameMatch.filename
-            }
-
+            // No alias fallback — only amount matching. Unmatched = manual assignment.
             tx.hasFile = !!match
             tx.matchedFile = match
             if (match) usedFiles.add(match)
