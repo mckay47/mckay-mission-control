@@ -723,9 +723,25 @@ function BuchhaltungBelege() {
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, border: `1px solid ${dragOver ? 'var(--bl)' : 'rgba(255,255,255,0.08)'}`, background: dragOver ? 'rgba(0,145,255,0.05)' : 'rgba(255,255,255,0.02)', color: 'var(--tx3)', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
               <Upload size={12} /> Belege hochladen
             </div>
-            <button onClick={() => kontoauszugInputRef.current?.click()}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(139,92,246,0.12)', background: 'rgba(139,92,246,0.03)', color: '#8B5CF6', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
-              <CreditCard size={12} />
+            <button onClick={() => {
+              addToast({ type: 'loading', title: 'Ordner wird neu geladen...', duration: 2000 })
+              // Re-fetch kontoauszug-data which re-reads folder + re-matches
+              const now = new Date()
+              const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+              fetch(`/api/belege/kontoauszug-data?year=${prev.getFullYear()}&month=${String(prev.getMonth() + 1).padStart(2, '0')}`)
+                .then(r => r.json())
+                .then(d => {
+                  if (d.exists && d.transactions) {
+                    setKontoauszugTx(d.transactions)
+                    refreshFolder()
+                    const matched = d.transactions.filter((t: KontoauszugTransaction) => t.hasFile).length
+                    addToast({ type: 'success', title: 'Ordner aktualisiert', message: `${matched} Belege zugeordnet`, duration: 3000 })
+                  }
+                })
+                .catch(() => addToast({ type: 'error', title: 'Fehler beim Laden', duration: 3000 }))
+            }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,255,136,0.12)', background: 'rgba(0,255,136,0.03)', color: '#00FF88', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+              <Check size={12} /> Ordner prüfen
             </button>
           </div>
 
@@ -782,17 +798,31 @@ function BuchhaltungBelege() {
                       </div>
                     )}
                     {isExpense && !hasBeleg && (
-                      <button
-                        onClick={() => {
-                          const input = document.createElement('input')
-                          input.type = 'file'; input.accept = '.pdf,.png,.jpg,.jpeg'
-                          input.onchange = () => handleUpload(input.files, tx.matchedVendor || tx.vendor, `ka-${tx.idx}`)
-                          input.click()
-                        }}
-                        style={{ fontSize: 9, color: '#00F0FF', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontWeight: 600 }}
-                      >
-                        <Upload size={9} style={{ verticalAlign: -1, marginRight: 3 }} />Beleg hochladen
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
+                        <button
+                          onClick={() => {
+                            const input = document.createElement('input')
+                            input.type = 'file'; input.accept = '.pdf,.png,.jpg,.jpeg'
+                            input.onchange = () => handleUpload(input.files, tx.matchedVendor || tx.vendor, `ka-${tx.idx}`)
+                            input.click()
+                          }}
+                          style={{ fontSize: 9, color: '#00F0FF', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                          <Upload size={9} style={{ verticalAlign: -1, marginRight: 3 }} />Hochladen
+                        </button>
+                        {/* Source hint: where to find this receipt */}
+                        {(() => {
+                          const match = erwarteteBelege.find(b => {
+                            const v = (tx.matchedVendor || '').toLowerCase()
+                            return v && b.vendor.toLowerCase().includes(v.split('_')[0])
+                          })
+                          return match ? (
+                            <span style={{ fontSize: 8, color: 'var(--tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              → {match.sourceDetail}
+                            </span>
+                          ) : null
+                        })()}
+                      </div>
                     )}
                   </div>
 

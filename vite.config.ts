@@ -2514,7 +2514,16 @@ Antworte NUR mit dem JSON-Array.`
                 if (amountMatch) matchedFile = amountMatch.filename
               }
 
-              // No alias fallback — if amount doesn't match, leave unmatched for manual assignment
+              // Strategy 2: Direct vendor name in filename (no aliases, just exact vendor match)
+              if (!matchedFile && matchedVendor) {
+                const vendorLower = matchedVendor.toLowerCase().replace(/_/g, '')
+                const nameMatch = fileInfos.find(fi =>
+                  !usedFilesInner.includes(fi.filename) &&
+                  fi.filename.toLowerCase().replace(/[_\-\s]/g, '').includes(vendorLower)
+                )
+                if (nameMatch) matchedFile = nameMatch.filename
+              }
+
               const hasFile = !!matchedFile
 
               transactions.push({
@@ -2677,7 +2686,16 @@ Antworte NUR mit dem JSON-Array.`
               if (amountMatch) match = amountMatch.filename
             }
 
-            // No alias fallback — only amount matching. Unmatched = manual assignment.
+            // Strategy 2: Direct vendor name in filename (no aliases, no guessing)
+            if (!match && tx.matchedVendor) {
+              const vendorLower = tx.matchedVendor.toLowerCase().replace(/_/g, '')
+              const nameMatch = fileInfos.find(fi => {
+                if (usedFiles.has(fi.filename)) return false
+                return fi.filename.toLowerCase().replace(/[_\-\s]/g, '').includes(vendorLower)
+              })
+              if (nameMatch) match = nameMatch.filename
+            }
+
             tx.hasFile = !!match
             tx.matchedFile = match
             if (match) usedFiles.add(match)
