@@ -2517,13 +2517,20 @@ Antworte NUR mit dem JSON-Array.`
               }
             }
 
-            // Also save the PDF to the month folder as Kontoauszug
+            // Save PDF + transaction data to the month folder
             if (periodYear && periodMonth) {
               const monthDir = getBelegeMonthFolder(periodYear, periodMonth)
               const kontoauszugPath = join(monthDir, `${periodYear}-${periodMonth}_Finom_Kontoauszug.pdf`)
               if (!existsSync(kontoauszugPath)) {
                 writeFileSync(kontoauszugPath, pdfBuffer)
               }
+              // Persist parsed transactions as JSON — survives tab switches and page reloads
+              const dataPath = join(monthDir, `_kontoauszug_${periodYear}-${periodMonth}.json`)
+              writeFileSync(dataPath, JSON.stringify({
+                period: { von: periodVon, bis: periodBis, year: periodYear, month: periodMonth },
+                transactions,
+                parsedAt: new Date().toISOString(),
+              }, null, 2))
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -2541,6 +2548,53 @@ Antworte NUR mit dem JSON-Array.`
             res.end(JSON.stringify({ error: (err as Error).message }))
           }
         })
+      })
+
+      // --------------------------------------------------------
+      // GET /api/belege/kontoauszug-data — Load persisted kontoauszug transactions
+      // Query: ?year=2026&month=03 (defaults to previous month)
+      // --------------------------------------------------------
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.url?.startsWith('/api/belege/kontoauszug-data')) return next()
+        const url = new URL(req.url, 'http://localhost')
+        const now = new Date()
+        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const year = url.searchParams.get('year') || String(prev.getFullYear())
+        const month = url.searchParams.get('month') || String(prev.getMonth() + 1).padStart(2, '0')
+
+        try {
+          const dataPath = join(BUCHHALTUNG_ROOT, year, `${month}_${year}`, `_kontoauszug_${year}-${month}.json`)
+          if (!existsSync(dataPath)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ exists: false }))
+            return
+          }
+          const data = JSON.parse(readFileSync(dataPath, 'utf-8'))
+
+          // Re-check hasFile against current folder contents
+          const monthDir = join(BUCHHALTUNG_ROOT, year, `${month}_${year}`)
+          const existingFiles = existsSync(monthDir) ? readdirSync(monthDir).filter(f => !f.startsWith('.') && !f.startsWith('_')) : []
+
+          // Update hasFile for each transaction
+          for (const tx of data.transactions) {
+            const vendor = (tx.matchedVendor || tx.vendor || '').toLowerCase()
+            const firstWord = vendor.split(/[\s_(*]/)[0]
+            tx.hasFile = existingFiles.some(f => {
+              const fl = f.toLowerCase()
+              return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
+            })
+            tx.matchedFile = existingFiles.find(f => {
+              const fl = f.toLowerCase()
+              return fl.includes(firstWord) || (tx.matchedVendor && fl.includes(tx.matchedVendor.toLowerCase()))
+            }) || ''
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ exists: true, ...data }))
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: (err as Error).message }))
+        }
       })
 
       // --------------------------------------------------------

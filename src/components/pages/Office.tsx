@@ -289,6 +289,24 @@ function BuchhaltungBelege() {
   const kontoauszugInputRef = useRef<HTMLInputElement>(null)
   const { addToast, updateToast } = useToast()
   const { status: folderStatus, refresh: refreshFolder } = useFolderStatus()
+
+  // Load persisted kontoauszug data on mount
+  useEffect(() => {
+    const now = new Date()
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const y = prev.getFullYear()
+    const m = String(prev.getMonth() + 1).padStart(2, '0')
+    fetch(`/api/belege/kontoauszug-data?year=${y}&month=${m}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.exists && data.transactions) {
+          setKontoauszugTx(data.transactions)
+          setKontoauszugPeriod(data.period ? `${data.period.von} - ${data.period.bis}` : '')
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const belege = getErwarteteBelegeWithStatus(folderStatus)
 
   // Vendor alias map: kontoauszug matched vendor → hardcoded vendor names
