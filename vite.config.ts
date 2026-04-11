@@ -2434,11 +2434,10 @@ Antworte NUR mit dem JSON-Array.`
               const walletMatch = segment.match(/(Main|Hebammen\.Agenc\s*y)\s+\d/)
               const wallet = walletMatch ? walletMatch[1].replace(/\s+/g, '') : 'Main'
 
-              // Skip STRIPE incoming on Hebammen.Agency wallet (positive amounts)
-              if (/stripe/i.test(vendorRaw) && type === 'income' && /Hebammen/i.test(wallet)) continue
-
-              // Skip PNL Fintech cashback (positive amount)
-              if (/PNL\s+Fintech/i.test(vendorRaw) && /cashback/i.test(segment) && type === 'income') continue
+              // Stripe income on Hebammen.Agency = real business revenue → KEEP, label as Hebammen.Agency Einnahme
+              if (/stripe/i.test(vendorRaw) && type === 'income' && /Hebammen/i.test(wallet)) {
+                vendorRaw = 'Hebammen.Agency Einnahme'
+              }
 
               // Match vendor against known patterns
               const matchedVendor = matchVendor(vendorRaw) || matchVendor(segment)

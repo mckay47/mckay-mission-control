@@ -211,47 +211,82 @@ function getErwarteteBelegeWithStatus(folderStatus: FolderStatus | null) {
 
 function BuchhaltungUebersicht() {
   const { status: folderStatus } = useFolderStatus()
-  const belege = getErwarteteBelegeWithStatus(folderStatus)
-  const vorhanden = belege.filter(b => b.status === 'vorhanden').length
-  const fehlend = belege.filter(b => b.status === 'fehlt').length
-  const ueberfaellig = belege.filter(b => b.status === 'überfällig').length
-  const total = belege.length
-  const pct = Math.round((vorhanden / total) * 100)
-  const totalAmount = belege.reduce((s, b) => s + b.amount, 0)
+  const [kontoData, setKontoData] = useState<{ transactions: KontoauszugTransaction[]; period: { von: string; bis: string } } | null>(null)
+
+  // Load persisted kontoauszug data
+  useEffect(() => {
+    const now = new Date()
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    fetch(`/api/belege/kontoauszug-data?year=${prev.getFullYear()}&month=${String(prev.getMonth() + 1).padStart(2, '0')}`)
+      .then(r => r.json())
+      .then(d => { if (d.exists) setKontoData(d) })
+      .catch(() => {})
+  }, [])
+
+  const hasKontoauszug = !!kontoData?.transactions?.length
+  const tx = kontoData?.transactions || []
+  const expenses = tx.filter(t => t.type === 'expense')
+  const income = tx.filter(t => t.type === 'income')
+  const totalAusgaben = expenses.reduce((s, t) => s + t.amount, 0)
+  const totalEinnahmen = income.reduce((s, t) => s + t.amount, 0)
+  const saldo = totalEinnahmen - totalAusgaben
+
+  // Beleg-Vollständigkeit aus Folder
+  const totalFiles = folderStatus?.totalFiles || 0
+  const belegVorhanden = expenses.filter(t => t.hasFile).length
+  const belegFehlt = expenses.length - belegVorhanden
+  const pct = expenses.length > 0 ? Math.round((belegVorhanden / expenses.length) * 100) : (totalFiles > 0 ? 100 : 0)
   const barColor = pct === 100 ? '#00FF88' : pct >= 50 ? '#FFD600' : '#FF6B2C'
+
+  const now = new Date()
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const monthName = prev.toLocaleString('de-DE', { month: 'long', year: 'numeric' })
 
   return (
     <>
       {/* Vollständigkeit — Hero */}
       <div style={{ padding: '16px 18px', borderRadius: 12, background: `${barColor}06`, border: `1px solid ${barColor}18` }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{steuerTermine.periode}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>
+            {hasKontoauszug ? `Buchhaltung ${monthName}` : monthName}
+          </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: barColor }}>{pct}%</span>
-            <span style={{ fontSize: 10, color: 'var(--tx3)' }}>vollständig</span>
+            <span style={{ fontSize: 10, color: 'var(--tx3)' }}>Belege</span>
           </div>
         </div>
         <ProgressBar progress={pct} color={barColor} />
         <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 6 }}>
-          {vorhanden} von {total} Belegen vorhanden{fehlend > 0 ? ` · ${fehlend} fehlen` : ''}{ueberfaellig > 0 ? ` · ${ueberfaellig} überfällig` : ''}
+          {hasKontoauszug
+            ? `${belegVorhanden} von ${expenses.length} Belegen vorhanden${belegFehlt > 0 ? ` · ${belegFehlt} fehlen` : ''}`
+            : `${totalFiles} Belege im Ordner · Kontoauszug noch nicht hochgeladen`
+          }
         </div>
       </div>
 
-      {/* KPIs — eine Reihe */}
-      <KpiRow>
-        <KpiCard value={`€${totalAmount.toFixed(0)}`} label="Rechnungssumme" color="var(--bl)" />
-        <KpiCard value={`${total}`} label="Erwartet" color="var(--a)" />
-        <KpiCard value={`${fehlend + ueberfaellig}`} label="Fehlen" color={fehlend > 0 ? '#FFD600' : '#00FF88'} />
-        <KpiCard value={`${vorhanden}`} label="Vorhanden" color="#00FF88" />
-      </KpiRow>
+      {/* KPIs */}
+      {hasKontoauszug ? (
+        <KpiRow>
+          <KpiCard value={`€${totalAusgaben.toFixed(0)}`} label="Ausgaben" color="#FF6B2C" />
+          <KpiCard value={`€${totalEinnahmen.toFixed(0)}`} label="Einnahmen" color="#00FF88" />
+          <KpiCard value={`€${Math.abs(saldo).toFixed(0)}`} label={saldo >= 0 ? 'Überschuss' : 'Defizit'} color={saldo >= 0 ? '#00FF88' : '#FF6B2C'} />
+          <KpiCard value={`${totalFiles}`} label="Belege" color="var(--bl)" />
+        </KpiRow>
+      ) : (
+        <KpiRow>
+          <KpiCard value={`${totalFiles}`} label="Belege im Ordner" color="var(--bl)" />
+          <KpiCard value="—" label="Ausgaben" color="var(--tx3)" />
+          <KpiCard value="—" label="Einnahmen" color="var(--tx3)" />
+        </KpiRow>
+      )}
 
       {/* Steuerberaterin Timeline */}
       <TcLabel>Steuerberaterin</TcLabel>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {[
-          { label: 'Letzter Upload', value: steuerTermine.letzterUpload, color: 'var(--bl)' },
           { label: 'Letzte Übermittlung', value: steuerTermine.letzteÜbermittlung, color: '#00FF88' },
           { label: 'Nächste Fälligkeit', value: steuerTermine.nächsteFälligkeit, color: '#FFD600' },
+          { label: 'Belege im Ordner', value: `${totalFiles} Dateien`, color: 'var(--bl)' },
         ].map((row, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
             <span style={{ fontSize: 11, color: 'var(--tx3)' }}>{row.label}</span>
@@ -259,6 +294,13 @@ function BuchhaltungUebersicht() {
           </div>
         ))}
       </div>
+
+      {!hasKontoauszug && (
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.12)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <CreditCard size={14} color="#8B5CF6" />
+          <span style={{ fontSize: 11, color: '#8B5CF6' }}>Kontoauszug im Belege-Tab hochladen für vollständige Übersicht</span>
+        </div>
+      )}
     </>
   )
 }
